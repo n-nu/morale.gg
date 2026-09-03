@@ -1,0 +1,93 @@
+# morale.gg
+
+morale.gg is a planned web-based platform for statistics, rosters, events, and organizational management for structured multiplayer-game communities. The initial use case is Napoleonic Wars, while the architecture is intended to remain useful for similar organized games.
+
+## Problem
+
+Organized multiplayer communities often maintain rosters, hierarchical units, event records, performance statistics, and audits across disconnected spreadsheets or manually maintained systems. morale.gg is intended to centralize those records in one consistent platform.
+
+## Target Users
+
+- **Regular users / players:** View units, rosters, events, and stored audit information.
+- **Unit managers:** Manage units and memberships, record event participation, and submit audits.
+- **Website administrators:** Maintain the platform and oversee its organizational data.
+
+## Core Concepts
+
+- **Players:** People whose memberships and event performance are recorded.
+- **Units:** Organizations with optional parent-child subunit relationships.
+- **Events:** Organized game sessions in which units may participate.
+- **Audits:** Records of a unit's participation and performance in an event.
+- **Statistics:** Player-level and unit-level measures captured by audits, with basic historical browsing planned.
+
+## Planned MVP
+
+The Milestone 1 target MVP is planned to include:
+
+- Google authentication
+- Creating and viewing units
+- Unit and subunit hierarchy
+- Creating and viewing players
+- Assigning players to units
+- Viewing rosters
+- Creating and viewing events
+- Associating units with events
+- Submitting one audit for a unit's event participation
+- Recording player audit data
+- Recording unit audit data
+- Recording audit role assignments
+- Viewing stored audits
+
+These are planned capabilities, not completed implementation in this repository.
+
+## Out of MVP Scope
+
+The following are explicitly outside the MVP:
+
+- Premium or payment systems
+- Advanced analytics
+- Predictive analytics
+- Advanced visualizations
+- Advanced leaderboards
+- Automated reporting
+- Data exports
+- Third-party game integrations
+
+## Planned Technology Stack
+
+This is the planned architecture and does not imply that these technologies are currently implemented:
+
+- **Frontend:** Next.js, React, TypeScript, and Tailwind CSS
+- **Application layer:** Node.js
+- **Database:** PostgreSQL
+- **ORM:** Prisma
+- **Authentication:** Google accounts
+- **Project management and version control:** GitHub and Git
+
+## Architecture
+
+The initial system-context and domain relationship models are documented in [docs/architecture.md](docs/architecture.md). They describe the intended architecture, not a final database schema.
+
+## Development Process
+
+The initial development process uses one-week sprints, GitHub Issues and the [prioritized backlog](BACKLOG.md), feature branches, pull requests, and peer review. The `main` branch should remain runnable as implementation begins in later milestones.
+
+## Current Project Status
+
+**Project Milestone 0 — Proposal and Planning**
+
+Milestone 0 establishes the project proposal, planning baseline, backlog, and initial architecture documentation. Implementation will proceed incrementally in later milestones.
+
+## Repository Structure
+
+The repository currently contains the planning documents listed below. Application source directories will be added in later milestones as implementation begins.
+
+- [BACKLOG.md](BACKLOG.md): Prioritized user stories and acceptance criteria.
+- [docs/architecture.md](docs/architecture.md): Initial system-context and domain relationship models.
+
+## Team
+
+Emil Estrada - "Here's my proposal"
+Aiden Slabiak - "Yes I'm cool with that"
+Chandler Lovely - "Sounds good"
+
