@@ -91,6 +91,47 @@ npm run build     # produce a production build
 npm run start     # run a built production server
 ```
 
+## Shared Backend Setup
+
+The MVP backend runs inside the Next.js server-side application layer. Browser/client code
+must not access Prisma, PostgreSQL, authentication credentials, secrets, or privileged business
+logic directly.
+
+Requirements:
+
+- PostgreSQL database available locally or through a development connection string;
+- Google OAuth client credentials;
+- Node.js and npm.
+
+Create a local `.env` file from `.env.example` and set:
+
+- `DATABASE_URL`: PostgreSQL connection string;
+- `AUTH_SECRET`: random secret used by Auth.js;
+- `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`: Google OAuth credentials;
+- `ROOT_UNIT_NAME`: optional name for the development root unit.
+
+For local Google OAuth, configure this redirect URI in the Google Cloud OAuth client:
+`http://localhost:3000/api/auth/callback/google`.
+
+After PostgreSQL is available, initialize the database and development root unit:
+
+```bash
+npm run db:validate
+npm run db:generate
+npm run db:migrate -- --name init
+npm run db:seed
+```
+
+For an environment where migrations already exist, use `npm run db:migrate:deploy` instead of
+`db:migrate`. The seed performs an idempotent upsert of the root Unit with the stable ID
+`root-morale-gg` and does not create a Player.
+
+Authentication is provided by Auth.js/NextAuth with Google OAuth, the Prisma adapter, and
+database-backed sessions. Auth.js `User` is the persistent website identity corresponding to
+the conceptual `UserAccount`; it remains distinct from the game-domain `Player`. The current
+foundation intentionally does not implement authorization, unit ownership, memberships,
+invites, events, participation, audits, or product UI.
+
 Application source lives under `src/app` (Next.js App Router). Future feature modules should be added as new route/module directories under `src/app` (and any accompanying non-route code under `src/`), following the module process described in `AGENT_WORKFLOW.md` and `docs/DEVELOPMENT_STANDARD.md`.
 
 ## Repository Structure
@@ -103,7 +144,7 @@ Application source lives under `src/app` (Next.js App Router). Future feature mo
 
 ## Team
 
-Emil Estrada - "Here's my proposal"
-Aiden Slabiak - "Yes I'm cool with that"
-Chandler Lovely - "Sounds good"
+- Emil Estrada (Lead)
+- Aiden Slabiak
+- Chandler Lovely
 
