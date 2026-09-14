@@ -1,156 +1,566 @@
 # morale.gg Backlog
 
-This backlog is the initial planning baseline for Milestone 0. Priorities may change slightly through the Agile process while the primary project scope remains stable.
+**Status:** Revised MVP baseline  
+**Initial game scope:** Napoleonic Wars only
+
+This backlog defines the current MVP boundary for morale.gg. The MVP centers on the unit-manager and event-manager workflow: building a linked unit hierarchy, maintaining rosters, organizing event participation, submitting immutable audits, and deriving basic public statistics from recorded data.
 
 Unless stated otherwise, every item is **Planned** and has not been implemented.
 
-## High Priority / MVP
+---
 
-### US-01 — Authentication
+# MVP Success Condition
 
-- **Priority:** High
+The MVP is successful when an authorized unit manager can:
+
+1. authenticate;
+2. create or manage a linked unit;
+3. create or attach a child unit through the parent-unit invite system;
+4. add persistent player records to unit rosters;
+5. create an event or request participation in an existing event;
+6. approve or reject participation where authorized;
+7. submit an audit for a participating unit;
+8. record required player statistics, unit statistics, unit type, and in-game roles;
+9. permanently lock the submitted audit; and
+10. allow any visitor to view the resulting event, audit, roster, leaderboard, and basic statistical information.
+
+The MVP is desktop-oriented for management workflows. Mobile support is primarily intended for read-only viewing.
+
+---
+
+# Must Have / MVP
+
+## US-01 — Google Authentication
+
 - **Status:** Planned
-- **User story:** As a user, I want to authenticate using my Google account so that my identity can be associated with permissions and actions.
-- **Description:** Establish Google-based identity for users and the authorization decisions that depend on it.
-- **Acceptance criteria:**
-  - A user can authenticate using a Google account.
-  - The application can associate authenticated actions with that user.
-  - Unauthenticated and authenticated states are distinguished.
+- **User story:** As a unit manager, I want to authenticate using my Google account so that the system can associate my account with unit ownership and delegated permissions.
 
-### US-02 — Unit Management
+### Business Rules
 
-- **Priority:** High
+- Authentication is required for write operations.
+- Unauthenticated users may use public read-only functionality.
+- A website account is not automatically the same thing as a player record.
+- Non-manager users may create accounts, but account creation alone does not grant management permissions.
+
+### Acceptance Criteria
+
+- A user can authenticate using Google.
+- The application distinguishes authenticated and unauthenticated sessions.
+- Authenticated actions can be associated with the relevant website account.
+- Authentication alone does not grant unit-management authority.
+
+---
+
+## US-02 — Persistent Player Records
+
 - **Status:** Planned
-- **User story:** As a unit manager, I want to create and manage units so that my organization can be represented.
-- **Description:** Support the creation and viewing of units, including the initial unit hierarchy.
-- **Acceptance criteria:**
-  - An authorized user can create a unit.
-  - A user can view a unit.
-  - A unit may reference an optional parent unit to represent a subunit.
+- **User story:** As a unit manager, I want to create a player record using the player's game-specific PlayerID so that the player can be placed on rosters and referenced by future audits.
 
-### US-03 — Unit Membership
+### Business Rules
 
-- **Priority:** High
+- Player records are created by authorized unit managers.
+- A game-specific PlayerID identifies the player in the game domain.
+- A player may belong to multiple units simultaneously.
+- A player record persists even after the player leaves the unit that originally introduced the player to the system.
+- Dedicated player-profile functionality is not required for MVP.
+
+### Acceptance Criteria
+
+- An authorized unit manager can create or locate a player by PlayerID.
+- A persistent player record can be associated with unit memberships.
+- Removing a player from a roster does not delete the player record.
+- The same player can be associated with multiple units.
+
+---
+
+## US-03 — Linked Unit Creation
+
 - **Status:** Planned
-- **User story:** As a unit manager, I want to add players to units so that an accurate roster can be maintained.
-- **Description:** Associate players with units while enforcing authorization and membership uniqueness.
-- **Acceptance criteria:**
-  - A player can be added to an authorized unit.
-  - Duplicate player/unit membership is prevented.
-  - A player may belong to multiple different units.
+- **User story:** As a unit owner, I want to create linked child units so that the organizational hierarchy can be represented.
 
-### US-04 — View Roster
+### Preconditions
 
-- **Priority:** High
+- At least one root unit has been manually seeded.
+- The intended parent unit exists.
+- The parent unit owner is authenticated.
+
+### Business Rules
+
+- New units are created through a temporary invite code generated by the intended parent unit.
+- Using the invite establishes the parent/child relationship.
+- Unit hierarchy supports arbitrary depth.
+- The user who completes child-unit creation becomes its initial owner.
+- Standalone unlinked units cannot normally be created through the public workflow.
+
+### Acceptance Criteria
+
+- A parent-unit owner can generate a temporary child-unit invite.
+- An authenticated user can use a valid invite to create a child unit.
+- The child is linked to the correct parent.
+- Arbitrary-depth hierarchy can be represented.
+- Invalid or expired invite codes cannot create a linked unit.
+
+---
+
+## US-04 — Unit Ownership and Delegated Permissions
+
 - **Status:** Planned
-- **User story:** As a user, I want to view a unit roster so that I can see its members.
-- **Description:** Display the players belonging to a selected unit.
-- **Acceptance criteria:**
-  - A user can select a unit and view its roster.
-  - The roster reflects the unit's current memberships.
+- **User story:** As a unit owner, I want to grant selected users management permissions so that unit responsibilities can be delegated.
 
-### US-05 — Event Creation
+### Business Rules
 
-- **Priority:** High
+- Each unit has exactly one owner.
+- The owner may grant supported management permissions to additional authenticated users.
+- A parent-unit owner may replace or remove the owner of a subordinate child unit according to the approved authorization model.
+- Detailed permission behavior must be explicit and must not be inferred from frontend visibility.
+
+### Acceptance Criteria
+
+- A unit has one identifiable owner.
+- The owner can grant and revoke supported permissions.
+- Unauthorized users cannot perform protected unit-management actions.
+- Parent-unit ownership authority over child units can be exercised according to documented rules.
+
+---
+
+## US-05 — Unit Management
+
 - **Status:** Planned
-- **User story:** As an authorized user, I want to create events so that organized sessions can be recorded.
-- **Description:** Create and view records for organized game sessions.
-- **Acceptance criteria:**
-  - An authorized user can create an event.
-  - A user can view an event after it is created.
+- **User story:** As an authorized unit manager, I want to manage unit information so that the organization remains accurate.
 
-### US-06 — Unit Event Participation
+### Initial Managed Information
 
-- **Priority:** High
+- name;
+- abbreviation;
+- description;
+- hierarchy relationship where authorized;
+- ownership/leadership information;
+- visual identity if included by the UI design.
+
+### Acceptance Criteria
+
+- An authorized manager can edit permitted unit information.
+- Unauthorized users cannot perform unit write operations.
+- Unit hierarchy remains valid after edits.
+- Unit information remains publicly viewable.
+
+---
+
+## US-06 — Unit Membership and Roster Management
+
 - **Status:** Planned
-- **User story:** As an authorized user, I want to associate units with events so that participation can be recorded.
-- **Description:** Record which units participated in an event.
-- **Acceptance criteria:**
-  - The event exists.
-  - The unit exists.
-  - Duplicate unit/event participation is prevented.
+- **User story:** As a unit manager, I want to add and remove players from my unit so that the active roster remains accurate without destroying membership history.
 
-### US-07 — Audit Submission
+### Business Rules
 
-- **Priority:** High
+- A player may belong to multiple units simultaneously.
+- Duplicate active membership for the same player/unit is prevented.
+- Removing a player from the active roster preserves the historical player-unit relationship.
+- Rejoining the same unit must not destroy prior history.
+- The exact storage representation for membership history is a design decision.
+- Rank, position, attendance, and richer membership metadata are post-MVP.
+
+### Acceptance Criteria
+
+- An authorized manager can add a player to a unit.
+- Duplicate active membership is prevented.
+- An authorized manager can remove a player from the active roster.
+- Historical membership remains preserved after removal.
+- A previously removed player can later rejoin without losing prior history.
+
+---
+
+## US-07 — Public Unit and Roster Browsing
+
 - **Status:** Planned
-- **User story:** As a unit manager, I want to submit an audit for my unit's participation in an event so that its performance can be recorded.
-- **Description:** Store one audit for an eligible unit-event participation.
-- **Acceptance criteria:**
-  - The event exists.
-  - The unit participates in the event.
-  - The user is authorized to manage the unit.
-  - One audit is associated with the appropriate unit-event participation.
-  - The submitted audit can later be viewed.
+- **User story:** As a visitor, I want to browse units and rosters without signing in so that I can understand the organization.
 
-### US-08 — Player Audit Data
+### Acceptance Criteria
 
-- **Priority:** High
+- An unauthenticated visitor can browse units.
+- A visitor can navigate parent and child units.
+- A visitor can view a unit's current roster.
+- Public pages are read-only for unauthenticated users.
+- Arbitrary-depth hierarchy can be represented in the browsing experience.
+
+---
+
+## US-08 — Event Creation and Editing
+
 - **Status:** Planned
-- **User story:** As a unit manager, I want to record player statistics within an audit.
-- **Description:** Capture initial player-level statistics for an audit.
-- **Initial statistics:** Kills, deaths, and assists.
-- **Acceptance criteria:**
-  - Player statistics can be recorded for an audit.
-  - The recorded data identifies the relevant player and audit.
-  - Stored player audit data can later be viewed.
+- **User story:** As an authorized unit manager, I want to create and edit events so that organized matches can be represented.
 
-## Medium Priority
+### Initial Event Information
 
-### US-09 — Unit Audit Data
+- name;
+- scheduled date/time;
+- event type;
+- description;
+- opponent where relevant;
+- map where relevant.
 
-- **Priority:** Medium
+### Preconditions
+
+- The user is authenticated.
+- The user holds the required event-management permission.
+
+### Business Rules
+
+- An event cannot be created with a scheduled date/time that has already passed.
+- Historical events cannot be back-created through the normal MVP workflow.
+- Authorized event managers may edit eligible events.
+
+### Acceptance Criteria
+
+- An authorized user can create an event scheduled for a future date/time.
+- An event with a past date/time cannot be created.
+- An authorized event manager can edit allowed event information.
+- Visitors can view event information without authentication.
+
+---
+
+## US-09 — Event Cancellation / Deletion
+
 - **Status:** Planned
-- **User story:** As a unit manager, I want to record unit-level statistics within an audit.
-- **Description:** Capture unit-level performance measures.
-- **Initial statistics:** Tickets, flag captures, flag losses, and stars.
-- **Acceptance criteria:**
-  - Unit statistics can be recorded for an audit.
-  - Stored unit audit data can later be viewed with its audit.
+- **User story:** As an authorized event manager, I want to remove an event that will no longer occur so that invalid future events do not remain in the system.
 
-### US-10 — Audit Role Assignments
+### Preconditions
 
-- **Priority:** Medium
+An event may be cancelled/deleted only when:
+
+- its scheduled date/time has not yet occurred; and
+- no audit exists for the event.
+
+### Business Rules
+
+- Cancellation in the MVP deletes the event.
+- Past events cannot be cancelled through this workflow.
+- Events with audit data cannot be deleted.
+
+### Acceptance Criteria
+
+- An authorized event manager can delete an eligible future event.
+- A past event cannot be deleted through cancellation.
+- An event with any audit cannot be deleted.
+- Unauthorized users cannot delete events.
+
+---
+
+## US-10 — Unit Event Participation Request
+
 - **Status:** Planned
-- **User story:** As a unit manager, I want to assign players to event-specific roles so that important responsibilities are recorded.
-- **Description:** Record roles such as commander and flag bearer while allowing future dynamic roles.
-- **Acceptance criteria:**
-  - A player can be assigned an event-specific role within an audit.
-  - Initial roles include commander and flag bearer.
-  - The design can support future dynamic roles.
+- **User story:** As an authorized unit manager, I want to request participation in an event so that my unit can be considered for inclusion.
 
-### US-11 — Historical Data
+### Preconditions
 
-- **Priority:** Medium
+- The event exists.
+- The requesting unit exists.
+- The user has the required permission for that unit.
+
+### Business Rules
+
+- All participation requests require manual approval.
+- Duplicate active requests/participation for the same unit/event are prevented.
+
+### Acceptance Criteria
+
+- An authorized unit manager can request participation.
+- The request identifies the event and unit.
+- Duplicate requests are prevented.
+- A request does not become confirmed participation until approved.
+
+---
+
+## US-11 — Event Participation Approval
+
 - **Status:** Planned
-- **User story:** As a user, I want to browse historical records so that I can review previous performance.
-- **Description:** Browse previous events, audits, player performance, and unit performance.
-- **Acceptance criteria:**
-  - A user can browse previous events and audits.
-  - Historical player and unit performance can be viewed from stored audit data.
+- **User story:** As an authorized event manager, I want to approve or deny participation requests so that I control which units participate.
 
-## Future / Non-MVP
+### Acceptance Criteria
 
-### US-12 — Advanced Analytics
+- An event manager can view pending participation requests.
+- The event manager can approve a request.
+- The event manager can deny a request.
+- Approval creates confirmed unit-event participation.
+- Denial does not create confirmed participation.
+- Only confirmed participating units are eligible for audit submission.
 
-- **Priority:** Future / Non-MVP
+---
+
+## US-12 — Audit Creation and Submission
+
 - **Status:** Planned
-- **User story:** As a user, I want advanced historical and statistical analysis so that I can understand long-term trends.
-- **Description:** Add analysis beyond the basic historical statistics required by the MVP.
-- **Acceptance criteria:** To be defined after MVP scope and data quality are established.
+- **User story:** As an authorized manager of a participating unit, I want to submit an audit so that the unit's event performance becomes part of the permanent record.
 
-### US-13 — Premium Analytics
+### Preconditions
 
-- **Priority:** Future / Non-MVP
+- The event exists.
+- The event has occurred.
+- The unit has confirmed participation.
+- The user can manage the participating unit.
+- No submitted audit already exists for that unit-event participation.
+
+### Business Rules
+
+- One submitted audit exists per eligible unit-event participation.
+- Only the participating unit's authorized manager can create/edit that unit's audit.
+- Audit data may be edited before submission.
+- Once submitted, the audit is immutable in the MVP.
+- Post-submission correction workflows are post-MVP.
+
+### Acceptance Criteria
+
+- An eligible manager can begin an audit.
+- Draft audit data can be entered before submission.
+- Invalid/incomplete audit submission is rejected.
+- A valid audit can be submitted.
+- A second submitted audit cannot be created for the same participation.
+- After submission, the audit cannot be edited.
+- Submitted audit data is publicly viewable.
+
+---
+
+## US-13 — Player Audit Statistics
+
 - **Status:** Planned
-- **User story:** As a user, I want premium access to advanced analytics and visualizations so that I can use expanded insights.
-- **Description:** Explore premium analytics access only after the MVP and its business requirements are established.
-- **Acceptance criteria:** To be defined; premium access is outside the MVP.
+- **User story:** As a participating unit manager, I want to record player statistics in an audit so that individual contribution is represented.
 
-### US-14 — Export / Reporting
+### Required MVP Statistics
 
-- **Priority:** Future / Non-MVP
+- kills;
+- deaths;
+- assists.
+
+### Acceptance Criteria
+
+- A player can be associated with the audit.
+- Kills, deaths, and assists can be recorded.
+- Duplicate player entries within the same audit are prevented.
+- Statistics remain associated with the player and audit.
+- Submitted player audit data is publicly viewable.
+
+---
+
+## US-14 — Unit Audit Statistics
+
 - **Status:** Planned
-- **User story:** As an administrator or manager, I want future reporting or data-export functionality so that records can be used outside the application.
-- **Description:** Provide reporting or export workflows after core records are stable.
-- **Acceptance criteria:** To be defined; automated reporting and data exports are outside the MVP.
+- **User story:** As a participating unit manager, I want to record unit-level statistics so that unit performance is represented.
+
+### Required MVP Statistics
+
+- tickets;
+- flag captures;
+- flag losses;
+- stars.
+
+### Acceptance Criteria
+
+- Required unit-level statistics can be entered.
+- Values remain associated with the correct audit and participating unit.
+- Submitted unit audit statistics are publicly viewable.
+- Unit statistics contribute to basic derived views where applicable.
+
+---
+
+## US-15 — Audit Role Assignments
+
+- **Status:** Planned
+- **User story:** As a participating unit manager, I want to record important in-game roles so that leadership responsibilities are preserved with the audit.
+
+### Required MVP Roles
+
+- commander;
+- flag bearer.
+
+### Business Rules
+
+- Arbitrary in-unit positions are post-MVP.
+
+### Acceptance Criteria
+
+- A participating player can be assigned as commander.
+- A participating player can be assigned as flag bearer.
+- Role assignments remain associated with the audit.
+- Submitted role assignments are publicly viewable.
+
+---
+
+## US-16 — Audit Unit Type
+
+- **Status:** Planned
+- **User story:** As a participating unit manager, I want to identify the unit's in-game type for an audit so that results can be interpreted correctly.
+
+### Required MVP Unit Types
+
+- Infantry;
+- Rifles;
+- Cavalry;
+- Artillery.
+
+### Acceptance Criteria
+
+- One supported unit type can be recorded for the audit participation.
+- Invalid unit types are rejected.
+- Unit type remains associated with the audit.
+- Submitted unit type is publicly viewable.
+
+---
+
+## US-17 — Public Event and Audit Browsing
+
+- **Status:** Planned
+- **User story:** As a visitor, I want to browse events and submitted audits without an account so that recorded activity is publicly useful.
+
+### Acceptance Criteria
+
+- Visitors can browse events.
+- Visitors can view participating units.
+- Visitors can view submitted audits.
+- Visitors can view player and unit audit values.
+- Visitors cannot modify event or audit information.
+
+---
+
+## US-18 — Basic Statistics and Leaderboards
+
+- **Status:** Planned
+- **User story:** As a visitor, I want to view basic statistics and leaderboards derived from submitted audits so that the recorded data is useful.
+
+### MVP Scope
+
+Basic statistics may include:
+
+- totals;
+- counts;
+- averages;
+- K/D or similar direct calculations;
+- simple leaderboard rankings based on approved MVP measures.
+
+### Business Rules
+
+- Statistics derive from authoritative submitted audit data.
+- Dedicated historical player-profile and unit-profile analytics are not required for MVP.
+- Advanced analytics, trend analysis, predictions, and premium views are post-MVP.
+
+### Acceptance Criteria
+
+- Visitors can view basic statistics derived from submitted audits.
+- Visitors can view at least one useful leaderboard.
+- Derived values can be traced to underlying audit data.
+- No account is required to view statistics.
+
+---
+
+# Should Have / Stretch MVP
+
+## US-19 — Basic Account Preferences
+
+- **Status:** Planned / Stretch
+- **User story:** As an authenticated user, I want to associate my game PlayerID with my account so that the interface can recognize or highlight my player identity.
+
+### Notes
+
+- This does not grant management permissions.
+- Full player-profile ownership or claiming is not required for MVP.
+- Implement only after the core manager/event/audit flow is complete.
+
+---
+
+# Post-MVP
+
+## US-20 — Rich Player Profiles
+
+- historical statistics by unit;
+- player event history;
+- role history;
+- richer account/player linking.
+
+## US-21 — Rich Unit History and Analytics
+
+- historical event summaries;
+- aggregate unit performance;
+- roster-history views;
+- role history;
+- trends and comparisons.
+
+## US-22 — Rich Membership Metadata
+
+Potential future membership data:
+
+- rank;
+- position;
+- join/leave periods;
+- active/inactive presentation;
+- event attendance;
+- unit-specific statistics.
+
+## US-23 — In-Unit Positions
+
+- arbitrary in-unit distinctions;
+- position-specific metadata;
+- position-based views.
+
+## US-24 — Audit Correction / Approval Workflow
+
+- submitted-audit edit requests;
+- higher-level approval;
+- administrative correction;
+- audit version history where needed.
+
+## US-25 — Advanced Analytics
+
+- long-term trends;
+- advanced comparisons;
+- richer filtering;
+- advanced visualizations;
+- predictive or derived analysis beyond MVP statistics.
+
+## US-26 — Premium Analytics
+
+- premium access control;
+- premium visualizations;
+- premium analytical tools;
+- business/payment requirements.
+
+## US-27 — Export / Reporting
+
+- exports;
+- generated reports;
+- external reporting workflows.
+
+## US-28 — Generalized Multi-Game Support
+
+The MVP is explicitly Napoleonic Wars only. Additional games and generalized per-game schemas are post-MVP.
+
+---
+
+# Core MVP Use-Case Mapping
+
+| Use Case | Primary Stories |
+|---|---|
+| Authenticate Manager | US-01 |
+| Establish Linked Unit | US-03, US-04, US-05 |
+| Build and Maintain Roster | US-02, US-06, US-07 |
+| Create and Manage Event | US-08, US-09 |
+| Request and Approve Participation | US-10, US-11 |
+| Submit Participating-Unit Audit | US-12, US-13, US-14, US-15, US-16 |
+| Browse Recorded Activity | US-07, US-17, US-18 |
+
+---
+
+# MVP Non-Goals
+
+The following are outside the MVP unless later promoted through an approved scope change:
+
+- dedicated player-profile analytics;
+- rich unit-history analytics;
+- rank and position management;
+- event attendance tracking;
+- submitted-audit correction workflows;
+- advanced analytics;
+- predictive analytics;
+- premium functionality;
+- export/reporting;
+- generalized multi-game support;
+- native mobile management workflows;
+- arbitrary in-unit positions.

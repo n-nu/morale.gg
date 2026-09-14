@@ -74,16 +74,32 @@ The initial development process uses one-week sprints, GitHub Issues and the [pr
 
 ## Current Project Status
 
-**Project Milestone 0 — Proposal and Planning**
+**Project Milestone 1 — Application Foundation**
 
-Milestone 0 establishes the project proposal, planning baseline, backlog, and initial architecture documentation. Implementation will proceed incrementally in later milestones.
+A minimum runnable Next.js/React/TypeScript/Tailwind CSS application shell now exists. It establishes project structure only; no domain functionality (units, players, events, audits, statistics, authentication, database) has been implemented yet. Those will be added incrementally by future tickets.
+
+## Development
+
+Requirements: Node.js and npm.
+
+```bash
+npm install       # install dependencies
+npm run dev       # start the development server (http://localhost:3000)
+npm run lint      # run ESLint
+npm run type-check # run the TypeScript compiler (no emit)
+npm run build     # produce a production build
+npm run start     # run a built production server
+```
+
+Application source lives under `src/app` (Next.js App Router). Future feature modules should be added as new route/module directories under `src/app` (and any accompanying non-route code under `src/`), following the module process described in `AGENT_WORKFLOW.md` and `docs/DEVELOPMENT_STANDARD.md`.
 
 ## Repository Structure
 
-The repository currently contains the planning documents listed below. Application source directories will be added in later milestones as implementation begins.
-
 - [BACKLOG.md](BACKLOG.md): Prioritized user stories and acceptance criteria.
 - [docs/architecture.md](docs/architecture.md): Initial system-context and domain relationship models.
+- `src/app`: Next.js application (App Router). Current contents are a minimal application shell only.
+- `public/`: static assets served by Next.js.
+- Repository governance: [AGENT_WORKFLOW.md](AGENT_WORKFLOW.md), [docs/DEVELOPMENT_STANDARD.md](docs/DEVELOPMENT_STANDARD.md), [docs/SYSTEM.md](docs/SYSTEM.md).
 
 ## Team
 
