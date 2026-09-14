@@ -80,7 +80,7 @@ A minimum runnable Next.js/React/TypeScript/Tailwind CSS application shell now e
 
 ## Development
 
-Requirements: Node.js and npm.
+Requirements: Node.js, npm, and Docker Desktop.
 
 ```bash
 npm install       # install dependencies
@@ -90,6 +90,63 @@ npm run type-check # run the TypeScript compiler (no emit)
 npm run build     # produce a production build
 npm run start     # run a built production server
 ```
+
+## Local PostgreSQL with Docker
+
+Use the repository-controlled PostgreSQL service instead of installing PostgreSQL manually.
+
+1. Install Docker Desktop.
+2. Copy `.env.example` to `.env` and update the local-only values for `DATABASE_URL`, `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD`.
+3. Start PostgreSQL:
+
+```bash
+docker compose up -d
+```
+
+4. Check the database status:
+
+```bash
+docker compose ps
+docker compose logs --tail=50 morale-gg-postgres
+```
+
+5. Wait for the container health check to report `healthy`.
+6. Install dependencies if needed:
+
+```bash
+npm install
+```
+
+7. Apply the existing Prisma workflow:
+
+```bash
+npm run db:validate
+npm run db:generate
+npm run db:migrate:deploy
+npm run db:seed
+```
+
+8. Start the app:
+
+```bash
+npm run dev
+```
+
+### Docker lifecycle
+
+- `docker compose stop` stops PostgreSQL without deleting the named Docker volume, so local data is preserved.
+- `docker compose down` stops and removes the Compose environment while preserving the local database volume.
+- `docker compose down -v` removes the database volume as well. This is a destructive reset and should only be used when you want to rebuild from a clean local state.
+- To rebuild after a destructive reset:
+
+```bash
+docker compose down -v
+docker compose up -d
+npm run db:migrate:deploy
+npm run db:seed
+```
+
+The local PostgreSQL service uses the official `postgres:16` image and a named Docker volume for persistence. `DATABASE_URL` remains the single application database configuration used by Prisma and Next.js.
 
 ## Shared Backend Setup
 

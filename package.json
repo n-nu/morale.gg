@@ -8,11 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
-    "db:generate": "prisma generate",
-    "db:validate": "prisma validate",
-    "db:migrate": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed"
+    "db:generate": "dotenv -e .env -- prisma generate",
+    "db:validate": "dotenv -e .env -- prisma validate",
+    "db:migrate": "dotenv -e .env -- prisma migrate dev",
+    "db:migrate:deploy": "dotenv -e .env -- prisma migrate deploy",
+    "db:seed": "dotenv -e .env -- prisma db seed"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -31,6 +31,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv-cli": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "prisma": "^7.10.0",
