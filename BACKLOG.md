@@ -5,7 +5,17 @@
 
 This backlog defines the current MVP boundary for morale.gg. The MVP centers on the unit-manager and event-manager workflow: building a linked unit hierarchy, maintaining rosters, organizing event participation, submitting immutable audits, and deriving basic public statistics from recorded data.
 
-Unless stated otherwise, every item is **Planned** and has not been implemented.
+Unless stated otherwise, MVP items are **Planned** and have not been implemented. US-01 is
+complete; the remaining MVP stories are still planned or awaiting implementation.
+
+## Implementation Status Notes
+
+- **US-01 — Google Authentication: Complete.** Auth.js/NextAuth with Google OAuth, Prisma
+	persistence, database-backed sessions, sign-in/sign-out, session resolution, and reuse of an
+	existing Google identity were verified in `TKT-20260914-000003-001`.
+- The Prisma/PostgreSQL setup and seeded root `Unit` are shared backend foundations, not
+	completion of linked-unit creation, unit management, or roster functionality. The remaining
+	MVP stories require their domain models, authorization, workflows, and public views.
 
 ---
 
@@ -32,7 +42,7 @@ The MVP is desktop-oriented for management workflows. Mobile support is primaril
 
 ## US-01 — Google Authentication
 
-- **Status:** Planned
+- **Status:** Complete
 - **User story:** As a unit manager, I want to authenticate using my Google account so that the system can associate my account with unit ownership and delegated permissions.
 
 ### Business Rules
@@ -44,10 +54,10 @@ The MVP is desktop-oriented for management workflows. Mobile support is primaril
 
 ### Acceptance Criteria
 
-- A user can authenticate using Google.
-- The application distinguishes authenticated and unauthenticated sessions.
-- Authenticated actions can be associated with the relevant website account.
-- Authentication alone does not grant unit-management authority.
+- [x] A user can authenticate using Google.
+- [x] The application distinguishes authenticated and unauthenticated sessions.
+- [x] Authenticated actions can be associated with the relevant website account.
+- [x] Authentication alone does not grant unit-management authority.
 
 ---
 
