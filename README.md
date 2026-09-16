@@ -38,7 +38,8 @@ The Milestone 1 target MVP is planned to include:
 - Recording audit role assignments
 - Viewing stored audits
 
-These are planned capabilities, not completed implementation in this repository.
+Google authentication is implemented and verified. The remaining domain capabilities are planned
+and have not yet been implemented.
 
 ## Out of MVP Scope
 
@@ -76,7 +77,11 @@ The initial development process uses one-week sprints, GitHub Issues and the [pr
 
 **Project Milestone 1 — Application Foundation**
 
-A minimum runnable Next.js/React/TypeScript/Tailwind CSS application shell now exists. It establishes project structure only; no domain functionality (units, players, events, audits, statistics, authentication, database) has been implemented yet. Those will be added incrementally by future tickets.
+A minimum runnable Next.js/React/TypeScript/Tailwind CSS application shell and the shared
+PostgreSQL/Prisma/Auth.js foundation now exist. Google authentication, database-backed sessions,
+and the seeded root-unit foundation have been implemented and verified. Domain workflows for
+linked units, players, rosters, events, participation, audits, and statistics remain planned
+and will be added incrementally by future tickets.
 
 ## Development
 
