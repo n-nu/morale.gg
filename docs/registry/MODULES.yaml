@@ -1,2 +1,7 @@
 # Generated/discovery index. Source of truth is each module's MODULE.md.
-modules: []
+modules:
+  - module_id: events
+    path: src/modules/events
+    manifest: src/modules/events/MODULE.md
+    status: active
+    established_by: TKT-20260914-000005-001
