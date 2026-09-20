@@ -1,2 +1,8 @@
 # Generated/discovery index. Source of truth is each module's MODULE.md.
-modules: []
+modules:
+  - module_id: units
+    path: src/modules/units
+    status: active
+    version: 0.1
+    last_reviewed: 2026-09-14
+    updated_by_ticket: TKT-20260914-000004-001
