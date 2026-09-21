@@ -1,14 +1,47 @@
 @import "tailwindcss";
 
+/*
+ * Team UI theme (dark), established by the Units page design and the Events
+ * mockup. The site renders dark for all visitors; there is no light variant.
+ */
 :root {
-  color-scheme: dark;
-  --background: #000000;
-  --foreground: #ffffff;
+  --background: #08090b;
+  --foreground: #ebeae9;
+  --surface: #0d1012;
+  --surface-2: #17191c;
+  --edge: #202225;
+  --edge-strong: #2a2d31;
+  --muted: #a1a0a0;
+  --body-soft: #bfbebc;
+  --faint: #6d7781;
+  --gold: #eec145;
+  --gold-bright: #f2cd6b;
+  --gold-ink: #141210;
+  --type-red: #d45247;
+  --type-blue: #58c0fa;
+  --type-green: #2d5536;
+  --green-bright: #6fbf8a;
+  --bronze: #986e57;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
+  --color-muted: var(--muted);
+  --color-body-soft: var(--body-soft);
+  --color-faint: var(--faint);
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --color-gold-ink: var(--gold-ink);
+  --color-type-red: var(--type-red);
+  --color-type-blue: var(--type-blue);
+  --color-type-green: var(--type-green);
+  --color-green-bright: var(--green-bright);
+  --color-bronze: var(--bronze);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,5 +49,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }

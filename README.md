@@ -38,7 +38,8 @@ The Milestone 1 target MVP is planned to include:
 - Recording audit role assignments
 - Viewing stored audits
 
-These are planned capabilities, not completed implementation in this repository.
+Google authentication is implemented and verified. The remaining domain capabilities are planned
+and have not yet been implemented.
 
 ## Out of MVP Scope
 
@@ -76,7 +77,11 @@ The initial development process uses one-week sprints, GitHub Issues and the [pr
 
 **Project Milestone 1 — Application Foundation**
 
-A minimum runnable Next.js/React/TypeScript/Tailwind CSS application shell now exists. It establishes project structure only; no domain functionality (units, players, events, audits, statistics, authentication, database) has been implemented yet. Those will be added incrementally by future tickets.
+A minimum runnable Next.js/React/TypeScript/Tailwind CSS application shell and the shared
+PostgreSQL/Prisma/Auth.js foundation now exist. Google authentication, database-backed sessions,
+and the seeded root-unit foundation have been implemented and verified. Domain workflows for
+linked units, players, rosters, events, participation, audits, and statistics remain planned
+and will be added incrementally by future tickets.
 
 ## Development
 
@@ -166,6 +171,12 @@ Create a local `.env` file from `.env.example` and set:
 - `AUTH_SECRET`: random secret used by Auth.js;
 - `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`: Google OAuth credentials;
 - `ROOT_UNIT_NAME`: optional name for the development root unit.
+- `WEBSITE_ADMIN_USER_IDS`: optional comma-separated stable Auth.js `User.id`
+	values for bootstrap website administrators. Configure this only through
+	server deployment environment, never client-visible configuration. A trusted
+	deployer can obtain a stable ID after the administrator completes the normal
+	Google sign-in flow; the application does not expose that ID solely for
+	authorization.
 
 For local Google OAuth, configure this redirect URI in the Google Cloud OAuth client:
 `http://localhost:3000/api/auth/callback/google`.
@@ -186,8 +197,11 @@ For an environment where migrations already exist, use `npm run db:migrate:deplo
 Authentication is provided by Auth.js/NextAuth with Google OAuth, the Prisma adapter, and
 database-backed sessions. Auth.js `User` is the persistent website identity corresponding to
 the conceptual `UserAccount`; it remains distinct from the game-domain `Player`. The current
-foundation intentionally does not implement authorization, unit ownership, memberships,
-invites, events, participation, audits, or product UI.
+foundation's bounded bootstrap website-administrator capability resolves the authenticated
+server-side Auth.js `User.id` against `WEBSITE_ADMIN_USER_IDS`; missing, malformed, or non-matching
+configuration is denied. It does not trust client-provided identity state. The current foundation
+does not implement authorization beyond that capability, unit ownership, memberships, invites,
+events, participation, audits, or product UI.
 
 Application source lives under `src/app` (Next.js App Router). Future feature modules should be added as new route/module directories under `src/app` (and any accompanying non-route code under `src/`), following the module process described in `AGENT_WORKFLOW.md` and `docs/DEVELOPMENT_STANDARD.md`.
 

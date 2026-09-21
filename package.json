@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
+    "test:website-admin": "tsx --conditions react-server --test src/lib/website-admin.test.ts",
     "db:generate": "dotenv -e .env -- prisma generate",
     "db:validate": "dotenv -e .env -- prisma validate",
     "db:migrate": "dotenv -e .env -- prisma migrate dev",

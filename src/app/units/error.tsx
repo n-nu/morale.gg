@@ -14,4 +14,3 @@ export default function UnitsError({ reset }: { reset: () => void }) {
     </div>
   );
 }
-

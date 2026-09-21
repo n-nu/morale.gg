@@ -48,6 +48,18 @@ model VerificationToken {
   @@id([identifier, token])
 }
 
+model Event {
+  id          String   @id @default(cuid())
+  name        String
+  scheduledAt DateTime
+  eventType   String
+  description String?
+  opponent    String?
+  map         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Unit {
   id        String   @id @default(cuid())
   name      String
