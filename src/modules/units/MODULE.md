@@ -3,20 +3,31 @@ module_id: units
 path: src/modules/units
 status: active
 version: 0.1
-last_reviewed: 2026-09-14
-updated_by_ticket: TKT-20260914-000004-001
+last_reviewed: 2026-09-20
+updated_by_ticket: TKT-20260920-000011-001
 ---
 
 # Units
 
 ## Purpose
-Provide public, read-only browsing of persisted organizational Units and their hierarchy.
+Own organizational Unit hierarchy and its RootUnit-bounded authority
+persistence, while currently providing public, read-only browsing of persisted
+Units and their hierarchy.
 
 ## Ownership
-Unit identity, name, parent/child hierarchy, hierarchy queries/traversal, and public read-side Unit presentation.
+Unit identity, name, parent/child hierarchy, RootUnit designation and
+isolation, Commander persistence, authorized-user memberships, permission
+grants and delegation lineage, hierarchy queries/traversal, and public
+read-side Unit presentation. Effective authority resolution and structural
+authorization are also Units responsibilities when separately implemented
+under ADR-20260915-002.
 
 ## Non-Ownership
-Unit ownership, delegated permissions, Unit creation, child-unit invites, Player identity, UnitMembership, rosters, Events, EventParticipation, Audits, and statistics are outside this initial module boundary.
+Player identity, UnitMembership, rosters, Events, EventParticipation, Audits,
+statistics, generalized site-wide RBAC, and authority-management workflows/UI
+are outside this module boundary. Unit creation, child-unit invites, structural
+workflows, and effective authorization remain unimplemented and require their
+own approved tickets.
 
 ## Public Interface
 Public pages: `/units` displays existing Units in an expandable hierarchy table; `/units/[unitId]` displays a Unit, its optional parent, and direct children. Roots start collapsed; arrow buttons reveal children, names open details, and expand/collapse-all controls manage the table. Repeated navigation supports arbitrary depth.
@@ -36,7 +47,12 @@ Shared server-only `src/lib/prisma.ts` and the existing Prisma Unit model; Next.
 Persistence access stays server-only. Pages query through the module boundary. Reads reflect stored relationships without inventing hierarchy or authority semantics. Missing IDs return not-found; persistence failures remain errors, not empty results. No depth limit is imposed by navigation.
 
 ## Permissions / Authority
-Browsing is public and requires no session. Write authority and ownership behavior remain outside scope and require separately approved work.
+Browsing is public and requires no session. ADR-20260915-002 assigns
+RootUnit-bounded authority persistence and future server-side authority
+resolution to this module. The currently implemented public routes do not
+perform writes or authorization. ADR-20260915-003 supplies the bounded
+server-only website-administrator capability for future RootUnit bootstrap;
+it does not create Unit authority or generalized RBAC.
 
 ## Internal Structure
 `src/app/units/units.css` scopes a minimal neutral-dark table and detail presentation to the Units shell, with bright interaction accents and a visible sample-data label. The table shows names and direct-child counts; indentation communicates parent relationships.
@@ -54,6 +70,8 @@ Lists are unpaginated. The table assembles the loaded hierarchy client-side and 
 
 ## Related ADRs
 - ADR-20260914-001.
+- ADR-20260915-002.
+- ADR-20260915-003.
 
 ## AI Working Rules
-GREEN local changes and logged YELLOW internal changes may proceed within an active ticket. Do not alter schema, ownership, permission, invite, or contract semantics without explicit authorization. Never import persistence into client components or route pages directly.
+GREEN local changes and logged YELLOW internal changes may proceed within an active ticket. Authority persistence, schema, ownership, permission, invite, and contract semantics require the applicable approved RED ticket and ADR authority. Never import persistence into client components or route pages directly.
