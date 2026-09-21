@@ -32,6 +32,14 @@ own approved tickets.
 ## Public Interface
 Public pages: `/units` displays existing Units in an expandable hierarchy table; `/units/[unitId]` displays a Unit, its optional parent, and direct children. Roots start collapsed; arrow buttons reveal children, names open details, and expand/collapse-all controls manage the table. Repeated navigation supports arbitrary depth.
 The route adapters consume `server/queries.ts` (`listUnits`, `getUnit`) as the module's server-side application entry point. No public cross-module contract is currently required: there are no cross-module consumers.
+Server-only capability consumers use `server/authorization.ts`:
+`canManageUnit`, `canManageRoster`, `canManageAuthorizedUsers`, and
+`canRequestEventParticipation` return semantic allow/deny results without
+exposing authority records. `canManageAuthorizedUsers` establishes permission
+coverage only; user-management mutations must apply their own applicable
+hierarchy, scope, and local authority-level comparison. Event management
+remains deferred because Event has no approved Unit ownership or manager
+relationship.
 
 ## Inputs
 An existing persisted Unit ID from the detail route. No authentication or mutation input.
@@ -57,7 +65,12 @@ create Unit authority or generalized RBAC.
 ## Internal Structure
 `src/app/units/units.css` scopes a minimal neutral-dark table and detail presentation to the Units shell, with bright interaction accents and a visible sample-data label. The table shows names and direct-child counts; indentation communicates parent relationships.
 `server/demo.ts` contains sample country roots and nested units reaching four levels, plus opt-in mode selection. Country names are ordinary Unit fixtures, not a persisted country classification. Demo pages show a sample-data label. Queries select fixtures before loading Prisma; database errors never switch to fixtures automatically. Sample IDs do not represent persisted Units.
-`server/queries.ts` selects only public read fields, ordering lists by name then ID. `components/unit-links.tsx` renders reusable hierarchy links. Route adapters and route-specific states live in `src/app/units/`.
+`server/queries.ts` selects only public read fields, ordering lists by name then ID.
+`server/authorization.ts` resolves current Unit ancestry, RootUnit consistency,
+memberships, grants, revocation, delegation lineage, and scope at decision time;
+Commander status does not bypass operational grants. `components/unit-links.tsx`
+renders reusable hierarchy links. Route adapters and route-specific states live
+in `src/app/units/`.
 
 ## Extension Points
 Local read presentation and query improvements may preserve this boundary. Future cross-module consumers require an approved documented contract before integration.
