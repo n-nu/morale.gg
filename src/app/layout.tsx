@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     "morale.gg: statistics, rosters, and event management for organized multiplayer-game communities.",
 };
 
-const plannedNav = ["Community", "Units", "Audits", "Leaderboards"];
+const plannedNav = ["Community", "Audits", "Leaderboards"];
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -49,6 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 </span>
               ))}
               <NavLink href="/events">Events</NavLink>
+              <NavLink href="/units">Units</NavLink>
               {/* Auth.js route handler, not a page — plain anchor is intentional. */}
               {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a

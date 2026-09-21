@@ -28,12 +28,20 @@ export default function Home() {
           Wars communities. Feature modules (units, players, audits,
           statistics) are being added incrementally.
         </p>
-        <Link
-          href="/events"
-          className="mt-8 rounded-lg bg-gold px-6 py-3 text-sm font-bold text-gold-ink transition-colors hover:bg-gold-bright"
-        >
-          Browse events
-        </Link>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/events"
+            className="rounded-lg bg-gold px-6 py-3 text-sm font-bold text-gold-ink transition-colors hover:bg-gold-bright"
+          >
+            Browse events
+          </Link>
+          <Link
+            href="/units"
+            className="rounded-lg border border-edge-strong bg-surface px-6 py-3 text-sm font-bold text-white transition-colors hover:border-gold hover:text-gold"
+          >
+            Browse units
+          </Link>
+        </div>
       </div>
     </div>
   );

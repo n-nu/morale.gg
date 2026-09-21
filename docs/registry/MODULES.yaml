@@ -5,3 +5,9 @@ modules:
     manifest: src/modules/events/MODULE.md
     status: active
     established_by: TKT-20260914-000005-001
+  - module_id: units
+    path: src/modules/units
+    status: active
+    version: 0.1
+    last_reviewed: 2026-09-14
+    updated_by_ticket: TKT-20260914-000004-001
