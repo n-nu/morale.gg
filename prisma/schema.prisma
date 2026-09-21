@@ -14,6 +14,11 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  commandedUnits Unit[]   @relation("UnitCommander")
+  memberships    AuthorizedUserMembership[] @relation("MembershipUser")
+  createdMemberships AuthorizedUserMembership[] @relation("MembershipCreator")
+  createdGrants PermissionGrant[] @relation("GrantCreator")
+  revokedGrants PermissionGrant[] @relation("GrantRevoker")
 }
 
 model Account {
@@ -61,11 +66,84 @@ model Event {
 }
 
 model Unit {
-  id        String   @id @default(cuid())
-  name      String
-  parentId  String?
-  parent    Unit?    @relation("UnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children  Unit[]   @relation("UnitHierarchy")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  parentId        String?
+  parent          Unit?     @relation("UnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children        Unit[]    @relation("UnitHierarchy")
+  rootUnitId      String?
+  rootUnit        RootUnit? @relation("UnitRoot", fields: [rootUnitId], references: [unitId], onDelete: Restrict)
+  rootDesignation RootUnit? @relation("RootDesignation")
+  commanderUserId String?
+  commander       User?     @relation("UnitCommander", fields: [commanderUserId], references: [id], onDelete: Restrict)
+  memberships     AuthorizedUserMembership[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([rootUnitId])
+  @@index([commanderUserId])
+}
+
+model RootUnit {
+  unitId          String   @id
+  designatedUnit  Unit     @relation("RootDesignation", fields: [unitId], references: [id], onDelete: Restrict)
+  units           Unit[]   @relation("UnitRoot")
+}
+
+model AuthorizedUserMembership {
+  id              String          @id @default(cuid())
+  userId          String
+  unitId          String
+  authorityLevel  Int
+  createdByUserId String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  user            User            @relation("MembershipUser", fields: [userId], references: [id], onDelete: Restrict)
+  unit            Unit            @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  createdBy       User            @relation("MembershipCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  grants          PermissionGrant[]
+
+  @@unique([userId, unitId])
+  @@index([userId])
+  @@index([unitId])
+  @@index([unitId, authorityLevel])
+}
+
+enum Permission {
+  MANAGE_UNIT
+  MANAGE_STRUCTURE
+  MANAGE_ROSTER
+  REQUEST_EVENT_PARTICIPATION
+  MANAGE_EVENTS
+  SUBMIT_AUDITS
+  MANAGE_AUTHORIZED_USERS
+}
+
+enum PermissionScope {
+  SELF
+  SELF_AND_CHILDREN
+  SELF_AND_DESCENDANTS
+}
+
+model PermissionGrant {
+  id                         String                   @id @default(cuid())
+  authorizedUserMembershipId String
+  permission                 Permission
+  scope                      PermissionScope?
+  delegatedFromGrantId       String?
+  createdByUserId            String
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  revokedAt                  DateTime?
+  revokedByUserId            String?
+  membership                 AuthorizedUserMembership @relation(fields: [authorizedUserMembershipId], references: [id], onDelete: Restrict)
+  delegatedFromGrant         PermissionGrant?        @relation("GrantDelegation", fields: [delegatedFromGrantId], references: [id], onDelete: Restrict)
+  delegatedGrants            PermissionGrant[]       @relation("GrantDelegation")
+  createdBy                  User                     @relation("GrantCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  revokedBy                  User?                    @relation("GrantRevoker", fields: [revokedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([authorizedUserMembershipId])
+  @@index([delegatedFromGrantId])
+  @@index([createdByUserId])
+  @@index([revokedByUserId])
 }
