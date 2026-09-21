@@ -13,3 +13,9 @@ modules:
     version: 0.1
     last_reviewed: 2026-09-21
     updated_by_ticket: TKT-20260921-000016-001
+  - module_id: players
+    path: src/modules/players
+    status: approved-pending-implementation
+    version: 0.1
+    last_reviewed: 2026-09-21
+    updated_by_ticket: TKT-20260921-000014-001

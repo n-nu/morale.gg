@@ -1,9 +1,16 @@
 # Generated/discovery index. Source of truth is each contract document.
 contracts:
-       - contract_id: events-units-event-creation-authorization
-               path: docs/contracts/events-units-event-creation-authorization.md
-               producer: units
-               consumer: events
-               status: stable
-               version: 0.1
-               updated_by_ticket: TKT-20260921-000016-001
+  - contract_id: events-units-event-creation-authorization
+    path: docs/contracts/events-units-event-creation-authorization.md
+    producer: units
+    consumer: events
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260921-000016-001
+  - contract_id: players-units-roster-authorization
+    path: docs/contracts/players-units-roster-authorization.md
+    producer: units
+    consumer: players
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260921-000014-001

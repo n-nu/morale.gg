@@ -1,23 +1,30 @@
 # Generated/discovery index. Source of truth is module and contract documents.
 capabilities:
-       - capability_id: canCreateEvent
-               owner: units
-               contract: events-units-event-creation-authorization
-               input: userId
-               output: Promise<boolean>
-               consumer: events
-               status: stable
-       - capability_id: canManageEvent
-               owner: events
-               contract: null
-               input: userId, eventId
-               output: Promise<boolean>
-               consumer: future Event-management workflows
-               status: stable
-       - capability_id: canManageEventAuthorizedUsers
-               owner: events
-               contract: null
-               input: userId, eventId
-               output: Promise<boolean>
-               consumer: future Event authorized-user administration
-               status: stable
+  - capability_id: canCreateEvent
+    owner: units
+    contract: events-units-event-creation-authorization
+    input: userId
+    output: Promise<boolean>
+    consumer: events
+    status: stable
+  - capability_id: canManageEvent
+    owner: events
+    contract: null
+    input: userId, eventId
+    output: Promise<boolean>
+    consumer: future Event-management workflows
+    status: stable
+  - capability_id: canManageEventAuthorizedUsers
+    owner: events
+    contract: null
+    input: userId, eventId
+    output: Promise<boolean>
+    consumer: future Event authorized-user administration
+    status: stable
+  - capability_id: canManageRoster
+    owner: units
+    contract: players-units-roster-authorization
+    input: userId, unitId
+    output: Promise<boolean>
+    consumer: players
+    status: stable
