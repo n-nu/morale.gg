@@ -54,15 +54,38 @@ model VerificationToken {
 }
 
 model Event {
-  id          String   @id @default(cuid())
+  id          String                @id @default(cuid())
   name        String
   scheduledAt DateTime
   eventType   String
   description String?
   opponent    String?
   map         String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  participations EventParticipation[]
+}
+
+enum EventParticipationStatus {
+  REQUESTED
+  APPROVED
+  DENIED
+}
+
+model EventParticipation {
+  id        String                     @id @default(cuid())
+  eventId   String
+  event     Event                      @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  unitId    String
+  unit      Unit                       @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  status    EventParticipationStatus   @default(REQUESTED)
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+
+  @@unique([eventId, unitId])
+  @@index([eventId])
+  @@index([unitId])
+  @@index([status])
 }
 
 model Unit {
@@ -77,6 +100,7 @@ model Unit {
   commanderUserId String
   commander       User      @relation("UnitCommander", fields: [commanderUserId], references: [id], onDelete: Restrict)
   memberships     AuthorizedUserMembership[]
+  eventParticipations EventParticipation[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
