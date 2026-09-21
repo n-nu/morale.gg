@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { prisma } from "@/lib/prisma";
 import {
+  canCreateEvent,
   canManageAuthorizedUsers,
   canManageRoster,
   canManageUnit,
@@ -24,7 +25,7 @@ type Snapshot = {
   grants: Array<{
     id: string;
     authorizedUserMembershipId: string;
-    permission: "MANAGE_UNIT" | "MANAGE_STRUCTURE" | "MANAGE_ROSTER" | "MANAGE_AUTHORIZED_USERS";
+    permission: "MANAGE_UNIT" | "MANAGE_STRUCTURE" | "MANAGE_ROSTER" | "MANAGE_EVENTS" | "MANAGE_AUTHORIZED_USERS";
     scope: "SELF" | "SELF_AND_CHILDREN" | "SELF_AND_DESCENDANTS" | null;
     delegatedFromGrantId: string | null;
     revokedAt: Date | null;
@@ -148,6 +149,41 @@ test("denies revoked grants and Commander-only operational access", async () => 
   installSnapshot(snapshot);
   assert.equal(await canManageUnit(actor, rootA), false);
   assert.equal(await canManageUnit(commander, rootA), false);
+});
+
+test("allows Event creation with any valid MANAGE_EVENTS grant", async () => {
+  const snapshot = baseSnapshot();
+  addGrant(snapshot, {
+    id: "event-creation",
+    permission: "MANAGE_EVENTS",
+    scope: "SELF",
+    unitId: branch,
+  });
+  installSnapshot(snapshot);
+
+  assert.equal(await canCreateEvent(actor), true);
+  assert.equal(await canCreateEvent(other), false);
+  assert.equal(await canCreateEvent(""), false);
+});
+
+test("denies Event creation for revoked or invalid MANAGE_EVENTS authority", async () => {
+  const snapshot = baseSnapshot();
+  addGrant(snapshot, {
+    id: "revoked-event-creation",
+    permission: "MANAGE_EVENTS",
+    scope: "SELF",
+    revokedAt: new Date(),
+  });
+  addGrant(snapshot, {
+    id: "invalid-event-creation",
+    permission: "MANAGE_EVENTS",
+    scope: "SELF",
+    delegatedFromGrantId: "missing",
+    unitId: branch,
+  });
+  installSnapshot(snapshot);
+
+  assert.equal(await canCreateEvent(actor), false);
 });
 
 test("validates delegation and source revocation", async () => {

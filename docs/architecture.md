@@ -174,7 +174,7 @@ The MVP requires:
 
 - exactly one unit owner;
 - owner-granted manager permissions;
-- event-management permissions;
+- `MANAGE_EVENTS` permission for standalone Event creation eligibility;
 - protected roster/unit operations;
 - parent-unit authority over subordinate ownership according to the eventual permission design.
 
@@ -203,7 +203,14 @@ Represents an organized Napoleonic Wars event.
 
 Current MVP rules:
 
-- created by an authorized manager;
+- owned by exactly one authenticated User, who is the creator;
+- creation requires any currently effective Unit `MANAGE_EVENTS` permission;
+- the qualifying Unit or grant is not stored on the Event and grants no
+    post-creation Event authority;
+- existing Event management belongs only to the owner and explicitly
+    Event-authorized Users;
+- Event manager administration is owner-only;
+- Events have no Unit ownership or authority anchor;
 - normal MVP creation is for future events only;
 - an event cannot be created with a scheduled time already in the past;
 - event information may be edited while eligible;
@@ -414,6 +421,13 @@ The following are current MVP-level rules unless changed through the approved ar
 
 ### Events
 
+- Events are standalone objects owned by exactly one authenticated User.
+- Any currently effective Unit `MANAGE_EVENTS` grant permits creation but
+    grants no authority over an existing Event.
+- Existing Events are managed only by their owner and explicitly authorized
+    Event Users; only the owner administers that list.
+- Participation and participating Unit hierarchy grant no Event-management
+    authority, including across RootUnit boundaries.
 - Events cannot normally be created in the past.
 - All unit participation requires explicit approval.
 - Event cancellation/deletion is permitted only before the event occurs and while the event has no audits.
@@ -519,6 +533,7 @@ Some permission behavior may eventually justify a separate authorization module,
 Potential ownership:
 
 - event identity and information;
+- User ownership and explicit Event-authorized Users;
 - creation/editing/deletion eligibility;
 - participation requests;
 - participation approvals.

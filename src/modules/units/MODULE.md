@@ -3,8 +3,8 @@ module_id: units
 path: src/modules/units
 status: active
 version: 0.1
-last_reviewed: 2026-09-20
-updated_by_ticket: TKT-20260920-000011-001
+last_reviewed: 2026-09-21
+updated_by_ticket: TKT-20260921-000016-001
 ---
 
 # Units
@@ -38,8 +38,9 @@ Server-only capability consumers use `server/authorization.ts`:
 exposing authority records. `canManageAuthorizedUsers` establishes permission
 coverage only; user-management mutations must apply their own applicable
 hierarchy, scope, and local authority-level comparison. Event management
-remains deferred because Event has no approved Unit ownership or manager
-relationship.
+remains outside Units. The server-only `canCreateEvent(userId)` capability
+exposes only whether the User has effective `MANAGE_EVENTS` somewhere. It
+requires no Unit ID and returns no authority records.
 
 ## Inputs
 An existing persisted Unit ID from the detail route. No authentication or mutation input.
@@ -75,16 +76,23 @@ in `src/app/units/`.
 ## Extension Points
 Local read presentation and query improvements may preserve this boundary. Future cross-module consumers require an approved documented contract before integration.
 
+The approved `events-units-event-creation-authorization` contract is limited
+to Event creation eligibility. Existing Event ownership, manager authority,
+and manager administration remain Events responsibilities and must not be
+implemented in Units.
+
 ## Limitations
 Lists are unpaginated. The table assembles the loaded hierarchy client-side and guards traversal against repeated IDs; it does not validate or repair stored hierarchy cycles. Detail pages show one level at a time. Management and roster functionality are not implemented. Commander bootstrap is server-only and has no public UI.
 
 ## Related Contracts
-- None currently.
+- `events-units-event-creation-authorization` (stable).
 
 ## Related ADRs
 - ADR-20260914-001.
 - ADR-20260915-002.
 - ADR-20260915-003.
+- ADR-20260921-004 (accepted; amends only Event-specific `MANAGE_EVENTS`
+	semantics).
 
 ## AI Working Rules
 GREEN local changes and logged YELLOW internal changes may proceed within an active ticket. Authority persistence, schema, ownership, permission, invite, and contract semantics require the applicable approved RED ticket and ADR authority. Never import persistence into client components or route pages directly.

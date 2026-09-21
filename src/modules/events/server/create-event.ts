@@ -2,7 +2,9 @@ import "server-only";
 
 import type { Event } from "@prisma/client";
 
+import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { prisma } from "@/lib/prisma";
+import { canCreateEvent } from "@/modules/units/server/authorization";
 
 export interface CreateEventInput {
   name: string;
@@ -13,17 +15,19 @@ export interface CreateEventInput {
   map?: string;
 }
 
-/**
- * Domain-level Event creation path.
- *
- * TKT-20260914-000005-001 does not expose Event creation to application
- * users; this exists for controlled server-side persistence verification and
- * as the single domain path future authorized creation work must go through.
- * It enforces the Event Time Rule: an Event may not be created already in
- * the past. It performs no authorization — callers own that concern once a
- * permission model exists.
- */
-export async function createEvent(input: CreateEventInput): Promise<Event> {
+export async function createEventForAuthenticatedUser(
+  input: CreateEventInput,
+  authenticatedUserId: string,
+  authorize: (userId: string) => Promise<boolean> = canCreateEvent,
+): Promise<Event> {
+  if (authenticatedUserId.trim() === "") {
+    throw new Error("Authentication is required to create an Event.");
+  }
+
+  if (!(await authorize(authenticatedUserId))) {
+    throw new Error("Unauthorized: user cannot create Events.");
+  }
+
   const name = input.name.trim();
   if (name.length === 0) {
     throw new Error("An event needs a non-empty name.");
@@ -43,9 +47,19 @@ export async function createEvent(input: CreateEventInput): Promise<Event> {
       name,
       scheduledAt: input.scheduledAt,
       eventType,
+      ownerUserId: authenticatedUserId,
       description: input.description?.trim() || undefined,
       opponent: input.opponent?.trim() || undefined,
       map: input.map?.trim() || undefined,
     },
   });
+}
+
+export async function createEvent(input: CreateEventInput): Promise<Event> {
+  const authenticatedUserId = await getAuthenticatedUserId();
+  if (authenticatedUserId === null) {
+    throw new Error("Authentication is required to create an Event.");
+  }
+
+  return createEventForAuthenticatedUser(input, authenticatedUserId);
 }

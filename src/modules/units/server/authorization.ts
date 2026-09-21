@@ -203,6 +203,29 @@ export async function hasEffectiveUnitPermission(
   return false;
 }
 
+export async function canCreateEvent(userId: string): Promise<boolean> {
+  if (userId.trim() === "") return false;
+
+  const { prisma } = await import("@/lib/prisma");
+  const [user, snapshot] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    loadAuthoritySnapshot(),
+  ]);
+  if (user === null) return false;
+
+  for (const grant of snapshot.grants.values()) {
+    if (
+      grant.permission === "MANAGE_EVENTS" &&
+      grant.membership?.userId === userId &&
+      isGrantLineageValid(snapshot, grant, new Set())
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function canManageUnit(userId: string, unitId: string): Promise<boolean> {
   return hasEffectiveUnitPermission(userId, unitId, "MANAGE_UNIT");
 }

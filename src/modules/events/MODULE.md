@@ -3,8 +3,8 @@ module_id: events
 path: src/modules/events
 status: active
 version: 0.1
-last_reviewed: 2026-09-18
-updated_by_ticket: TKT-20260914-000005-001
+last_reviewed: 2026-09-21
+updated_by_ticket: TKT-20260921-000016-001
 ---
 
 # Events
@@ -24,8 +24,11 @@ against.
 - basic Event metadata (simple string event type, optional description,
   opponent, and map);
 - Event read/query behavior;
-- the domain-level Event creation path and its Event Time Rule (no creation
-  in the past);
+- authenticated Event creation and its Event Time Rule (no creation in the
+  past);
+- Event ownership by exactly one Auth.js User;
+- explicit Event-authorized Users and owner-only manager administration;
+- semantic Event-management authorization;
 - public Event presentation (`/events`, `/events/[eventId]`,
   `/events/calendar`).
 
@@ -33,7 +36,7 @@ against.
 
 - Unit participation requests and EventParticipation;
 - participation approval;
-- Unit authority and Event-manager permissions;
+- Unit authority and creation-eligibility evaluation;
 - Audit lifecycle and audit statistics;
 - leaderboards;
 - event-management UI;
@@ -49,47 +52,63 @@ against.
   future functionality.
 - Route `/events/calendar`: public, unauthenticated month-calendar view of
   the same Event data.
-- No public programmatic contract is currently exposed to other modules.
-  That state is explicit: no cross-module consumer exists yet.
+- Events consumes the server-only
+  `events-units-event-creation-authorization` contract. It exposes no
+  cross-module data contract; future Event workflows consume its server-only
+  semantic capabilities within the Events boundary.
 
 ## Inputs
 
 - Route parameters (`eventId`) from public navigation.
-- `CreateEventInput` on the server-only domain creation path (not reachable
-  by application users; used for controlled server-side verification until
-  an authorized management flow exists).
+- `CreateEventInput` plus the authenticated server session on the protected
+  creation path.
+- Auth.js User and Event identifiers for server-only Event authorization and
+  manager-administration operations.
 
 ## Outputs
 
 - Server-rendered public pages listing and detailing Events.
 - Persisted `Event` rows via the server-only creation path.
+- Boolean Event-management and owner-only administration decisions.
+- Persisted explicit Event manager authorizations.
 
 ## Dependencies
 
 - `src/lib/prisma.ts` (shared server-only Prisma client) for persistence
   access, per ADR-20260914-001.
-- No dependency on any other product module.
+- Units' server-only `canCreateEvent` capability through the
+  `events-units-event-creation-authorization` contract.
 
 ## Invariants
 
 - All Prisma access happens in server-only code (`src/modules/events/server/`).
-- The persisted Event shape stays within the minimal representation approved
-  by TKT-20260914-000005-001; any relationship or additional model requires
-  escalation.
+- Every Event has exactly one real User owner; no Unit ownership or authority
+  anchor is stored.
+- Explicit Event authorization is unique by Event/User, excludes the owner,
+  and records the adding User.
 - The domain creation path rejects Events scheduled in the past.
+- Creation resolves the owner from the server session and requires current
+  `canCreateEvent` eligibility.
+- Existing Event management is allowed only for the owner or an explicitly
+  authorized User. Only the owner administers explicit managers.
 - Public browsing requires no authentication.
 
 ## Permissions / Authority
 
-Undecided. No authorization behavior exists in this module; Event
-management permissions are being designed separately. The creation path
-deliberately performs no authorization and is not exposed to users.
+Events owns `canManageEvent`, which allows only the Event owner or an
+explicitly authorized Event User. `canManageEventAuthorizedUsers` allows only
+the owner. Add/revoke workflows enforce that boundary server-side. Units owns
+`canCreateEvent`, which answers only whether the User has effective
+`MANAGE_EVENTS` authority somewhere; it grants no authority over an existing
+Event.
 
 ## Internal Structure
 
 - `server/queries.ts` — server-only read/query functions.
 - `server/create-event.ts` — server-only domain creation path (verification
-  use only until a permission model exists).
+  and authenticated authorization boundary).
+- `server/authorization.ts` — owner/explicit-manager decisions and owner-only
+  manager administration.
 - `presentation.ts` — client-safe formatting helpers (event-type styling,
   UTC fallback formatting).
 - `map-art.ts` — client-safe map-name → banner artwork lookup
@@ -102,6 +121,8 @@ deliberately performs no authorization and is not exposed to users.
 - EventParticipation, event authorization, event-management UI, and Audits
   are expected to build on this module through future tickets and, where
   cross-module needs arise, explicit contracts.
+- Event editing, participation approval/denial, Audit approval/denial, and
+  management UI are future consumers of the implemented authority boundary.
 
 ## Limitations
 
@@ -114,12 +135,13 @@ deliberately performs no authorization and is not exposed to users.
 
 ## Related Contracts
 
-- None currently.
+- `events-units-event-creation-authorization` (stable).
 
 ## Related ADRs
 
 - ADR-20260914-001 (Next.js server-side application layer as the MVP
   backend boundary).
+- ADR-20260921-004 (accepted; standalone User-owned Event authorization).
 
 ## AI Working Rules
 
