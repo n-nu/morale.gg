@@ -74,8 +74,8 @@ model Unit {
   rootUnitId      String?
   rootUnit        RootUnit? @relation("UnitRoot", fields: [rootUnitId], references: [unitId], onDelete: Restrict)
   rootDesignation RootUnit? @relation("RootDesignation")
-  commanderUserId String?
-  commander       User?     @relation("UnitCommander", fields: [commanderUserId], references: [id], onDelete: Restrict)
+  commanderUserId String
+  commander       User      @relation("UnitCommander", fields: [commanderUserId], references: [id], onDelete: Restrict)
   memberships     AuthorizedUserMembership[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
