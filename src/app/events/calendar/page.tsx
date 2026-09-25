@@ -54,6 +54,8 @@ export default async function EventCalendarPage({
     name: event.name,
     iso: event.scheduledAt.toISOString(),
     eventType: event.eventType,
+    opponent: event.opponent,
+    map: event.map,
   }));
 
   const navButton =
