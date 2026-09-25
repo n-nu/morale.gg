@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { bannerArtFor } from "@/modules/events/map-art";
 import { eventTypeStyle, isPastEvent } from "@/modules/events/presentation";
+import { countManageableEvents } from "@/modules/events/server/management";
 import { listEvents, type Event } from "@/modules/events/server/queries";
 
 import { LocalDateTime, TimezoneNote } from "./local-time";
@@ -105,6 +107,9 @@ export default async function EventsPage({
     : null;
 
   const allEvents = await listEvents();
+  const viewerUserId = await getAuthenticatedUserId();
+  const manageableCount =
+    viewerUserId === null ? 0 : await countManageableEvents(viewerUserId);
   const events = activeType
     ? allEvents.filter((e) => eventTypeStyle(e.eventType).key === activeType)
     : allEvents;
@@ -137,7 +142,17 @@ export default async function EventsPage({
           </div>
           <TimezoneNote />
         </div>
-        <ViewToggle active="list" />
+        <div className="flex items-center gap-3">
+          {manageableCount > 0 ? (
+            <Link
+              href="/events/manage"
+              className="rounded-lg border border-gold px-4 py-2 text-sm font-bold text-gold transition-colors hover:bg-[#1a1810]"
+            >
+              Manage
+            </Link>
+          ) : null}
+          <ViewToggle active="list" />
+        </div>
       </header>
 
       <div className="mt-5 flex flex-wrap items-center gap-2.5">
