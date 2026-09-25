@@ -24,6 +24,7 @@ export async function createEventAction(formData: FormData): Promise<void> {
       eventType: String(formData.get("eventType") ?? ""),
       description: String(formData.get("description") ?? "") || undefined,
       opponent: String(formData.get("opponent") ?? "") || undefined,
+      hostSide: String(formData.get("hostSide") ?? "") || undefined,
       map: String(formData.get("map") ?? "") || undefined,
     });
     createdEventId = event.id;

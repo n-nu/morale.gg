@@ -101,6 +101,18 @@ export default async function ManageEventPage({
   const pending = participations.filter((p) => p.status === "REQUESTED");
   const decided = participations.filter((p) => p.status !== "REQUESTED");
 
+  // Sides offered at approval: the event's declared sides plus any already
+  // in use on this event.
+  const sideSuggestions = [
+    ...new Set(
+      [
+        event.hostSide,
+        event.opponent,
+        ...participations.map((participation) => participation.team),
+      ].filter((side): side is string => Boolean(side)),
+    ),
+  ];
+
   const updateAction = updateEventDetailsAction.bind(null, event.id);
   const addManager = addManagerAction.bind(null, event.id);
 
@@ -262,12 +274,20 @@ export default async function ManageEventPage({
                           Pending
                         </span>
                         <form
+                          className="flex items-center gap-2"
                           action={approveParticipationAction.bind(
                             null,
                             event.id,
                             participation.id,
                           )}
                         >
+                          <span className="w-[190px]">
+                            <SelectField
+                              name="team"
+                              options={sideSuggestions}
+                              ariaLabel={`Side for ${participation.unitName}`}
+                            />
+                          </span>
                           <button
                             type="submit"
                             className="rounded-lg border border-type-green px-4 py-2 text-[13px] font-bold text-green-bright transition-colors hover:bg-green-bright hover:text-[#0b100f]"
@@ -322,6 +342,11 @@ export default async function ManageEventPage({
                               ? "Approved"
                               : "Denied"}
                           </span>
+                          {participation.team ? (
+                            <span className="rounded border border-edge-strong bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-foreground">
+                              {participation.team}
+                            </span>
+                          ) : null}
                           <span className="text-xs text-faint">
                             <LocalDateTime
                               iso={participation.updatedAt.toISOString()}

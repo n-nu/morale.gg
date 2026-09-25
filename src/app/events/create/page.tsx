@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { KNOWN_MAP_NAMES } from "@/modules/events/map-art";
+import { NATION_NAMES } from "@/modules/events/nations";
 import { EVENT_TYPE_NAMES } from "@/modules/events/presentation";
 import { canCreateEvent } from "@/modules/units/server/authorization";
 
@@ -128,10 +129,34 @@ export default async function CreateEventPage({
               Scheduled date &amp; time
               <ScheduleInput initialIso={defaultScheduledAt.toISOString()} />
             </label>
-            <label className={labelClass}>
-              Opponent (optional)
-              <input name="opponent" className={inputClass} />
-            </label>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-faint">
+                Participating countries (optional)
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="flex-1">
+                  <SelectField
+                    name="hostSide"
+                    options={NATION_NAMES}
+                    ariaLabel="Side one"
+                  />
+                </span>
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-gold bg-[#1a1810] text-[11px] font-extrabold text-gold">
+                  VS
+                </span>
+                <span className="flex-1">
+                  <SelectField
+                    name="opponent"
+                    options={NATION_NAMES}
+                    ariaLabel="Side two"
+                  />
+                </span>
+              </div>
+              <span className="text-[11px] font-semibold text-faint">
+                Sets the two sides units are assigned to when their requests
+                are approved.
+              </span>
+            </div>
             <label className={labelClass}>
               Map (optional)
               <SuggestInput name="map" options={KNOWN_MAP_NAMES} ariaLabel="Map" />

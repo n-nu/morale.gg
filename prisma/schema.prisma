@@ -65,6 +65,9 @@ model Event {
   opponent    String?
   map         String?
   ownerUserId String
+  // Named host side for two-sided events; the opposing side reuses
+  // `opponent`. RED schema addition — approved via TKT-20260925-000019.
+  hostSide    String?
   owner       User                  @relation("EventOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
@@ -103,6 +106,10 @@ model EventParticipation {
   unitId    String
   unit      Unit                       @relation(fields: [unitId], references: [id], onDelete: Restrict)
   status    EventParticipationStatus   @default(REQUESTED)
+  // Side/team the participation was approved into, assigned by an Event
+  // manager at approval. RED schema addition — approved via
+  // TKT-20260925-000019.
+  team      String?
   createdAt DateTime                   @default(now())
   updatedAt DateTime                   @updatedAt
 

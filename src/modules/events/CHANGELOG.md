@@ -1,5 +1,19 @@
 # Events — Changelog
 
+## 0.3 — 2026-09-25 — TKT-20260925-000019-001
+
+Event sides and per-participation teams (RED schema addition — this ticket
+is the Lead-approval artifact).
+
+- `Event.hostSide` names the host side; the opposing side reuses `opponent`.
+  Creation offers both as restricted nation selects.
+- `EventParticipation.team`: managers assign a side when approving a request;
+  suggestions come from the event's declared sides. Denial stores no side.
+- Public event detail renders approved sides as a versus panel (placeholder
+  side flags; unit rows marked with shields), keeping pending/denied private.
+- Follow-ups logged: derive nation options and flag art from the Units
+  module via a contract.
+
 ## 0.2 — 2026-09-23 — TKT-20260921-000017-001
 
 Event Management and Participation Approval vertical slice.

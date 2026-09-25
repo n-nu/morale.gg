@@ -39,6 +39,8 @@ export type EventParticipationEntry = {
    */
   unitCommanderName: string | null;
   status: EventParticipationStatus;
+  /** Side the participation was approved into, when assigned. */
+  team: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -152,6 +154,7 @@ export async function getEventManagementView(
         participation.unit.commander.name ??
         participation.unit.commander.email,
       status: participation.status,
+      team: participation.team,
       createdAt: participation.createdAt,
       updatedAt: participation.updatedAt,
     })),

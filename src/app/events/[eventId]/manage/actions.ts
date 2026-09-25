@@ -94,9 +94,11 @@ export async function revokeManagerAction(
 export async function approveParticipationAction(
   eventId: string,
   participationId: string,
+  formData: FormData,
 ): Promise<void> {
+  const team = String(formData.get("team") ?? "");
   await runManageAction(eventId, "Participation approved.", async (userId) => {
-    await approveEventParticipation(userId, participationId);
+    await approveEventParticipation(userId, participationId, team);
   });
 }
 
