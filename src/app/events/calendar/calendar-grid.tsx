@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import Image from "next/image";
 import Link from "next/link";
 
@@ -40,6 +42,7 @@ export function CalendarGrid({
   events: CalendarEvent[];
 }) {
   const mounted = useIsClient();
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   if (!mounted) {
     return (
@@ -81,23 +84,59 @@ export function CalendarGrid({
     })
     .sort((a, b) => a.iso.localeCompare(b.iso));
 
+  const now = Date.now();
+  const selectedEvents =
+    selectedDay === null
+      ? null
+      : monthEvents.filter((event) => dayKey(new Date(event.iso)) === selectedDay);
+  const listedEvents =
+    selectedEvents ??
+    monthEvents.filter((event) => new Date(event.iso).getTime() >= now);
+  const selectedDayLabel = (() => {
+    if (selectedDay === null) return null;
+    const [selectedYear, selectedMonthIndex, selectedDate] = selectedDay
+      .split("-")
+      .map(Number);
+    return new Date(selectedYear, selectedMonthIndex, selectedDate).toLocaleDateString(
+      "en-US",
+      { weekday: "long", month: "long", day: "numeric" },
+    );
+  })();
+
   return (
     <div className="flex flex-col gap-8 lg:flex-row">
       <div className="min-w-0 flex-1 lg:order-1">
-        <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-faint">
-          This month&apos;s engagements
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-faint">
+            {selectedDayLabel ?? "Upcoming engagements"}
+          </div>
+          {selectedDay !== null ? (
+            <button
+              type="button"
+              onClick={() => setSelectedDay(null)}
+              className="text-xs font-bold text-gold transition-colors hover:text-gold-bright"
+            >
+              ← Back to upcoming
+            </button>
+          ) : null}
         </div>
 
-        {monthEvents.length === 0 ? (
+        {listedEvents.length === 0 ? (
           <div className="mt-3.5 rounded-xl border border-edge bg-surface px-6 py-12 text-center">
-            <p className="font-bold text-white">No engagements this month.</p>
+            <p className="font-bold text-white">
+              {selectedDay !== null
+                ? "No engagements on this day."
+                : "No upcoming engagements this month."}
+            </p>
             <p className="mt-2 text-sm text-muted">
-              Use the arrows above to look at another month.
+              {selectedDay !== null
+                ? "Pick another marked day in the calendar."
+                : "Select a marked day in the calendar to revisit past engagements, or browse months with the arrows."}
             </p>
           </div>
         ) : (
           <ul className="mt-3.5 flex flex-col gap-3.5">
-            {monthEvents.map((event) => {
+            {listedEvents.map((event) => {
               const style = eventTypeStyle(event.eventType);
               const art = bannerArtFor(event.map, event.name);
               const date = new Date(event.iso);
@@ -245,11 +284,9 @@ export function CalendarGrid({
               const key = dayKey(date);
               const isToday = key === todayKey;
               const dayEvents = buckets.get(key) ?? [];
-              return (
-                <span
-                  key={i}
-                  className="flex flex-col items-center gap-[3px] py-1"
-                >
+              const isSelected = key === selectedDay;
+              const cellInner = (
+                <>
                   {isToday ? (
                     <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-gold text-[13px] font-extrabold text-gold-ink">
                       {date.getDate()}
@@ -279,6 +316,35 @@ export function CalendarGrid({
                   ) : (
                     <span className="h-[5px]" />
                   )}
+                </>
+              );
+
+              if (dayEvents.length > 0) {
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() =>
+                      setSelectedDay(isSelected ? null : key)
+                    }
+                    aria-pressed={isSelected}
+                    aria-label={`Show engagements on ${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`}
+                    className={`flex flex-col items-center gap-[3px] rounded-lg py-1 transition-colors ${
+                      isSelected
+                        ? "bg-surface-2 ring-1 ring-gold"
+                        : "hover:bg-surface-2"
+                    }`}
+                  >
+                    {cellInner}
+                  </button>
+                );
+              }
+              return (
+                <span
+                  key={i}
+                  className="flex flex-col items-center gap-[3px] py-1"
+                >
+                  {cellInner}
                 </span>
               );
             })}
