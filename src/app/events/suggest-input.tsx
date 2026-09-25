@@ -85,6 +85,20 @@ export function SuggestInput({
           role="listbox"
           className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-edge-strong bg-surface-2 py-1 shadow-[0_12px_32px_rgba(0,0,0,0.5)]"
         >
+          <li>
+            <button
+              type="button"
+              onClick={() => {
+                setValue("");
+                setOpen(false);
+              }}
+              className={`w-full px-3.5 py-2 text-left text-sm font-semibold italic transition-colors hover:bg-edge ${
+                value === "" ? "text-gold" : "text-faint"
+              }`}
+            >
+              None
+            </button>
+          </li>
           {options.map((option) => (
             <li key={option}>
               <button
