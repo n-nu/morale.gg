@@ -21,3 +21,24 @@ export async function getEventById(eventId: string): Promise<Event | null> {
     where: { id: eventId },
   });
 }
+
+export type ApprovedEventUnit = { unitId: string; unitName: string };
+
+/**
+ * Public read-side: only APPROVED participation is ever exposed here.
+ * Pending and denied requests are management-only information.
+ */
+export async function listApprovedEventUnits(
+  eventId: string,
+): Promise<ApprovedEventUnit[]> {
+  const participations = await prisma.eventParticipation.findMany({
+    where: { eventId, status: "APPROVED" },
+    include: { unit: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return participations.map((participation) => ({
+    unitId: participation.unit.id,
+    unitName: participation.unit.name,
+  }));
+}

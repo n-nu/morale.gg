@@ -21,6 +21,14 @@ export interface EventTypeStyle {
   barClass: string;
 }
 
+/** Well-known event types, for form suggestions. Free text stays valid. */
+export const EVENT_TYPE_NAMES: string[] = [
+  "Internal",
+  "External",
+  "Mixed",
+  "Grand Battle",
+];
+
 export function eventTypeStyle(eventType: string): EventTypeStyle {
   const normalized = eventType.trim().toLowerCase();
   const label = eventType

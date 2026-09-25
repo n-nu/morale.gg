@@ -5,6 +5,8 @@ import type { EventParticipationStatus as PrismaEventParticipationStatus } from 
 import { prisma } from "@/lib/prisma";
 import { canRequestEventParticipation } from "@/modules/units/server/authorization";
 
+import { canManageEvent } from "./authorization";
+
 export type EventParticipationStatus = PrismaEventParticipationStatus;
 
 export type EventParticipation = {
@@ -112,4 +114,79 @@ export async function requestEventParticipation(
   input: RequestEventParticipationInput,
 ): Promise<EventParticipation> {
   return requestEventParticipationInternal(input, canRequestEventParticipation);
+}
+
+export type EventParticipationDecision = Extract<
+  EventParticipationStatus,
+  "APPROVED" | "DENIED"
+>;
+
+export type DecideEventParticipationInput = {
+  userId: string;
+  participationId: string;
+  decision: EventParticipationDecision;
+};
+
+/**
+ * Event-side participation decision. Authorization uses the Event-management
+ * capability (`canManageEvent`), never Unit authority. The only valid
+ * transitions are REQUESTED -> APPROVED and REQUESTED -> DENIED; terminal
+ * records fail safely, including under concurrent decisions.
+ */
+export async function decideEventParticipation(
+  input: DecideEventParticipationInput,
+  authorize: (userId: string, eventId: string) => Promise<boolean> = canManageEvent,
+): Promise<EventParticipation> {
+  const { userId, participationId, decision } = input;
+
+  if (userId.trim() === "") {
+    throw new Error("User is required.");
+  }
+
+  const participation = await prisma.eventParticipation.findUnique({
+    where: { id: participationId },
+  });
+  if (!participation) {
+    throw new Error("Participation request not found.");
+  }
+
+  const allowed = await authorize(userId, participation.eventId);
+  if (!allowed) {
+    throw new Error(
+      "Unauthorized: user cannot decide participation for this Event.",
+    );
+  }
+
+  // Validates REQUESTED -> APPROVED/DENIED and rejects terminal transitions.
+  transitionEventParticipationStatus(participation.status, decision);
+
+  // The status guard makes the write atomic: a concurrent decision that
+  // already moved the record out of REQUESTED updates zero rows.
+  const updated = await prisma.eventParticipation.updateMany({
+    where: { id: participationId, status: "REQUESTED" },
+    data: { status: decision },
+  });
+  if (updated.count === 0) {
+    throw new Error(
+      "Invalid event participation transition: the request was already decided.",
+    );
+  }
+
+  return prisma.eventParticipation.findUniqueOrThrow({
+    where: { id: participationId },
+  });
+}
+
+export async function approveEventParticipation(
+  userId: string,
+  participationId: string,
+): Promise<EventParticipation> {
+  return decideEventParticipation({ userId, participationId, decision: "APPROVED" });
+}
+
+export async function denyEventParticipation(
+  userId: string,
+  participationId: string,
+): Promise<EventParticipation> {
+  return decideEventParticipation({ userId, participationId, decision: "DENIED" });
 }

@@ -3,9 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { bannerArtFor } from "@/modules/events/map-art";
 import { eventTypeStyle } from "@/modules/events/presentation";
-import { getEventById } from "@/modules/events/server/queries";
+import { canManageEvent } from "@/modules/events/server/authorization";
+import {
+  getEventById,
+  listApprovedEventUnits,
+} from "@/modules/events/server/queries";
 
 import { LocalDateTime, TimezoneNote } from "../local-time";
 
@@ -52,6 +57,13 @@ export default async function EventDetailPage({
   if (!event) {
     notFound();
   }
+
+  const [approvedUnits, viewerUserId] = await Promise.all([
+    listApprovedEventUnits(event.id),
+    getAuthenticatedUserId(),
+  ]);
+  const viewerCanManage =
+    viewerUserId !== null && (await canManageEvent(viewerUserId, event.id));
 
   const type = eventTypeStyle(event.eventType);
   const art = bannerArtFor(event.map, event.name);
@@ -162,14 +174,42 @@ export default async function EventDetailPage({
         <aside className="flex w-full flex-col gap-4 lg:w-[330px] lg:flex-shrink-0">
           <div className="flex flex-col gap-3 rounded-[10px] border border-edge bg-surface px-5 py-4.5">
             <div className="text-[17px] font-extrabold text-white">
-              Participation
+              Participating units
             </div>
-            <div className="rounded-lg border border-dashed border-[#3e434b] bg-background px-4 py-4 text-[13px] leading-relaxed text-muted">
-              Unit sign-ups with organizer approval are coming in an upcoming
-              update. Until then, coordinate participation with your unit the
-              usual way.
-            </div>
+            {approvedUnits.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#3e434b] bg-background px-4 py-4 text-[13px] leading-relaxed text-muted">
+                No units are confirmed yet. Unit managers can request
+                participation, and the event organizers approve each request.
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {approvedUnits.map((unit) => (
+                  <li key={unit.unitId} className="flex items-center gap-2.5">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden className="text-green-bright">
+                      <path d="M4 12l5 5 10-11" />
+                    </svg>
+                    <Link
+                      href={`/units/${unit.unitId}`}
+                      className="text-sm font-semibold text-foreground hover:text-white"
+                    >
+                      {unit.unitName}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs leading-relaxed text-faint">
+              Participation requests are reviewed by the event organizers.
+            </p>
           </div>
+          {viewerCanManage ? (
+            <Link
+              href={`/events/${event.id}/manage`}
+              className="rounded-lg bg-gold px-5 py-2.5 text-center text-sm font-bold text-gold-ink transition-colors hover:bg-gold-bright"
+            >
+              Manage event
+            </Link>
+          ) : null}
           <Link
             href="/events"
             className="text-sm font-bold text-gold hover:text-gold-bright"

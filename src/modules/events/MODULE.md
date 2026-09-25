@@ -2,9 +2,9 @@
 module_id: events
 path: src/modules/events
 status: active
-version: 0.1
-last_reviewed: 2026-09-21
-updated_by_ticket: TKT-20260921-000016-001
+version: 0.2
+last_reviewed: 2026-09-23
+updated_by_ticket: TKT-20260921-000017-001
 ---
 
 # Events
@@ -29,18 +29,22 @@ against.
 - Event ownership by exactly one Auth.js User;
 - explicit Event-authorized Users and owner-only manager administration;
 - semantic Event-management authorization;
+- ordinary Event-information management (owner/manager editing within the
+  Event Time Rule);
+- Event-side EventParticipation review and the REQUESTED -> APPROVED/DENIED
+  decision boundary;
+- the authenticated Event-management workflow (`/events/manage`,
+  `/events/[eventId]/manage`);
 - public Event presentation (`/events`, `/events/[eventId]`,
-  `/events/calendar`).
+  `/events/calendar`), including the approved-participation read-side.
 
 ## Non-Ownership
 
-- Unit participation requests and EventParticipation;
-- participation approval;
+- Unit-side participation request authorization (Units owns
+  `canRequestEventParticipation`);
 - Unit authority and creation-eligibility evaluation;
 - Audit lifecycle and audit statistics;
 - leaderboards;
-- event-management UI;
-- general Event create/edit/delete controls for application users;
 - the shared site shell and theme (owned at the app level).
 
 ## Public Interface
@@ -52,6 +56,13 @@ against.
   future functionality.
 - Route `/events/calendar`: public, unauthenticated month-calendar view of
   the same Event data.
+- Route `/events/manage`: authenticated list of Events the User owns or
+  explicitly manages.
+- Route `/events/[eventId]/manage`: authenticated Event-management workflow
+  (event settings, owner-only manager administration, participation review
+  and approval/denial), gated server-side by `canManageEvent`.
+- Public Event detail exposes APPROVED participating Units only; pending and
+  denied participation stays management-only.
 - Events consumes the server-only
   `events-units-event-creation-authorization` contract. It exposes no
   cross-module data contract; future Event workflows consume its server-only
@@ -91,6 +102,13 @@ against.
   `canCreateEvent` eligibility.
 - Existing Event management is allowed only for the owner or an explicitly
   authorized User. Only the owner administers explicit managers.
+- Participation decisions are authorized exclusively through
+  `canManageEvent`; the only valid transitions are REQUESTED -> APPROVED and
+  REQUESTED -> DENIED, terminal records are immutable (including under
+  concurrent decisions), and participation grants no Event authority.
+- An Event may not be rescheduled into the past; a past Event's unchanged
+  time stays valid so its other information remains editable.
+- Pending and denied participation is never exposed through public reads.
 - Public browsing requires no authentication.
 
 ## Permissions / Authority
@@ -109,20 +127,28 @@ Event.
   and authenticated authorization boundary).
 - `server/authorization.ts` — owner/explicit-manager decisions and owner-only
   manager administration.
+- `server/event-participation.ts` — participation persistence reads, the
+  request path (consuming Units' capability), and the Event-side
+  approve/deny decision boundary.
+- `server/management.ts` — management reads (manageable Events, the
+  management view), ordinary Event-information updates, and email-based
+  manager addition over the owner-only boundary.
 - `presentation.ts` — client-safe formatting helpers (event-type styling,
   UTC fallback formatting).
 - `map-art.ts` — client-safe map-name → banner artwork lookup
   (`public/maps/`).
 - Route components live under `src/app/events/`, including client
-  components for local-time-zone display and the calendar grid.
+  components for local-time-zone display and the calendar grid, plus the
+  management routes (`manage/`, `[eventId]/manage/`) with their server
+  actions and the local-time schedule input.
 
 ## Extension Points
 
-- EventParticipation, event authorization, event-management UI, and Audits
-  are expected to build on this module through future tickets and, where
-  cross-module needs arise, explicit contracts.
-- Event editing, participation approval/denial, Audit approval/denial, and
-  management UI are future consumers of the implemented authority boundary.
+- Audits and audit statistics are expected to build on approved
+  participation through future tickets and, where cross-module needs arise,
+  explicit contracts.
+- Post-MVP participation workflows (reversal, re-request) require a RED
+  decision before any lifecycle change.
 
 ## Limitations
 
@@ -150,5 +176,7 @@ Event.
 - YELLOW: internal reorganization of `src/modules/events/`; log it in the
   active ticket.
 - RED (stop and escalate): any new persistent field, model, or
-  relationship; any Unit/Event coupling; any contract; any authorization
-  behavior; exposing creation/editing to users.
+  relationship; any Unit/Event coupling; any contract; changing
+  `canManageEvent` or owner-only manager-administration semantics; changing
+  the EventParticipation lifecycle (reversal, re-request, duplicates); Event
+  ownership transfer.

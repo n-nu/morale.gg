@@ -12,9 +12,10 @@ export interface MapArt {
   alt: string;
 }
 
-const MAP_ART: Array<{ match: string; art: MapArt }> = [
+const MAP_ART: Array<{ match: string; name: string; art: MapArt }> = [
   {
     match: "austerlitz",
+    name: "Austerlitz",
     art: {
       src: "/maps/austerlitz.jpg",
       alt: "Church overlooking the snowy plains of the Austerlitz map",
@@ -22,6 +23,7 @@ const MAP_ART: Array<{ match: string; art: MapArt }> = [
   },
   {
     match: "barraux",
+    name: "Fort Barraux",
     art: {
       src: "/maps/barraux.png",
       alt: "Night view over the harbor of the Fort Barraux map",
@@ -29,6 +31,7 @@ const MAP_ART: Array<{ match: string; art: MapArt }> = [
   },
   {
     match: "borodino",
+    name: "Borodino",
     art: {
       src: "/maps/borodino.jpg",
       alt: "Sunrise over the village and church of the Borodino map",
@@ -46,6 +49,9 @@ const FALLBACK_ART: MapArt[] = [
     alt: "Infantry advancing through a snowy field",
   },
 ];
+
+/** Maps with dedicated banner artwork, for form suggestions. */
+export const KNOWN_MAP_NAMES: string[] = MAP_ART.map((entry) => entry.name);
 
 export function mapArtFor(mapName: string): MapArt | null {
   const normalized = mapName.trim().toLowerCase();
