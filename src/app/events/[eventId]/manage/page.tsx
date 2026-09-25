@@ -11,6 +11,7 @@ import {
 } from "@/modules/events/server/management";
 
 import { LocalDateTime, TimezoneNote } from "../../local-time";
+import { SuggestInput } from "../../suggest-input";
 import {
   addManagerAction,
   approveParticipationAction,
@@ -181,18 +182,13 @@ export default async function ManageEventPage({
                 </label>
                 <label className={labelClass}>
                   Map (optional)
-                  <input
+                  <SuggestInput
                     name="map"
-                    list="map-suggestions"
+                    options={KNOWN_MAP_NAMES}
                     defaultValue={event.map ?? ""}
-                    className={inputClass}
+                    ariaLabel="Map"
                   />
                 </label>
-                <datalist id="map-suggestions">
-                  {KNOWN_MAP_NAMES.map((name) => (
-                    <option key={name} value={name} />
-                  ))}
-                </datalist>
               </div>
               <label className={labelClass}>
                 Description (optional)

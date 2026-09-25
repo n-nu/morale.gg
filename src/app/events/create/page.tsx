@@ -5,6 +5,7 @@ import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { KNOWN_MAP_NAMES } from "@/modules/events/map-art";
 import { canCreateEvent } from "@/modules/units/server/authorization";
 
+import { SuggestInput } from "../suggest-input";
 import { TimezoneNote } from "../local-time";
 import { ScheduleInput } from "../[eventId]/manage/schedule-input";
 import { createEventAction } from "./actions";
@@ -131,17 +132,12 @@ export default async function CreateEventPage({
             </label>
             <label className={labelClass}>
               Map (optional)
-              <input name="map" list="map-suggestions" className={inputClass} />
+              <SuggestInput name="map" options={KNOWN_MAP_NAMES} ariaLabel="Map" />
               <span className="text-[11px] font-semibold normal-case tracking-normal text-faint">
                 Known maps get their own banner picture; others get a generic
                 battle banner.
               </span>
             </label>
-            <datalist id="map-suggestions">
-              {KNOWN_MAP_NAMES.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
           </div>
           <label className={labelClass}>
             Description (optional)
