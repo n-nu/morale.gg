@@ -21,6 +21,7 @@ type ParticipationRecord = {
   eventId: string;
   unitId: string;
   status: "REQUESTED" | "APPROVED" | "DENIED";
+  team?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -89,13 +90,16 @@ function installScenario() {
       data,
     }: {
       where: { id: string; status: ParticipationRecord["status"] };
-      data: { status: ParticipationRecord["status"] };
+      data: { status: ParticipationRecord["status"]; team?: string | null };
     }) => {
       const record = participations.get(where.id);
       if (!record || record.status !== where.status) {
         return { count: 0 };
       }
       record.status = data.status;
+      if ("team" in data) {
+        record.team = data.team;
+      }
       record.updatedAt = new Date();
       return { count: 1 };
     },
@@ -125,6 +129,28 @@ test("lets the owner approve and an explicit manager deny REQUESTED participatio
 
   const denied = await denyEventParticipation(managerId, "participation-2");
   assert.equal(denied.status, "DENIED");
+});
+
+test("stores the assigned side on approval and never on denial", async () => {
+  seedParticipation("participation-1");
+  seedParticipation("participation-2");
+
+  const approved = await approveEventParticipation(
+    ownerId,
+    "participation-1",
+    "  France  ",
+  );
+  assert.equal(approved.status, "APPROVED");
+  assert.equal(participations.get("participation-1")?.team, "France");
+
+  const denied = await decideEventParticipation({
+    userId: ownerId,
+    participationId: "participation-2",
+    decision: "DENIED",
+    team: "Britain",
+  });
+  assert.equal(denied.status, "DENIED");
+  assert.equal(participations.get("participation-2")?.team ?? null, null);
 });
 
 test("rejects decisions from unauthorized or missing Users", async () => {

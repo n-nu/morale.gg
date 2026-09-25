@@ -9,6 +9,7 @@ import { eventTypeStyle } from "@/modules/events/presentation";
 import { canManageEvent } from "@/modules/events/server/authorization";
 import {
   getEventById,
+  listApprovedEventTeams,
   listApprovedEventUnits,
 } from "@/modules/events/server/queries";
 
@@ -27,6 +28,77 @@ export async function generateMetadata({
 }
 
 const STAT_TILES = ["Kills", "Deaths", "Assists", "Tickets", "Flag captures", "Stars"];
+
+/**
+ * Placeholder side flags for the versus layout. Follow-up: reuse the Units
+ * directory's nation flag art once exposed (logged in TKT-20260925-000019).
+ */
+function SideFlag({ side }: { side: string }) {
+  const normalized = side.toLowerCase();
+  if (normalized.includes("france") || normalized.includes("french")) {
+    return (
+      <svg width="34" height="24" viewBox="0 0 34 24" aria-hidden className="flex-shrink-0 rounded">
+        <rect width="34" height="24" rx="3" fill="#e8e6e0" />
+        <path d="M3 0h8.33v24H3a3 3 0 0 1-3-3V3a3 3 0 0 1 3-3z" fill="#2e4c8f" />
+        <path d="M22.67 0H31a3 3 0 0 1 3 3v18a3 3 0 0 1-3 3h-8.33z" fill="#b03a3a" />
+      </svg>
+    );
+  }
+  if (normalized.includes("pruss")) {
+    return (
+      <svg width="34" height="24" viewBox="0 0 34 24" aria-hidden className="flex-shrink-0 rounded">
+        <rect width="34" height="24" rx="3" fill="#e8e6e0" />
+        <path d="M3 0h28a3 3 0 0 1 3 3v5H0V3a3 3 0 0 1 3-3z" fill="#141210" />
+        <path d="M0 16h34v5a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3z" fill="#141210" />
+        <path d="M17 9.2l1.1 2.1 2.3.3-1.7 1.6.4 2.3-2.1-1.1-2.1 1.1.4-2.3-1.7-1.6 2.3-.3z" fill="#141210" />
+      </svg>
+    );
+  }
+  return null;
+}
+
+function TeamPanel({
+  team,
+  units,
+  align,
+}: {
+  team: string;
+  units: { unitId: string; unitName: string }[];
+  align: "left" | "right";
+}) {
+  return (
+    <div
+      className={`flex-1 border border-edge bg-surface px-5 py-4 ${
+        align === "left" ? "rounded-l-xl" : "rounded-r-xl"
+      }`}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <SideFlag side={team} />
+          <span className="text-[17px] font-extrabold text-white">{team}</span>
+        </div>
+        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-faint">
+          {units.length} {units.length === 1 ? "unit" : "units"}
+        </span>
+      </div>
+      <ul className="mt-3 flex flex-col gap-2">
+        {units.map((unit) => (
+          <li key={unit.unitId} className="flex items-center gap-2.5 text-sm">
+            <svg width="13" height="15" viewBox="0 0 26 30" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" aria-hidden className="flex-shrink-0 text-faint">
+              <path d="M13 2 L24 6 V15 C24 21.5 19.5 26.5 13 28.5 C6.5 26.5 2 21.5 2 15 V6 Z" />
+            </svg>
+            <Link
+              href={`/units/${unit.unitId}`}
+              className="font-semibold text-foreground hover:text-white"
+            >
+              {unit.unitName}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function MetaCard({
   label,
@@ -58,10 +130,12 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  const [approvedUnits, viewerUserId] = await Promise.all([
+  const [approvedUnits, teams, viewerUserId] = await Promise.all([
     listApprovedEventUnits(event.id),
+    listApprovedEventTeams(event.id),
     getAuthenticatedUserId(),
   ]);
+  const versus = teams.length === 2 ? teams : null;
   const viewerCanManage =
     viewerUserId !== null && (await canManageEvent(viewerUserId, event.id));
 
@@ -123,6 +197,23 @@ export default async function EventDetailPage({
             {event.map ? <MetaCard label="Map">{event.map}</MetaCard> : null}
           </div>
 
+          {versus ? (
+            <section className="flex flex-col gap-3" aria-label="Sides">
+              <h2 className="text-xl font-extrabold tracking-tight text-white">
+                Sides
+              </h2>
+              <div className="flex items-stretch">
+                <TeamPanel team={versus[0].team} units={versus[0].units} align="left" />
+                <div className="flex w-[72px] flex-shrink-0 items-center justify-center border-y border-edge bg-surface-2">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-gold bg-[#1a1810] text-[14px] font-extrabold text-gold">
+                    VS
+                  </span>
+                </div>
+                <TeamPanel team={versus[1].team} units={versus[1].units} align="right" />
+              </div>
+            </section>
+          ) : null}
+
           {event.description ? (
             <section className="flex flex-col gap-2.5">
               <h2 className="text-xl font-extrabold tracking-tight text-white">
@@ -176,7 +267,12 @@ export default async function EventDetailPage({
             <div className="text-[17px] font-extrabold text-white">
               Participating units
             </div>
-            {approvedUnits.length === 0 ? (
+            {versus ? (
+              <p className="text-[13px] leading-relaxed text-muted">
+                {approvedUnits.length} units confirmed across two sides — see
+                the Sides section for who fights whom.
+              </p>
+            ) : approvedUnits.length === 0 ? (
               <div className="rounded-lg border border-dashed border-[#3e434b] bg-background px-4 py-4 text-[13px] leading-relaxed text-muted">
                 No units are confirmed yet. Unit managers can request
                 participation, and the event organizers approve each request.

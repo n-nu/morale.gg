@@ -125,6 +125,8 @@ export type DecideEventParticipationInput = {
   userId: string;
   participationId: string;
   decision: EventParticipationDecision;
+  /** Side the unit is approved into; stored only on approval. */
+  team?: string | null;
 };
 
 /**
@@ -162,9 +164,14 @@ export async function decideEventParticipation(
 
   // The status guard makes the write atomic: a concurrent decision that
   // already moved the record out of REQUESTED updates zero rows.
+  const assignedTeam =
+    decision === "APPROVED" ? input.team?.trim() || null : undefined;
   const updated = await prisma.eventParticipation.updateMany({
     where: { id: participationId, status: "REQUESTED" },
-    data: { status: decision },
+    data:
+      assignedTeam === undefined
+        ? { status: decision }
+        : { status: decision, team: assignedTeam },
   });
   if (updated.count === 0) {
     throw new Error(
@@ -180,8 +187,9 @@ export async function decideEventParticipation(
 export async function approveEventParticipation(
   userId: string,
   participationId: string,
+  team?: string | null,
 ): Promise<EventParticipation> {
-  return decideEventParticipation({ userId, participationId, decision: "APPROVED" });
+  return decideEventParticipation({ userId, participationId, decision: "APPROVED", team });
 }
 
 export async function denyEventParticipation(

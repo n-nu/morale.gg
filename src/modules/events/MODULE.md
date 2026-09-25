@@ -4,7 +4,7 @@ path: src/modules/events
 status: active
 version: 0.2
 last_reviewed: 2026-09-23
-updated_by_ticket: TKT-20260921-000017-001
+updated_by_ticket: TKT-20260925-000019-001
 ---
 
 # Events
@@ -32,7 +32,9 @@ against.
 - ordinary Event-information management (owner/manager editing within the
   Event Time Rule);
 - Event-side EventParticipation review and the REQUESTED -> APPROVED/DENIED
-  decision boundary;
+  decision boundary, including the side/team assigned at approval;
+- named event sides (`hostSide` plus the existing `opponent`) and the public
+  versus presentation of approved sides;
 - the authenticated Event-management workflow (`/events/manage`,
   `/events/[eventId]/manage`);
 - public Event presentation (`/events`, `/events/[eventId]`,
@@ -106,6 +108,8 @@ against.
   `canManageEvent`; the only valid transitions are REQUESTED -> APPROVED and
   REQUESTED -> DENIED, terminal records are immutable (including under
   concurrent decisions), and participation grants no Event authority.
+- A participation's side/team is stored only on approval, through the same
+  decision boundary; denial never stores a side.
 - An Event may not be rescheduled into the past; a past Event's unchanged
   time stays valid so its other information remains editable.
 - Pending and denied participation is never exposed through public reads.

@@ -13,6 +13,8 @@ export interface CreateEventInput {
   description?: string;
   opponent?: string;
   map?: string;
+  /** Named host side for two-sided events; opposing side uses `opponent`. */
+  hostSide?: string;
 }
 
 export async function createEventForAuthenticatedUser(
@@ -51,6 +53,7 @@ export async function createEventForAuthenticatedUser(
       description: input.description?.trim() || undefined,
       opponent: input.opponent?.trim() || undefined,
       map: input.map?.trim() || undefined,
+      hostSide: input.hostSide?.trim() || undefined,
     },
   });
 }
