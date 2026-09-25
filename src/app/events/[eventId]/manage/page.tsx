@@ -11,6 +11,7 @@ import {
 } from "@/modules/events/server/management";
 
 import { LocalDateTime, TimezoneNote } from "../../local-time";
+import { SelectField } from "../../select-field";
 import { SuggestInput } from "../../suggest-input";
 import {
   addManagerAction,
@@ -147,7 +148,7 @@ export default async function ManageEventPage({
               </h2>
               <TimezoneNote />
             </div>
-            <form action={updateAction} className="flex flex-col gap-4">
+            <form action={updateAction} autoComplete="off" className="flex flex-col gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className={labelClass}>
                   Event name
@@ -160,12 +161,16 @@ export default async function ManageEventPage({
                 </label>
                 <label className={labelClass}>
                   Event type
-                  <SuggestInput
+                  <SelectField
                     name="eventType"
-                    options={EVENT_TYPE_NAMES}
+                    options={
+                      EVENT_TYPE_NAMES.includes(event.eventType)
+                        ? EVENT_TYPE_NAMES
+                        : [...EVENT_TYPE_NAMES, event.eventType]
+                    }
                     defaultValue={event.eventType}
-                    ariaLabel="Event type"
                     required
+                    ariaLabel="Event type"
                   />
                 </label>
                 <label className={labelClass} htmlFor="event-scheduled-at">

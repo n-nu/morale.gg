@@ -55,6 +55,7 @@ export function SuggestInput({
           placeholder={placeholder}
           aria-label={ariaLabel}
           required={required}
+          autoComplete="off"
           className={`w-full min-w-0 border border-edge-strong bg-background px-3.5 py-2.5 text-sm font-semibold text-foreground placeholder:text-faint ${
             hasOptions ? "rounded-l-lg" : "rounded-lg"
           }`}
@@ -95,11 +96,10 @@ export function SuggestInput({
                 setValue("");
                 setOpen(false);
               }}
-              className={`w-full px-3.5 py-2 text-left text-sm font-semibold italic transition-colors hover:bg-edge ${
-                value === "" ? "text-gold" : "text-faint"
-              }`}
+              aria-label="Clear selection"
+              className="w-full px-3.5 py-2 text-left text-sm font-semibold text-faint transition-colors hover:bg-edge"
             >
-              None
+              {"\u00A0"}
             </button>
           </li>
           {options.map((option) => (

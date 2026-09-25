@@ -6,6 +6,7 @@ import { KNOWN_MAP_NAMES } from "@/modules/events/map-art";
 import { EVENT_TYPE_NAMES } from "@/modules/events/presentation";
 import { canCreateEvent } from "@/modules/units/server/authorization";
 
+import { SelectField } from "../select-field";
 import { SuggestInput } from "../suggest-input";
 import { TimezoneNote } from "../local-time";
 import { ScheduleInput } from "../[eventId]/manage/schedule-input";
@@ -103,7 +104,7 @@ export default async function CreateEventPage({
           </h2>
           <TimezoneNote />
         </div>
-        <form action={createEventAction} className="mt-4 flex flex-col gap-4">
+        <form action={createEventAction} autoComplete="off" className="mt-4 flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={labelClass}>
               Event name
@@ -116,12 +117,11 @@ export default async function CreateEventPage({
             </label>
             <label className={labelClass}>
               Event type
-              <SuggestInput
+              <SelectField
                 name="eventType"
                 options={EVENT_TYPE_NAMES}
-                placeholder="External, Internal, Mixed…"
-                ariaLabel="Event type"
                 required
+                ariaLabel="Event type"
               />
             </label>
             <label className={labelClass} htmlFor="event-scheduled-at">

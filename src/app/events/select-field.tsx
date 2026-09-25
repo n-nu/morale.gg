@@ -9,7 +9,7 @@ export function SelectField({
   defaultValue = "",
   required = false,
   ariaLabel,
-  blankLabel = "—",
+  blankLabel = "",
 }: {
   name: string;
   options: string[];
