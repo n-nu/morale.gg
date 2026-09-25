@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getUnit } from "@/modules/units/server/queries";
 import { UnitLinks } from "@/modules/units/components/unit-links";
+import { isUnitsDemoMode } from "@/modules/units/server/demo";
+import { RosterSection } from "@/modules/players/server/roster-section";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +57,7 @@ export default async function UnitPage({
           <p className="units-empty">This unit has no child units.</p>
         )}
       </section>
+      {isUnitsDemoMode() ? <p className="units-empty mt-8">Rosters are available for persisted Units. Sample units have no roster.</p> : <RosterSection unitId={unitId} />}
     </>
   );
 }

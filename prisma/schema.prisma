@@ -125,11 +125,35 @@ model Unit {
   commander       User      @relation("UnitCommander", fields: [commanderUserId], references: [id], onDelete: Restrict)
   memberships     AuthorizedUserMembership[]
   eventParticipations EventParticipation[]
+  playerMemberships UnitMembership[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([rootUnitId])
   @@index([commanderUserId])
+}
+
+model Player {
+  id          String           @id @default(cuid())
+  playerId    String           @unique
+  name        String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  memberships UnitMembership[]
+}
+
+model UnitMembership {
+  id        String    @id @default(cuid())
+  playerId  String
+  unitId    String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  player    Player    @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  unit      Unit      @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  // Active pair uniqueness is enforced by a partial index in the SQL migration.
+  @@index([playerId, startedAt])
+  @@index([unitId, endedAt])
 }
 
 model RootUnit {
