@@ -4,7 +4,7 @@ path: docs/contracts/players-units-roster-authorization.md
 documentation_path: docs/contracts/players-units-roster-authorization.md
 status: stable
 version: 0.1
-last_reviewed: 2026-09-21
+last_reviewed: 2026-09-25
 updated_by_ticket: TKT-20260921-000014-001
 ---
 

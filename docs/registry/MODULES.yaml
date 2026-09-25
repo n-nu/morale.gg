@@ -15,7 +15,8 @@ modules:
     updated_by_ticket: TKT-20260921-000016-001
   - module_id: players
     path: src/modules/players
-    status: approved-pending-implementation
+    manifest: src/modules/players/MODULE.md
+    status: active
     version: 0.1
-    last_reviewed: 2026-09-21
+    last_reviewed: 2026-09-25
     updated_by_ticket: TKT-20260921-000014-001
