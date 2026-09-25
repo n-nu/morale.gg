@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { KNOWN_MAP_NAMES } from "@/modules/events/map-art";
+import { EVENT_TYPE_NAMES } from "@/modules/events/presentation";
 import { canCreateEvent } from "@/modules/units/server/authorization";
 
 import { SuggestInput } from "../suggest-input";
@@ -115,11 +116,12 @@ export default async function CreateEventPage({
             </label>
             <label className={labelClass}>
               Event type
-              <input
+              <SuggestInput
                 name="eventType"
+                options={EVENT_TYPE_NAMES}
+                placeholder="External, Internal, Mixed…"
+                ariaLabel="Event type"
                 required
-                placeholder="Internal, External, Mixed, Grand Battle…"
-                className={inputClass}
               />
             </label>
             <label className={labelClass} htmlFor="event-scheduled-at">

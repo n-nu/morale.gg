@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { KNOWN_MAP_NAMES } from "@/modules/events/map-art";
-import { eventTypeStyle } from "@/modules/events/presentation";
+import { EVENT_TYPE_NAMES, eventTypeStyle } from "@/modules/events/presentation";
 import {
   getEventManagementView,
   type EventParticipationEntry,
@@ -160,12 +160,12 @@ export default async function ManageEventPage({
                 </label>
                 <label className={labelClass}>
                   Event type
-                  <input
+                  <SuggestInput
                     name="eventType"
-                    required
+                    options={EVENT_TYPE_NAMES}
                     defaultValue={event.eventType}
-                    placeholder="Internal, External, Mixed, Grand Battle…"
-                    className={inputClass}
+                    ariaLabel="Event type"
+                    required
                   />
                 </label>
                 <label className={labelClass} htmlFor="event-scheduled-at">

@@ -15,6 +15,7 @@ export function SuggestInput({
   placeholder,
   ariaLabel,
   className = "",
+  required = false,
 }: {
   name: string;
   options: string[];
@@ -22,6 +23,7 @@ export function SuggestInput({
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
+  required?: boolean;
 }) {
   const [value, setValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
@@ -52,6 +54,7 @@ export function SuggestInput({
           onChange={(changeEvent) => setValue(changeEvent.target.value)}
           placeholder={placeholder}
           aria-label={ariaLabel}
+          required={required}
           className={`w-full min-w-0 border border-edge-strong bg-background px-3.5 py-2.5 text-sm font-semibold text-foreground placeholder:text-faint ${
             hasOptions ? "rounded-l-lg" : "rounded-lg"
           }`}
