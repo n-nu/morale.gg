@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
+import { KNOWN_MAP_NAMES } from "@/modules/events/map-art";
 import { eventTypeStyle } from "@/modules/events/presentation";
 import {
   getEventManagementView,
@@ -182,10 +183,16 @@ export default async function ManageEventPage({
                   Map (optional)
                   <input
                     name="map"
+                    list="map-suggestions"
                     defaultValue={event.map ?? ""}
                     className={inputClass}
                   />
                 </label>
+                <datalist id="map-suggestions">
+                  {KNOWN_MAP_NAMES.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
               <label className={labelClass}>
                 Description (optional)

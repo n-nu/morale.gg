@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
+import { canCreateEvent } from "@/modules/units/server/authorization";
 import { eventTypeStyle } from "@/modules/events/presentation";
 import { listManageableEvents } from "@/modules/events/server/management";
 
@@ -30,7 +31,10 @@ export default async function ManageEventsPage() {
     );
   }
 
-  const manageable = await listManageableEvents(userId);
+  const [manageable, canCreate] = await Promise.all([
+    listManageableEvents(userId),
+    canCreateEvent(userId),
+  ]);
 
   return (
     <div className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-16 md:px-10">
@@ -44,21 +48,34 @@ export default async function ManageEventsPage() {
         <span className="text-foreground">Manage</span>
       </nav>
 
-      <header className="mt-5 flex flex-col gap-2">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">
-          Event management
-        </p>
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-[44px] font-extrabold leading-none tracking-tight text-white">
-            Your events
-          </h1>
-          {manageable.length > 0 ? (
-            <span className="rounded-[7px] border border-edge-strong bg-surface-2 px-3 py-0.5 text-base font-bold text-foreground">
-              {manageable.length}
-            </span>
-          ) : null}
+      <header className="mt-5 flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">
+            Event management
+          </p>
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-[44px] font-extrabold leading-none tracking-tight text-white">
+              Your events
+            </h1>
+            {manageable.length > 0 ? (
+              <span className="rounded-[7px] border border-edge-strong bg-surface-2 px-3 py-0.5 text-base font-bold text-foreground">
+                {manageable.length}
+              </span>
+            ) : null}
+          </div>
+          <TimezoneNote />
         </div>
-        <TimezoneNote />
+        {canCreate ? (
+          <Link
+            href="/events/create"
+            className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2.5 text-sm font-bold text-gold-ink transition-colors hover:bg-gold-bright"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Create event
+          </Link>
+        ) : null}
       </header>
 
       {manageable.length === 0 ? (
