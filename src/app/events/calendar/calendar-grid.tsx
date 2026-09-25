@@ -65,6 +65,15 @@ export function CalendarGrid({
 
   const todayKey = dayKey(new Date());
 
+  const monthKeyOf = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const prevMonthKey = monthKeyOf(new Date(year, month - 2, 1));
+  const nextMonthKey = monthKeyOf(new Date(year, month, 1));
+  const monthTitle = new Date(year, month - 1, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
   const monthEvents = events
     .filter((event) => {
       const date = new Date(event.iso);
@@ -200,6 +209,27 @@ export function CalendarGrid({
 
       <aside className="flex-shrink-0 lg:order-2 lg:w-[430px]">
         <div className="rounded-xl border border-edge bg-surface px-5 py-4.5">
+          <div className="mb-3 flex items-center justify-between border-b border-edge pb-3">
+            <Link
+              href={`/events/calendar?m=${prevMonthKey}`}
+              aria-label="Previous month"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-edge-strong text-muted transition-colors hover:text-white"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+                <path d="M15 6l-6 6 6 6" />
+              </svg>
+            </Link>
+            <span className="text-sm font-extrabold text-white">{monthTitle}</span>
+            <Link
+              href={`/events/calendar?m=${nextMonthKey}`}
+              aria-label="Next month"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-edge-strong text-muted transition-colors hover:text-white"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+          </div>
           <div className="grid grid-cols-7 gap-y-1 text-center">
             {WEEKDAYS.map((weekday, index) => (
               <span
