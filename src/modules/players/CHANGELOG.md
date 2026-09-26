@@ -1,5 +1,12 @@
 # Players changelog
 
+## 2026-09-26 — TKT-20260921-000014-001 post-merge verification
+
+- Added a real-PostgreSQL integration regression covering authorized roster
+  changes, unauthorized mutation rejection, and Event participation isolation.
+- Verified the authenticated Player add/end flow in the browser, including
+  persistent identity and ended membership history.
+
 ## 2026-09-25 — TKT-20260921-000014-001
 
 - Added persistent external game identity independent of website Users.

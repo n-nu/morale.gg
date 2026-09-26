@@ -3,7 +3,7 @@ module_id: players
 path: src/modules/players
 status: active
 version: 0.1
-last_reviewed: 2026-09-25
+last_reviewed: 2026-09-26
 updated_by_ticket: TKT-20260921-000014-001
 ---
 

@@ -3,8 +3,8 @@ module_id: units
 path: src/modules/units
 status: active
 version: 0.1
-last_reviewed: 2026-09-21
-updated_by_ticket: TKT-20260921-000016-001
+last_reviewed: 2026-09-26
+updated_by_ticket: TKT-20260921-000014-001
 ---
 
 # Units

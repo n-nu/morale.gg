@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -25,6 +25,13 @@ function dayKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
+export function filterUpcomingCalendarEvents(
+  events: CalendarEvent[],
+  now: number,
+): CalendarEvent[] {
+  return events.filter((event) => new Date(event.iso).getTime() >= now);
+}
+
 /**
  * "Dispatch board" calendar: a compact month navigator (day numbers with
  * event dots — no grid boxes) beside the month's events as full dispatch
@@ -43,8 +50,14 @@ export function CalendarGrid({
 }) {
   const mounted = useIsClient();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [now, setNow] = useState<number | null>(null);
 
-  if (!mounted) {
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setNow(Date.now()), 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  if (!mounted || now === null) {
     return (
       <div className="flex flex-col gap-8 lg:flex-row">
         <div className="h-[420px] flex-1 animate-pulse rounded-xl border border-edge bg-surface" />
@@ -66,7 +79,7 @@ export function CalendarGrid({
     buckets.set(key, list);
   }
 
-  const todayKey = dayKey(new Date());
+  const todayKey = dayKey(new Date(now));
 
   const monthKeyOf = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -84,14 +97,13 @@ export function CalendarGrid({
     })
     .sort((a, b) => a.iso.localeCompare(b.iso));
 
-  const now = Date.now();
   const selectedEvents =
     selectedDay === null
       ? null
       : monthEvents.filter((event) => dayKey(new Date(event.iso)) === selectedDay);
   const listedEvents =
     selectedEvents ??
-    monthEvents.filter((event) => new Date(event.iso).getTime() >= now);
+    filterUpcomingCalendarEvents(monthEvents, now);
   const selectedDayLabel = (() => {
     if (selectedDay === null) return null;
     const [selectedYear, selectedMonthIndex, selectedDate] = selectedDay
