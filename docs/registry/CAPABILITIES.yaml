@@ -12,14 +12,14 @@ capabilities:
     contract: null
     input: userId, eventId
     output: Promise<boolean>
-    consumer: future Event-management workflows
+    consumer: Event management and participation decisions
     status: stable
   - capability_id: canManageEventAuthorizedUsers
     owner: events
     contract: null
     input: userId, eventId
     output: Promise<boolean>
-    consumer: future Event authorized-user administration
+    consumer: Event manager administration
     status: stable
   - capability_id: canManageRoster
     owner: units

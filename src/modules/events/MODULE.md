@@ -3,7 +3,7 @@ module_id: events
 path: src/modules/events
 status: active
 version: 0.2
-last_reviewed: 2026-09-23
+last_reviewed: 2026-09-26
 updated_by_ticket: TKT-20260921-000017-001
 ---
 
@@ -11,10 +11,9 @@ updated_by_ticket: TKT-20260921-000017-001
 
 ## Purpose
 
-Own the Event concept for morale.gg: what an Event is, how it is persisted,
-how it is read, and how it is publicly presented. Establishes the foundation
-that later EventParticipation, event authorization, and Audit work will build
-against.
+Own the Event concept for morale.gg: Event persistence, public presentation,
+Event authorization and management, and Event-side participation review.
+Future Audit work will build on approved Event participation.
 
 ## Ownership
 
@@ -51,9 +50,8 @@ against.
 
 - Route `/events`: public, unauthenticated list of all Events (upcoming and
   past), with presentation-level event-type filtering via query parameters.
-- Route `/events/[eventId]`: public, unauthenticated Event detail. Its
-  statistics and participation sections are static placeholders labeled as
-  future functionality.
+- Route `/events/[eventId]`: public, unauthenticated Event detail. Approved
+  participating Units are shown; statistics remain future functionality.
 - Route `/events/calendar`: public, unauthenticated month-calendar view of
   the same Event data.
 - Route `/events/manage`: authenticated list of Events the User owns or

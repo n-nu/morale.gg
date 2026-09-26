@@ -28,7 +28,7 @@ export function ScheduleInput({ initialIso }: { initialIso: string }) {
           type="datetime-local"
           id="event-scheduled-at"
           required
-          value={toLocalInputValue(iso)}
+          value={iso ? toLocalInputValue(iso) : ""}
           onChange={(changeEvent) => {
             const next = new Date(changeEvent.target.value);
             if (!Number.isNaN(next.getTime())) {
@@ -42,7 +42,7 @@ export function ScheduleInput({ initialIso }: { initialIso: string }) {
           type="text"
           id="event-scheduled-at"
           disabled
-          value={new Date(initialIso).toISOString().replace("T", " · ").slice(0, 22) + " UTC"}
+          value={initialIso ? new Date(initialIso).toISOString().replace("T", " · ").slice(0, 22) + " UTC" : ""}
           className="rounded-lg border border-edge-strong bg-background px-3.5 py-2.5 text-sm font-semibold text-muted"
         />
       )}

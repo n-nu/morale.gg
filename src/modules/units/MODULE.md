@@ -11,8 +11,8 @@ updated_by_ticket: TKT-20260921-000016-001
 
 ## Purpose
 Own organizational Unit hierarchy and its RootUnit-bounded authority
-persistence, while currently providing public, read-only browsing of persisted
-Units and their hierarchy.
+persistence, while providing public browsing of persisted Units and the
+Players-owned roster presentation on persisted Unit pages.
 
 ## Ownership
 Unit identity, name, parent/child hierarchy, RootUnit designation and
@@ -31,7 +31,7 @@ own approved tickets.
 
 ## Public Interface
 Public pages: `/units` displays existing Units in an expandable hierarchy table; `/units/[unitId]` displays a Unit, its optional parent, and direct children. Roots start collapsed; arrow buttons reveal children, names open details, and expand/collapse-all controls manage the table. Repeated navigation supports arbitrary depth.
-The route adapters consume `server/queries.ts` (`listUnits`, `getUnit`) as the module's server-side application entry point. No public cross-module contract is currently required: there are no cross-module consumers.
+The route adapters consume `server/queries.ts` (`listUnits`, `getUnit`) as the module's server-side application entry point. Players consumes the documented roster-authorization capability; Events consumes Unit-side participation-request and creation-eligibility capabilities.
 Server-only capability consumers use `server/authorization.ts`:
 `canManageUnit`, `canManageRoster`, `canManageAuthorizedUsers`, and
 `canRequestEventParticipation` return semantic allow/deny results without
@@ -47,19 +47,19 @@ An existing persisted Unit ID from the detail route. No authentication or mutati
 For a sample-data preview, explicitly set `UNITS_DEMO_MODE=true` in local `.env.local` and restart the development server if needed. Remove the flag or set it to `false` to restore database reads. The flag defaults to off.
 
 ## Outputs
-Read-only Unit names, identities, hierarchy links, and empty/not-found/error states. No persistence writes.
+Unit names, identities, hierarchy links, and empty/not-found/error states. The Unit detail route composes the Players-owned current-roster view and controls for persisted Units; demo fixtures remain read-only.
 
 ## Dependencies
-Shared server-only `src/lib/prisma.ts` and the existing Prisma Unit model; Next.js route rendering. No other product module dependency.
+Shared server-only `src/lib/prisma.ts` and the existing Prisma Unit model; Next.js route rendering. Players and Events consume Units capabilities without transferring Unit identity or authority ownership.
 
 ## Invariants
 Persistence access stays server-only. Pages query through the module boundary. Reads reflect stored relationships without inventing hierarchy or authority semantics. Missing IDs return not-found; persistence failures remain errors, not empty results. No depth limit is imposed by navigation.
 
 ## Permissions / Authority
-Browsing is public and requires no session. ADR-20260915-002 assigns
-RootUnit-bounded authority persistence and future server-side authority
-resolution to this module. The currently implemented public routes do not
-perform writes or authorization. The server-only Commander bootstrap uses the
+Hierarchy browsing is public and requires no session. ADR-20260915-002 assigns
+RootUnit-bounded authority persistence and server-side authority resolution to
+this module. Players owns and enforces roster mutations through
+`canManageRoster`; the Units hierarchy route remains public. The server-only Commander bootstrap uses the
 bounded website-administrator capability from ADR-20260915-003; it does not
 create Unit authority or generalized RBAC.
 
@@ -82,7 +82,7 @@ and manager administration remain Events responsibilities and must not be
 implemented in Units.
 
 ## Limitations
-Lists are unpaginated. The table assembles the loaded hierarchy client-side and guards traversal against repeated IDs; it does not validate or repair stored hierarchy cycles. Detail pages show one level at a time. Management and roster functionality are not implemented. Commander bootstrap is server-only and has no public UI.
+Lists are unpaginated. The table assembles the loaded hierarchy client-side and guards traversal against repeated IDs; it does not validate or repair stored hierarchy cycles. Detail pages show one level at a time. Unit identity and hierarchy management are not implemented. Player roster persistence and mutations are owned by Players; demo Units have no persistent rosters. Commander bootstrap is server-only and has no public UI.
 
 ## Related Contracts
 - `events-units-event-creation-authorization` (stable).

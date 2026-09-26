@@ -60,8 +60,6 @@ export default async function CreateEventPage({
     );
   }
 
-  const defaultScheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
   return (
     <div className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-16 md:px-10">
       <nav aria-label="Breadcrumb" className="pt-5 text-[13px] text-muted">
@@ -126,7 +124,7 @@ export default async function CreateEventPage({
             </label>
             <label className={labelClass} htmlFor="event-scheduled-at">
               Scheduled date &amp; time
-              <ScheduleInput initialIso={defaultScheduledAt.toISOString()} />
+              <ScheduleInput initialIso="" />
             </label>
             <label className={labelClass}>
               Opponent (optional)
