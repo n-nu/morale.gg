@@ -3,65 +3,107 @@ module_id: units
 path: src/modules/units
 status: active
 version: 0.1
-last_reviewed: 2026-09-26
-updated_by_ticket: TKT-20260921-000014-001
+last_reviewed: 2026-09-27
+updated_by_ticket: TKT-20260926-000019-001
 ---
 
 # Units
 
 ## Purpose
-Own organizational Unit hierarchy and its RootUnit-bounded authority
-persistence, while providing public browsing of persisted Units and the
-Players-owned roster presentation on persisted Unit pages.
+Own Unit profile and organizational hierarchy, RootUnit-bounded authority and
+membership history, Units-owned management workflows, RootUnit organization
+catalogs, and public browsing of persisted Units. Unit pages may compose the
+Players-owned roster presentation without taking roster ownership.
 
 ## Ownership
-Unit identity, name, parent/child hierarchy, RootUnit designation and
-isolation, required Commander persistence, authorized-user memberships, permission
-grants and delegation lineage, hierarchy queries/traversal, and public
-read-side Unit presentation. Effective authority resolution and structural
-authorization are also Units responsibilities when separately implemented
-under ADR-20260915-002.
+Unit identity and profile metadata (name, description, image/flag/icon
+reference, Discord invite, and external group link), parent/child hierarchy,
+RootUnit designation and isolation, required Commander persistence,
+authorized-user membership periods, permission grants and delegation lineage,
+hierarchy queries/traversal, and public read-side Unit presentation are
+Units-owned. Units also owns the approved server-enforced profile,
+authorized-user/grant, and operation-specific structural workflows and their
+management UI (TKT-20260926-000019-001). RootUnit-scoped Rank and Medal
+catalogs and the narrow RootUnit settings capability are Units-owned under
+ADR-20260926-005.
 
 ## Non-Ownership
-Player identity, UnitMembership, rosters, Events, EventParticipation, Audits,
-statistics, generalized site-wide RBAC, and authority-management workflows/UI
-are outside this module boundary. Unit creation, child-unit invites, structural
-workflows, and effective authorization remain unimplemented and require their
-own approved tickets.
+Player identity, Player-to-Unit `UnitMembership`, roster persistence and
+mutations, Events, EventParticipation, Audits, statistics, and generalized
+site-wide RBAC are outside this module boundary. Units may compose the
+Players-owned roster read-side but must not modify or own it.
 
 ## Public Interface
-Public pages: `/units` displays existing Units in an expandable hierarchy table; `/units/[unitId]` displays a Unit, its optional parent, and direct children. Roots start collapsed; arrow buttons reveal children, names open details, and expand/collapse-all controls manage the table. Repeated navigation supports arbitrary depth.
-The route adapters consume `server/queries.ts` (`listUnits`, `getUnit`) as the module's server-side application entry point. Players consumes the documented roster-authorization capability; Events consumes Unit-side participation-request and creation-eligibility capabilities.
-Server-only capability consumers use `server/authorization.ts`:
-`canManageUnit`, `canManageRoster`, `canManageAuthorizedUsers`, and
-`canRequestEventParticipation` return semantic allow/deny results without
-exposing authority records. `canManageAuthorizedUsers` establishes permission
-coverage only; user-management mutations must apply their own applicable
-hierarchy, scope, and local authority-level comparison. Event management
-remains outside Units. The server-only `canCreateEvent(userId)` capability
-exposes only whether the User has effective `MANAGE_EVENTS` somewhere. It
-requires no Unit ID and returns no authority records.
+Public pages: `/units` displays the Unit hierarchy; `/units/[unitId]` displays
+public profile metadata, parent/child structure, and the Players-owned roster.
+Authenticated management lives at `/units/[unitId]/manage`. It provides
+Units-owned profile, authorized-user/grant, structural create/move, and
+RootUnit-catalog workflows. The structural delete workflow hard-deletes only
+otherwise-unused non-RootUnit leaf Units; its server-side transaction rejects
+protected history and removes the sole bootstrap Commander membership only
+with the Unit. No archive/tombstone workflow exists.
+
+Server-only capabilities in `server/authorization.ts` include
+`canManageUnit`, `canManageRoster`, `canManageAuthorizedUsers`,
+`canRequestEventParticipation`, `canCreateEvent`, `canCreateChildUnit`,
+`canMoveUnit`, `canDeleteUnit`, and `canManageRootSettings`. Structural
+operations use operation-specific contextual checks; no generic structure
+boolean is the sole authorization boundary. `canManageAuthorizedUsers` remains
+permission coverage only; mutation workflows also enforce hierarchy, scope,
+authority level, delegation, and Commander invariants. RootUnit settings are
+restricted to the designated RootUnit's current Commander and its catalogs.
 
 ## Inputs
-An existing persisted Unit ID from the detail route. No authentication or mutation input.
+Public reads accept a persisted Unit ID. Management actions resolve the
+authenticated website User server-side; client-provided identity is never
+authoritative. Forms submit only operation data and target IDs.
 For a sample-data preview, explicitly set `UNITS_DEMO_MODE=true` in local `.env.local` and restart the development server if needed. Remove the flag or set it to `false` to restore database reads. The flag defaults to off.
 
 ## Outputs
-Unit names, identities, hierarchy links, and empty/not-found/error states. The Unit detail route composes the Players-owned current-roster view and controls for persisted Units; demo fixtures remain read-only.
+Public outputs include Unit identity, profile metadata, hierarchy links, and
+empty/not-found/error states. Management reads include authorized-user periods,
+authority levels, grant/scope/revocation history, RootUnit catalogs, and valid
+move destinations. The Unit detail route composes the Players-owned roster
+view; demo fixtures remain read-only and have no management workflows.
 
 ## Dependencies
-Shared server-only `src/lib/prisma.ts` and the existing Prisma Unit model; Next.js route rendering. Players and Events consume Units capabilities without transferring Unit identity or authority ownership.
+Shared server-only `src/lib/prisma.ts` and Prisma persistence; Next.js route
+rendering. Players and Events consume only their approved Units capabilities
+without transferring Unit identity, roster, Event, or authority ownership.
 
 ## Invariants
-Persistence access stays server-only. Pages query through the module boundary. Reads reflect stored relationships without inventing hierarchy or authority semantics. Missing IDs return not-found; persistence failures remain errors, not empty results. No depth limit is imposed by navigation.
+Persistence access stays server-only. Protected mutations resolve the session
+server-side and re-evaluate operation authority in the write transaction.
+Active authorized-user periods have `endedAt = NULL`; ended periods remain
+persisted and are never reused. A partial unique index permits at most one
+active `(userId, unitId)` period. Membership end transactionally revokes active
+grants while retaining all membership, grant, and delegation history; grants
+on ended memberships are ineffective and source revocation invalidates their
+delegated descendants. Ordinary removal cannot end the current
+Commander/level-0 membership. Hard deletion is atomic and allowed only for a
+non-RootUnit leaf with no Player membership, EventParticipation, other
+protected references, additional or historical authorized-user memberships,
+or PermissionGrant/delegation history. Exactly one active level-0 membership
+for the current Commander is bootstrap state and may be removed only in that
+Unit deletion transaction. Root settings are restricted to the current
+RootUnit owner and do not confer operational permissions. Each Rank and Medal
+definition belongs to exactly one RootUnit. No depth limit is imposed by
+navigation.
 
 ## Permissions / Authority
 Hierarchy browsing is public and requires no session. ADR-20260915-002 assigns
 RootUnit-bounded authority persistence and server-side authority resolution to
-this module. Players owns and enforces roster mutations through
-`canManageRoster`; the Units hierarchy route remains public. The server-only Commander bootstrap uses the
-bounded website-administrator capability from ADR-20260915-003; it does not
-create Unit authority or generalized RBAC.
+this module. Ordinary Unit operations require their applicable existing
+operational permission; Commander/Unit-owner status grants none. Structural
+create, move, and delete use operation-specific Units workflows enforcing the
+approved `MANAGE_STRUCTURE` territory and contextual invariants. Deletion
+rejects RootUnits, non-leaves, and any protected history; the narrowly approved
+bootstrap Commander teardown applies only when the Unit itself is deleted.
+The RootUnit settings capability authorizes only Rank/Medal catalog operations
+for the current RootUnit owner. Players owns and enforces roster mutations
+through `canManageRoster`. The server-only Commander bootstrap uses the bounded
+website-administrator capability from ADR-20260915-003; it does not create Unit
+authority or generalized RBAC.
 
 ## Internal Structure
 `src/app/units/units.css` scopes a minimal neutral-dark table and detail presentation to the Units shell, with bright interaction accents and a visible sample-data label. The table shows names and direct-child counts; indentation communicates parent relationships.
@@ -82,7 +124,13 @@ and manager administration remain Events responsibilities and must not be
 implemented in Units.
 
 ## Limitations
-Lists are unpaginated. The table assembles the loaded hierarchy client-side and guards traversal against repeated IDs; it does not validate or repair stored hierarchy cycles. Detail pages show one level at a time. Unit identity and hierarchy management are not implemented. Player roster persistence and mutations are owned by Players; demo Units have no persistent rosters. Commander bootstrap is server-only and has no public UI.
+Lists are unpaginated. The table assembles the loaded hierarchy client-side and
+guards traversal against repeated IDs; it does not validate or repair stored
+hierarchy cycles. Detail pages show one level at a time. Historically used
+Units cannot be deleted in MVP; no archive/tombstone state or history cascade
+is provided. Player roster persistence and mutations are owned by Players;
+demo Units have no persistent rosters. Commander bootstrap is server-only and
+has no public UI.
 
 ## Related Contracts
 - `events-units-event-creation-authorization` (stable).
@@ -93,6 +141,12 @@ Lists are unpaginated. The table assembles the loaded hierarchy client-side and 
 - ADR-20260915-003.
 - ADR-20260921-004 (accepted; amends only Event-specific `MANAGE_EVENTS`
 	semantics).
+- ADR-20260926-005 (accepted; RootUnit catalogs, management authority, Unit
+	profile metadata, and authorized-user membership lifecycle).
 
 ## AI Working Rules
-GREEN local changes and logged YELLOW internal changes may proceed within an active ticket. Authority persistence, schema, ownership, permission, invite, and contract semantics require the applicable approved RED ticket and ADR authority. Never import persistence into client components or route pages directly.
+GREEN local changes and logged YELLOW internal changes may proceed within an
+active ticket. Authority persistence, schema, ownership, permission, and
+contract semantics require the applicable approved RED authority; Ticket 19
+and ADR-20260926-005 authorize only their recorded scope. Never import
+persistence into client components or route pages directly.

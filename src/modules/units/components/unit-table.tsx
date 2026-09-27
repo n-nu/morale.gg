@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type UnitRow = {
   id: string;
   name: string;
+  imageRef: string | null;
   parent: { id: string; name: string } | null;
 };
 
@@ -115,6 +117,9 @@ export function UnitTable({ units }: { units: UnitRow[] }) {
                       ) : (
                         <span className="unit-tree-leaf" aria-hidden="true">·</span>
                       )}
+                      {unit.imageRef ? (
+                        <Image src={unit.imageRef} alt="" width={28} height={22} unoptimized className="h-[22px] w-7 object-contain" />
+                      ) : null}
                       <Link href={`/units/${encodeURIComponent(unit.id)}`}>
                         {unit.name}
                       </Link>

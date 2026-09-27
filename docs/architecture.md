@@ -16,16 +16,18 @@ Where this document conflicts with `docs/SYSTEM.md` or a later approved ADR, the
 
 morale.gg is a web application for structured Napoleonic Wars communities to:
 
-- represent linked hierarchical units;
-- maintain unit rosters;
-- represent persistent players using game-specific PlayerIDs;
-- create and manage events;
-- request and approve unit participation;
-- submit structured post-event audits;
-- preserve historical organizational and performance data;
-- expose public read-only units, rosters, events, audits, basic statistics, and leaderboards.
+ - represent linked hierarchical units;
+ - maintain unit rosters;
+ - represent persistent players using game-specific PlayerIDs;
+ - create and manage events;
+ - request and approve unit participation;
+ - submit structured post-event audits;
+ - preserve historical organizational and performance data;
+ - expose public read-only units, rosters, events, audits, basic statistics,
+     and leaderboards.
 
-The primary MVP management workflow is desktop-oriented. Public viewing should remain reasonably usable on smaller screens.
+The primary MVP management workflow is desktop-oriented. Public viewing should
+remain reasonably usable on smaller screens.
 
 ---
 
@@ -33,25 +35,19 @@ The primary MVP management workflow is desktop-oriented. Public viewing should r
 
 ```mermaid
 flowchart TB
-    visitor[Public Visitor]
-    manager[Authenticated Unit / Event Manager]
-
-    client[Web Client\nNext.js / React / TypeScript / Tailwind CSS]
-
-    app[Application Layer\nAuthentication\nAuthorization\nValidation\nBusiness Rules\nDerived Statistics]
-
-    orm[Prisma ORM]
-    db[(PostgreSQL)]
-    google[Google Identity]
-
-    visitor --> client
-    manager --> client
-
-    client --> app
-
-    google --> app
-    app --> orm
-    orm --> db
+        visitor[Public Visitor]
+        manager[Authenticated Unit / Event Manager]
+        client[Web Client\nNext.js / React / TypeScript / Tailwind CSS]
+        app[Application Layer\nAuthentication\nAuthorization\nValidation\nBusiness Rules\nDerived Statistics]
+        orm[Prisma ORM]
+        db[(PostgreSQL)]
+        google[Google Identity]
+        visitor --> client
+        manager --> client
+        client --> app
+        google --> app
+        app --> orm
+        orm --> db
 ```
 
 ### Planned Responsibilities
@@ -68,280 +64,223 @@ flowchart TB
 
 - Google-authenticated user/session handling;
 - authoritative authorization;
-- unit ownership and delegated-permission rules;
-- invite validation;
-- event date/time validation;
+- Unit ownership and delegated-permission rules;
+- operation-specific Unit structural workflows;
+- Event date/time validation;
 - participation request/approval workflow;
-- audit validation and submission locking;
+- Audit validation and submission locking;
 - business-rule enforcement;
 - derived statistics.
 
 **Persistence Layer**
 
-- persistent users/accounts;
-- persistent players;
-- unit hierarchy;
-- membership history;
-- unit ownership/permissions;
-- invites;
-- events;
-- participation requests/approvals;
-- audits and audit details;
-- historical records.
+- persistent users/accounts and players;
+- Unit profile, hierarchy, RootUnit identity, and authority;
+- history-preserving Player and authorized-user membership periods;
+- RootUnit-scoped Rank and Medal catalogs;
+- Events and participation requests/decisions;
+- Audits, audit details, and historical records.
 
 **Google Identity**
 
 - external authentication provider for website accounts.
 
-Frontend visibility is not sufficient authorization. Permission-sensitive behavior must be enforced by the application layer.
+Frontend visibility is not sufficient authorization. Permission-sensitive
+behavior must be enforced by the application layer.
 
 ---
 
 ## 3. Core Domain Concepts
 
-The following are conceptual domain objects or responsibilities. They are not necessarily one-to-one with final database tables.
+The following are conceptual domain objects or responsibilities. They are not
+necessarily one-to-one with final database tables.
 
 ### UserAccount
 
-Represents an authenticated website identity.
-
-Important distinction:
-
-```text
-UserAccount != Player
-```
-
-Only unit/event managers require accounts for core MVP writes. Other people may create accounts, but account existence does not itself grant management authority.
+Represents an authenticated website identity. `UserAccount` and `Player` are
+separate identities; account existence grants no management authority.
 
 ---
 
 ### Player
 
-Represents a persistent Napoleonic Wars player.
-
-Current MVP rules:
-
-- identified by a game-specific PlayerID;
-- normally introduced into the system by a unit manager;
-- persists after removal from a roster;
-- may belong to multiple units simultaneously;
-- may later have richer public historical profiles, but dedicated profiles are post-MVP.
+Represents a persistent Napoleonic Wars player identified by a game-specific
+PlayerID. Player records survive roster removal and may belong to multiple
+Units. Richer public historical profiles remain future work.
 
 ---
+
 
 ### Unit
 
-Represents an organizational unit.
+Represents an organizational Unit in an arbitrary-depth hierarchy. RootUnits
+are manually designated. Each Unit has exactly one Commander; the RootUnit
+owner is the Commander of its designated RootUnit Unit, not a separately
+persisted owner. Commander/owner identity grants no operational permissions.
 
-Current MVP rules:
-
-- units form an arbitrary-depth hierarchy;
-- root units are manually seeded;
-- non-root units are normally created through a parent-issued invite;
-- each unit has exactly one owner;
-- additional authenticated users may receive delegated permissions.
-
-Conceptually:
-
-```text
-Root Unit
-└── Child Unit
-    └── Child Unit
-        └── ...
-```
+Units owns ordinary profile metadata (name, description, flag/image/icon
+reference, Discord invite, and external group link), authorized-user/grant
+administration, structural create/move/delete workflows, and Unit management
+UI. These workflows are implemented under TKT-20260926-000019-001 and enforce
+protected behavior server-side. Limited hard deletion is available only for an
+otherwise-unused non-RootUnit leaf; the sole current Commander/level-0 bootstrap
+membership is removed atomically with that Unit. Archival/tombstone state is
+not part of MVP.
 
 ---
 
-### UnitInvite
+### Unit Management and Structural Authority
 
-Represents temporary authority from an existing parent unit to create a linked child unit.
+Structural actions are separate Units-owned server workflows. `MANAGE_STRUCTURE`
+uses a strict-descendant anchor; a generic client-consumable boolean is not the
+sole authorization mechanism.
 
-Using a valid invite:
+- Child creation requires same-RootUnit structure authority, an existing
+  initial Commander and matching level-0 membership, and the separately
+  applicable `MANAGE_AUTHORIZED_USERS` authority for Commander assignment.
+- Moves validate source and destination, remain within one RootUnit, reject
+  cycles, move the complete subtree, preserve direct assignments, and
+  recalculate effective authority from current ancestry.
+- Hard deletion is permitted only for an otherwise-unused non-RootUnit leaf
+  with no children, Player `UnitMembership`, EventParticipation, historical or
+  additional authorized-user memberships, PermissionGrant/delegation history,
+  or other protected references. Exactly one active level-0 membership for the
+  current Commander is bootstrap state and may be removed atomically with the
+  Unit; ordinary membership removal remains prohibited. The operation is
+  server-authorized within existing `MANAGE_STRUCTURE` territory and performs
+  all checks before mutation in one transaction. Subtree deletion, history
+  cascades, and Unit archival/tombstones are not MVP behavior.
+- Creation adds no operational grants implicitly.
 
-1. creates/authorizes creation of the child unit;
-2. establishes the parent-child relationship;
-3. establishes the initial child-unit owner according to the approved workflow.
-
-Exact token representation, expiration model, and storage are implementation decisions.
+The detailed operation policy is in ADR-20260915-002; the approved module
+boundary is in BCR-20260926-003.
 
 ---
 
-### UnitPermission / Management Authority
+### Unit Metadata and RootUnit Catalogs
 
-Represents delegated authority associated with a unit.
+Ordinary Unit metadata is managed under `MANAGE_UNIT`. Rank and Medal catalogs
+are owned by exactly one RootUnit and are managed through the narrow
+Units-owned RootUnit settings capability. It permits only that RootUnit's
+current owner and grants no other Unit authority. Catalog inheritance,
+descendant overrides, and Player relationships are not implemented.
 
-The MVP requires:
+---
 
-- exactly one unit owner;
-- owner-granted manager permissions;
-- `MANAGE_EVENTS` permission for standalone Event creation eligibility;
-- protected roster/unit operations;
-- parent-unit authority over subordinate ownership according to the eventual permission design.
+### Unit Authority
 
-The exact permission matrix is not yet final.
+Represents delegated authority associated with a Unit under
+ADR-20260915-002. The approved permission set is `MANAGE_UNIT`,
+`MANAGE_STRUCTURE`, `MANAGE_ROSTER`, `REQUEST_EVENT_PARTICIPATION`,
+`MANAGE_EVENTS`, `SUBMIT_AUDITS`, and `MANAGE_AUTHORIZED_USERS`.
+
+Ordinary permissions use `SELF`, `SELF_AND_CHILDREN`, or
+`SELF_AND_DESCENDANTS`. Authority is additive, delegated scope must narrow,
+RootUnit boundaries are absolute, and Commander status alone grants no
+operational permission. `canManageAuthorizedUsers` is permission coverage
+only; user/grant mutations also enforce hierarchy, scope, and authority-level
+rules. Structural operations use their operation-specific Units workflows.
+
+---
+
+### AuthorizedUserMembership
+
+Represents a website User's authority membership at a Unit, distinct from a
+Player roster membership. An active period has no `endedAt`; at most one active
+period may exist for a `(userId, unitId)` pair. Ending access preserves the
+period and grant rows, revokes its active grants transactionally, and makes
+dependent grants ineffective through existing source-revocation rules.
+Re-adding creates a new period. Ordinary removal cannot end the current
+Commander/level-0 membership.
 
 ---
 
 ### UnitMembership
 
-Represents the relationship between a Player and a Unit.
-
-Current MVP rules:
-
-- a player may belong to multiple units simultaneously;
-- duplicate active membership for the same player/unit is invalid;
-- removal from an active roster does not destroy historical membership;
-- later rejoining should preserve earlier history.
-
-The final persistence model for membership periods remains undecided.
+Represents the relationship between a Player and a Unit. A Player may belong to
+multiple Units; duplicate active Player/Unit membership is invalid. Ending a
+roster membership preserves history, and rejoining creates a new period. The
+active period is derived from `endedAt IS NULL` and is owned by Players.
 
 ---
 
 ### Event
 
-Represents an organized Napoleonic Wars event.
+Represents an organized Napoleonic Wars Event.
 
 Current MVP rules:
 
 - owned by exactly one authenticated User, who is the creator;
 - creation requires any currently effective Unit `MANAGE_EVENTS` permission;
 - the qualifying Unit or grant is not stored on the Event and grants no
-    post-creation Event authority;
+  post-creation Event authority;
 - existing Event management belongs only to the owner and explicitly
-    Event-authorized Users;
-- Event manager administration is owner-only;
+  Event-authorized Users; only the owner administers that list;
 - Events have no Unit ownership or authority anchor;
-- normal MVP creation is for future events only;
-- an event cannot be created with a scheduled time already in the past;
-- event information may be edited while eligible;
-- an event may be cancelled/deleted only before it occurs and only when no audit exists.
+- normal creation is for future Events; Event information may be edited while
+  eligible;
+- an Event may be cancelled/deleted only before it occurs and only when no
+  Audit exists.
 
-Initial event information includes:
-
-- name;
-- scheduled date/time;
-- event type;
-- description;
-- opponent when relevant;
-- map when relevant.
+Initial Event information includes name, scheduled date/time, event type,
+description, and optional opponent/map.
 
 ---
 
 ### EventParticipation
 
-Represents a unit's requested or approved involvement in an event.
-
-This is conceptually richer than a passive join table because it has workflow state.
-
-Typical conceptual states:
-
-```text
-REQUESTED
-APPROVED
-DENIED
-```
-
-Current MVP rules:
-
-- participation is requested by an authorized unit manager;
-- all requests are manually approved or denied by an authorized event manager;
-- duplicate active participation/request relationships are prevented;
-- only approved participation is eligible for an audit.
-
-The final state model is an implementation/design decision.
+Represents a Unit's requested or approved involvement in an Event. Typical
+states are `REQUESTED`, `APPROVED`, and `DENIED`. Requests require an authorized
+Unit manager; authorized Event managers approve or deny. Duplicate Event/Unit
+records are prevented, and only approved participation is eligible for an
+Audit.
 
 ---
 
 ### Audit
 
-Represents the participating unit's structured record for an event.
-
-The audit belongs conceptually to:
-
-```text
-approved EventParticipation
-```
-
-rather than directly to an Event or Unit in isolation.
-
-Current MVP rules:
-
-- one submitted audit per eligible unit-event participation;
-- only the participating unit's authorized manager may create/edit it;
-- it may be edited before submission;
-- once submitted, it is immutable in the MVP;
-- submitted data becomes authoritative historical source data.
+Represents a participating Unit's structured record for an Event and belongs
+conceptually to approved EventParticipation. A draft may be edited before
+submission. Submitted Audits are immutable and authoritative historical source
+data.
 
 ---
 
 ### AuditPlayerData
 
-Represents player-level statistics associated with an Audit.
-
-Required MVP player statistics:
-
-- kills;
-- deaths;
-- assists.
-
-A player should not appear more than once in the same audit unless a future approved design explicitly requires otherwise.
+Represents player-level Audit statistics: kills, deaths, and assists. A Player
+should not appear more than once in the same Audit unless a future approved
+design explicitly requires otherwise.
 
 ---
 
 ### AuditUnitData
 
-Represents unit-level statistics associated with an Audit.
-
-Required MVP unit statistics:
-
-- tickets;
-- flag captures;
-- flag losses;
-- stars.
+Represents Unit-level Audit statistics: tickets, flag captures, flag losses,
+and stars.
 
 ---
 
 ### AuditRoleAssignment
 
-Represents important in-game roles held by participating players.
-
-Required MVP roles:
-
-- commander;
-- flag bearer.
-
-Arbitrary in-unit positions are post-MVP.
+Represents important in-game roles held by participating Players. MVP roles
+include commander and flag bearer; arbitrary in-Unit positions are post-MVP.
 
 ---
 
 ### Audit Unit Type
 
-Each relevant audit participation records one supported Napoleonic Wars unit type:
-
-- Infantry;
-- Rifles;
-- Cavalry;
-- Artillery.
-
-The implementation may model this as part of the Audit, participation, or another justified structure. The conceptual requirement is the important part.
+Each relevant Audit participation records one supported Napoleonic Wars Unit
+type: Infantry, Rifles, Cavalry, or Artillery. Its exact representation is an
+implementation choice.
 
 ---
 
 ### Derived Statistics / Leaderboards
 
-Basic public statistics are derived from submitted audit records.
-
-MVP examples may include:
-
-- totals;
-- counts;
-- averages;
-- K/D or similar direct calculations;
-- simple leaderboards.
-
-Submitted audits remain authoritative source data.
-
-Advanced analytics, trend analysis, predictive analysis, premium analytics, and richer player/unit profile analytics are post-MVP.
+Basic public statistics are derived from submitted Audits and may include
+totals, counts, averages, K/D, and simple leaderboards. Advanced analytics and
+richer Player/Unit profile analytics are post-MVP.
 
 ---
 
@@ -349,53 +288,47 @@ Advanced analytics, trend analysis, predictive analysis, premium analytics, and 
 
 ```mermaid
 flowchart TB
-
     user[UserAccount]
-    permission[Unit Permission / Authority]
-
+    permission[Permission]
     unit[Unit]
-    invite[UnitInvite]
-
+    root[RootUnit]
+    authorized[AuthorizedUserMembership]
+    grant[PermissionGrant]
+    rank[Rank Definition]
+    medal[Medal Definition]
     player[Player]
-    membership[UnitMembership]
-
+    membership[Player UnitMembership]
     event[Event]
     participation[EventParticipation]
-
     audit[Audit]
     playerData[AuditPlayerData]
     unitData[AuditUnitData]
     roles[AuditRoleAssignment]
     unitType[Audit Unit Type]
 
-    user -->|owns / manages| permission
+    user -->|receives| authorized
+    authorized -->|has| grant
+    grant --> permission
     permission --> unit
-
-    unit -->|parent issues| invite
-    invite -->|creates linked child| unit
-
+    root -->|designates / bounds| unit
+    root --> rank
+    root --> medal
+    unit -->|parent / child| unit
     player <--> membership
     membership <--> unit
-
     unit -->|requests participation| participation
     participation --> event
-
     participation -->|approved participation may produce| audit
-
     audit --> playerData
     playerData --> player
-
     audit --> unitData
-
     audit --> roles
     roles --> player
-
     audit --> unitType
 ```
 
-This diagram is conceptual. It does not define final keys, tables, or cardinality implementation.
-
----
+This diagram is conceptual. It does not define final keys, tables, or
+cardinality implementation.
 
 ## 5. Important Domain Invariants
 
@@ -409,9 +342,29 @@ The following are current MVP-level rules unless changed through the approved ar
 ### Units
 
 - Unit hierarchy supports arbitrary depth.
-- Root units are manually seeded.
-- New non-root units are linked through parent-issued invites.
-- Each unit has exactly one owner.
+- RootUnits are manually designated and each Unit belongs to exactly one
+    RootUnit tree.
+- Each Unit has exactly one Commander. Only the RootUnit Commander's identity
+    is also called the RootUnit owner.
+- Unit profile management uses `MANAGE_UNIT`; Commander status does not bypass
+    operational permissions.
+- Units owns server-enforced profile, authorized-user/grant, and structural
+  create/move workflows. Structural operations preserve their
+  operation-specific rules. Hard deletion is limited to unused non-RootUnit
+  leaves under the approved protected-history and bootstrap-membership rules;
+  archival and subtree deletion remain out of scope.
+- Rank and Medal catalogs each belong to exactly one RootUnit and are managed
+    only by that RootUnit's owner through the approved narrow capability.
+
+### Authorized-user membership
+
+- Membership periods are distinct from Player `UnitMembership` records.
+- Active membership means `endedAt IS NULL`; a partial unique index prevents
+    multiple active memberships for the same User/Unit pair.
+- Ending a membership preserves it and its grants, revokes its active grants,
+    and invalidates dependent grants through source lineage. Re-addition creates
+    a new period.
+- Ordinary removal cannot end a Unit's current Commander/level-0 membership.
 
 ### Membership
 
@@ -452,8 +405,8 @@ The following are current MVP-level rules unless changed through the approved ar
 flowchart TD
 
     A[Seed Root Unit]
-    B[Parent Owner Generates Invite]
-    C[Create Linked Child Unit]
+    B[Authorized Manager Uses Units Structure Workflow]
+    C[Create Child with Initial Commander and Level-0 Membership]
     D[Create / Locate Players by PlayerID]
     E[Add Players to Unit Roster]
     F[Create Future Event]
@@ -493,7 +446,9 @@ This flow represents the principal MVP value chain and should guide use-case ana
 
 ## 7. Candidate Module Boundaries
 
-These are **provisional candidates**, not final modules.
+Units, Players, and Events are established modules whose current ownership is
+defined by their module manifests. The remaining candidate areas below are
+provisional, not final modules.
 
 The purpose of this section is to provide architectural orientation without preempting module-creation tickets.
 
@@ -517,16 +472,18 @@ Potential ownership:
 
 ### Units
 
-Potential ownership:
+Approved ownership:
 
-- units;
-- hierarchy;
-- invites;
-- memberships;
-- ownership;
-- delegated unit permissions.
+- Unit profile identity and metadata;
+- hierarchy, RootUnit identity/isolation, and Commander persistence;
+- authorized-user membership periods and delegated permissions;
+- effective authority and operation-specific structural workflows;
+- RootUnit Rank/Medal catalogs and their narrow owner-only settings capability;
+- Unit management UI and public Unit read-side.
 
-Some permission behavior may eventually justify a separate authorization module, but that is not yet established.
+Player roster persistence/mutations remain Players-owned. Event identity and
+management remain Events-owned. A separate authorization module is not part of
+the approved MVP boundary.
 
 ### Events
 
@@ -654,11 +611,9 @@ Technology changes with architectural impact should be handled through the appro
 
 The following remain intentionally unresolved:
 
-- final module decomposition;
+- future module decomposition for domains not yet established;
 - exact contract shapes;
-- detailed permission matrix;
-- exact unit-invite token implementation;
-- membership-history storage representation;
+- invitation workflow and token/storage design;
 - final database schema;
 - exact schema cardinalities where not already required by product invariants;
 - historical snapshot/versioning strategy;

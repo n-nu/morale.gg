@@ -34,7 +34,7 @@ export async function bootstrapCommanders(mapping: CommanderMapping): Promise<nu
 
     for (const [unitId, userId] of entries) {
       const levelZeroMemberships = await transaction.authorizedUserMembership.findMany({
-        where: { unitId, authorityLevel: 0 },
+        where: { unitId, authorityLevel: 0, endedAt: null },
         select: { id: true, userId: true },
       });
 
@@ -45,8 +45,8 @@ export async function bootstrapCommanders(mapping: CommanderMapping): Promise<nu
         throw new Error(`Unit ${unitId} has a conflicting level-0 Commander`);
       }
 
-      const membership = await transaction.authorizedUserMembership.findUnique({
-        where: { userId_unitId: { userId, unitId } },
+      const membership = await transaction.authorizedUserMembership.findFirst({
+        where: { userId, unitId, endedAt: null },
         select: { id: true, authorityLevel: true },
       });
 
