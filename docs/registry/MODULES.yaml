@@ -20,3 +20,11 @@ modules:
     version: 0.1
     last_reviewed: 2026-09-26
     updated_by_ticket: TKT-20260921-000014-001
+  - module_id: audits
+    path: src/modules/audits
+    manifest: src/modules/audits/MODULE.md
+    status: active
+    version: 0.1
+    established_by: TKT-20260927-000020-001
+    last_reviewed: 2026-09-27
+    updated_by_ticket: TKT-20260927-000020-001

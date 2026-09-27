@@ -3,8 +3,8 @@ module_id: players
 path: src/modules/players
 status: active
 version: 0.1
-last_reviewed: 2026-09-26
-updated_by_ticket: TKT-20260921-000014-001
+last_reviewed: 2026-09-27
+updated_by_ticket: TKT-20260927-000020-001
 ---
 
 # Players
@@ -17,15 +17,18 @@ Player persistence, UnitMembership periods, active roster derivation, registrati
 membership mutations, lookup, history, and their application presentation.
 
 ## Non-Ownership
-Website identity, Unit identity/hierarchy/authority, Events, Audits, and statistics.
+Website identity, Unit identity/hierarchy/authority, Events, Audit persistence,
+and statistics.
 
 ## Public Interface
-Server-only registration, add/end membership workflows and Player/roster/history
-queries. Application routes `/players`, `/players/[id]` and a roster section on
-`/units/[unitId]`. No cross-module data contract is introduced.
+Server-only registration, add/end membership workflows, Player/roster/history
+queries, and the server-only PlayerID resolve-or-create operation for Audits.
+Application routes `/players`, `/players/[id]` and a roster section on
+`/units/[unitId]` remain unchanged.
 
 ## Inputs
-Stable external game `playerId`, display name, internal Player/Unit/membership IDs.
+Stable external game `playerId`, optional display name, internal
+Player/Unit/membership IDs.
 Mutation authority comes exclusively from the server-resolved website session.
 
 ## Outputs
@@ -59,15 +62,17 @@ Local presentation, validation and queries may evolve within the approved scope.
 ## Limitations
 Game IDs are treated as opaque, case-sensitive text (trimmed, 1–128 characters,
 no whitespace/control characters); no unapproved numeric game-ID format is assumed.
-Names are trimmed, 1–100 characters. Lookup returns at most 50 matches; exact
+Names are optional compatibility data when no UnitMembership alias exists;
+provided names remain trimmed, 1–100 characters. Lookup returns at most 50 matches; exact
 game-ID lookup is available. History and individual rosters are unpaginated.
 Unit demo fixtures do not have persistent rosters and show no mutation controls.
 
 ## Related Contracts
 - `docs/contracts/players-units-roster-authorization.md`
+- `docs/contracts/players-audits-player-resolution.md`
 
 ## Related ADRs
-- ADR-20260915-002; approved boundary BCR-20260921-001.
+- ADR-20260915-002; approved boundary BCR-20260921-001; ADR-20260927-006.
 
 ## AI Working Rules
 GREEN local implementation is allowed under an active ticket. Changes to identity,

@@ -3,8 +3,8 @@ module_id: events
 path: src/modules/events
 status: active
 version: 0.2
-last_reviewed: 2026-09-26
-updated_by_ticket: TKT-20260921-000017-001
+last_reviewed: 2026-09-27
+updated_by_ticket: TKT-20260927-000020-001
 ---
 
 # Events
@@ -13,7 +13,8 @@ updated_by_ticket: TKT-20260921-000017-001
 
 Own the Event concept for morale.gg: Event persistence, public presentation,
 Event authorization and management, and Event-side participation review.
-Future Audit work will build on approved Event participation.
+Audit work builds on approved Event participation through the
+`events-audits-event-participation-management` contract.
 
 ## Ownership
 
@@ -42,7 +43,8 @@ Future Audit work will build on approved Event participation.
 - Unit-side participation request authorization (Units owns
   `canRequestEventParticipation`);
 - Unit authority and creation-eligibility evaluation;
-- Audit lifecycle and audit statistics;
+- Audit lifecycle, atomic Event units, command groups, and audit statistics
+  (owned by Audits);
 - leaderboards;
 - the shared site shell and theme (owned at the app level).
 
@@ -62,9 +64,8 @@ Future Audit work will build on approved Event participation.
 - Public Event detail exposes APPROVED participating Units only; pending and
   denied participation stays management-only.
 - Events consumes the server-only
-  `events-units-event-creation-authorization` contract. It exposes no
-  cross-module data contract; future Event workflows consume its server-only
-  semantic capabilities within the Events boundary.
+  `events-units-event-creation-authorization` contract and exposes the
+  `events-audits-event-participation-management` contract to Audits.
 
 ## Inputs
 
@@ -160,12 +161,14 @@ Event.
 ## Related Contracts
 
 - `events-units-event-creation-authorization` (stable).
+- `events-audits-event-participation-management` (stable).
 
 ## Related ADRs
 
 - ADR-20260914-001 (Next.js server-side application layer as the MVP
   backend boundary).
 - ADR-20260921-004 (accepted; standalone User-owned Event authorization).
+- ADR-20260927-006 (accepted; Audit domain and Event-scoped structures).
 
 ## AI Working Rules
 
