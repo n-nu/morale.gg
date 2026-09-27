@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 
+import { AuthNav } from "./auth-nav";
 import { NavLink } from "./nav-link";
 
 const geistSans = Geist({
@@ -50,14 +51,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               ))}
               <NavLink href="/events">Events</NavLink>
               <NavLink href="/units">Units</NavLink>
-              {/* Auth.js route handler, not a page — plain anchor is intentional. */}
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-              <a
-                href="/api/auth/signin"
-                className="rounded-md bg-gold px-4 py-2 text-[13px] font-bold text-gold-ink transition-colors hover:bg-gold-bright"
-              >
-                Sign in
-              </a>
+              <AuthNav />
             </div>
           </nav>
         </header>
