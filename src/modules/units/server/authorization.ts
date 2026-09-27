@@ -671,3 +671,11 @@ export function canRequestEventParticipation(
     "REQUEST_EVENT_PARTICIPATION",
   );
 }
+
+export function canSubmitAudit(
+  userId: string,
+  unitId: string,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
+  return hasEffectiveUnitPermission(userId, unitId, "SUBMIT_AUDITS", database);
+}

@@ -105,11 +105,23 @@ model EventParticipation {
   status    EventParticipationStatus   @default(REQUESTED)
   createdAt DateTime                   @default(now())
   updatedAt DateTime                   @updatedAt
+  atomicUnits AtomicEventUnit[]
 
   @@unique([eventId, unitId])
   @@index([eventId])
   @@index([unitId])
   @@index([status])
+}
+
+model AtomicEventUnit {
+  id                   String             @id @default(cuid())
+  eventParticipationId String
+  isMandatory          Boolean
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  eventParticipation   EventParticipation @relation(fields: [eventParticipationId], references: [id], onDelete: Restrict)
+
+  @@index([eventParticipationId, createdAt])
 }
 
 model Unit {
@@ -140,7 +152,7 @@ model Unit {
 model Player {
   id          String           @id @default(cuid())
   playerId    String           @unique
-  name        String
+  name        String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   memberships UnitMembership[]
