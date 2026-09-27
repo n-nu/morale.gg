@@ -211,6 +211,12 @@ export default async function EventDetailPage({
             </Link>
           ) : null}
           <Link
+            href={`/events/${event.id}/command-structure`}
+            className="text-sm font-bold text-gold hover:text-gold-bright"
+          >
+            Command structure
+          </Link>
+          <Link
             href="/events"
             className="text-sm font-bold text-gold hover:text-gold-bright"
           >

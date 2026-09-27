@@ -71,6 +71,7 @@ model Event {
   updatedAt   DateTime              @updatedAt
   participations EventParticipation[]
   authorizedUsers EventAuthorizedUser[]
+  commandGroups EventCommandGroup[]
 
   @@index([ownerUserId])
 }
@@ -122,6 +123,7 @@ model AtomicEventUnit {
   updatedAt            DateTime           @updatedAt
   eventParticipation   EventParticipation @relation(fields: [eventParticipationId], references: [id], onDelete: Restrict)
   audit                Audit?
+  commandGroupMembership EventCommandGroupAtomicUnit?
 
   @@index([eventParticipationId, createdAt])
 }
@@ -143,6 +145,7 @@ model Unit {
   commander       User      @relation("UnitCommander", fields: [commanderUserId], references: [id], onDelete: Restrict)
   memberships     AuthorizedUserMembership[]
   eventParticipations EventParticipation[]
+  representedEventGroups EventCommandGroup[] @relation("EventGroupRepresentedUnit")
   playerMemberships UnitMembership[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -160,6 +163,7 @@ model Player {
   memberships UnitMembership[]
   auditResults AuditPlayerResult[]
   auditRoles AuditRoleAssignment[]
+  commandedEventGroups EventCommandGroup[] @relation("EventGroupCommander")
 }
 
 enum AuditLifecycle {
@@ -232,6 +236,38 @@ model AuditRoleAssignment {
   @@unique([auditId, playerId, role])
   @@index([auditId])
   @@index([playerId])
+}
+
+model EventCommandGroup {
+  id                String              @id @default(cuid())
+  eventId           String
+  name              String
+  representedUnitId String
+  commanderPlayerId String
+  parentGroupId     String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  event             Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  representedUnit   Unit                @relation("EventGroupRepresentedUnit", fields: [representedUnitId], references: [id], onDelete: Restrict)
+  commanderPlayer   Player              @relation("EventGroupCommander", fields: [commanderPlayerId], references: [id], onDelete: Restrict)
+  parentGroup       EventCommandGroup?  @relation("EventCommandGroupTree", fields: [parentGroupId], references: [id], onDelete: Restrict)
+  childGroups       EventCommandGroup[] @relation("EventCommandGroupTree")
+  atomicUnitMemberships EventCommandGroupAtomicUnit[]
+
+  @@index([eventId, parentGroupId])
+  @@index([representedUnitId])
+  @@index([commanderPlayerId])
+}
+
+model EventCommandGroupAtomicUnit {
+  groupId           String
+  atomicEventUnitId String   @unique
+  createdAt         DateTime @default(now())
+  group             EventCommandGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  atomicEventUnit   AtomicEventUnit   @relation(fields: [atomicEventUnitId], references: [id], onDelete: Restrict)
+
+  @@id([groupId, atomicEventUnitId])
+  @@index([groupId])
 }
 
 model UnitMembership {
