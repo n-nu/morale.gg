@@ -4,7 +4,7 @@ path: src/modules/units
 status: active
 version: 0.1
 last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260926-000019-001
+updated_by_ticket: TKT-20260927-000020-001
 ---
 
 # Units
@@ -29,8 +29,8 @@ ADR-20260926-005.
 
 ## Non-Ownership
 Player identity, Player-to-Unit `UnitMembership`, roster persistence and
-mutations, Events, EventParticipation, Audits, statistics, and generalized
-site-wide RBAC are outside this module boundary. Units may compose the
+mutations, Events, EventParticipation, Audit persistence, statistics, and
+generalized site-wide RBAC are outside this module boundary. Units may compose the
 Players-owned roster read-side but must not modify or own it.
 
 ## Public Interface
@@ -52,6 +52,9 @@ boolean is the sole authorization boundary. `canManageAuthorizedUsers` remains
 permission coverage only; mutation workflows also enforce hierarchy, scope,
 authority level, delegation, and Commander invariants. RootUnit settings are
 restricted to the designated RootUnit's current Commander and its catalogs.
+`canSubmitAudit` authorizes atomic-unit creation, Audit draft creation, and
+Audit finalization for a target Unit through the Audits consumer contract; it
+does not authorize command-group management.
 
 ## Inputs
 Public reads accept a persisted Unit ID. Management actions resolve the
@@ -122,6 +125,8 @@ The approved `events-units-event-creation-authorization` contract is limited
 to Event creation eligibility. Existing Event ownership, manager authority,
 and manager administration remain Events responsibilities and must not be
 implemented in Units.
+Units also produces `units-audits-submission-authorization`; Audits consumes
+only its semantic boolean and never receives authority persistence details.
 
 ## Limitations
 Lists are unpaginated. The table assembles the loaded hierarchy client-side and
@@ -134,6 +139,7 @@ has no public UI.
 
 ## Related Contracts
 - `events-units-event-creation-authorization` (stable).
+- `units-audits-submission-authorization` (stable).
 
 ## Related ADRs
 - ADR-20260914-001.
@@ -143,6 +149,7 @@ has no public UI.
 	semantics).
 - ADR-20260926-005 (accepted; RootUnit catalogs, management authority, Unit
 	profile metadata, and authorized-user membership lifecycle).
+- ADR-20260927-006 (accepted; Audit submission authority boundary).
 
 ## AI Working Rules
 GREEN local changes and logged YELLOW internal changes may proceed within an

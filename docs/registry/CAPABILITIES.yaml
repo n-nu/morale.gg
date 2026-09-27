@@ -28,3 +28,10 @@ capabilities:
     output: Promise<boolean>
     consumer: players
     status: stable
+  - capability_id: canSubmitAudit
+    owner: units
+    contract: units-audits-submission-authorization
+    input: userId, unitId
+    output: Promise<boolean>
+    consumer: audits
+    status: stable

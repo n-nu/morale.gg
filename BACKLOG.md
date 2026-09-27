@@ -308,12 +308,16 @@ An event may be cancelled/deleted only when:
 - The event has occurred.
 - The unit has confirmed participation.
 - The user can manage the participating unit.
-- No submitted audit already exists for that unit-event participation.
+- The audit's atomic Event unit belongs to the unit's approved
+	EventParticipation.
 
 ### Business Rules
 
-- One submitted audit exists per eligible unit-event participation.
-- Only the participating unit's authorized manager can create/edit that unit's audit.
+- One submitted Audit exists per atomic Event unit; one approved
+	EventParticipation may have multiple atomic Event units.
+- The Unit's `SUBMIT_AUDITS` authority can create the atomic Event unit, create
+	the Audit draft, and finalize it. Only the draft creator may edit an existing
+	draft.
 - Audit data may be edited before submission.
 - Once submitted, the audit is immutable in the MVP.
 - Post-submission correction workflows are post-MVP.
@@ -324,7 +328,7 @@ An event may be cancelled/deleted only when:
 - Draft audit data can be entered before submission.
 - Invalid/incomplete audit submission is rejected.
 - A valid audit can be submitted.
-- A second submitted audit cannot be created for the same participation.
+- A second submitted Audit cannot be created for the same atomic Event unit.
 - After submission, the audit cannot be edited.
 - Submitted audit data is publicly viewable.
 

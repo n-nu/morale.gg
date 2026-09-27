@@ -237,12 +237,22 @@ Audit.
 
 ---
 
+### Atomic Event Unit
+
+Represents one historical battlefield appearance within an Event. It belongs
+to exactly one approved EventParticipation, while one EventParticipation may
+have many atomic Event units. It is created manually after the Event and may
+be mandatory or optional. It is the stable identity for the battlefield
+appearance and may have zero or one Audit.
+
 ### Audit
 
-Represents a participating Unit's structured record for an Event and belongs
-conceptually to approved EventParticipation. A draft may be edited before
-submission. Submitted Audits are immutable and authoritative historical source
-data.
+Represents the result record attached to one atomic Event unit. A creator-owned
+draft may be edited by its creator before submission; submission automatically
+finalizes it. Finalized Audits, Player results, and roles are immutable and are
+authoritative historical source data. Finalized result data is public while
+drafts and draft-management data are private; the submitting Auth.js User is
+not automatically public.
 
 ---
 
@@ -270,9 +280,20 @@ include commander and flag bearer; arbitrary in-Unit positions are post-MVP.
 
 ### Audit Unit Type
 
-Each relevant Audit participation records one supported Napoleonic Wars Unit
-type: Infantry, Rifles, Cavalry, or Artillery. Its exact representation is an
-implementation choice.
+Each atomic Audit result records one supported Napoleonic Wars Unit type:
+Regular, Rifles, Cavalry, or Artillery. The type remains partitionable for
+future Ranker, Commander, and General statistics and is not stored on the
+persistent Unit merely because of one Event appearance.
+
+### Event Command Group
+
+Represents a temporary, Event-scoped command structure with a descriptive
+persistent Unit, Commander Player, optional parent group, and child atomic
+Event units and/or groups. Groups form a strict tree: cycles, overlapping
+atomic ancestry, duplicate parents, and cross-Event edges are forbidden.
+Groups may be edited or deleted by Event managers without mutating atomic units
+or finalized Audits. Nested future statistics flatten to unique atomic Audits
+and partition combat values by Unit type.
 
 ---
 
@@ -387,9 +408,10 @@ The following are current MVP-level rules unless changed through the approved ar
 
 ### Audits
 
-- Audits require approved EventParticipation.
-- One submitted audit exists per eligible unit-event participation.
-- Submitted audits are immutable in the MVP.
+- Audits require approved EventParticipation through an atomic Event unit.
+- One submitted Audit exists per atomic Event unit; one approved
+  EventParticipation may have multiple atomic Event units.
+- Submitted Audits, Player results, and roles are immutable in the MVP.
 - Submitted audit data is authoritative for derived statistics.
 
 ### Public Access
