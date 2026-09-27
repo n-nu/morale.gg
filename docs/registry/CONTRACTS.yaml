@@ -35,3 +35,31 @@ contracts:
     status: stable
     version: 0.1
     updated_by_ticket: TKT-20260927-000020-001
+  - contract_id: audits-statistics-effective-finalized-audit
+    path: docs/contracts/audits-statistics-effective-finalized-audit.md
+    producer: audits
+    consumer: statistics
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260927-000024-001
+  - contract_id: events-statistics-event-time
+    path: docs/contracts/events-statistics-event-time.md
+    producer: events
+    consumer: statistics
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260927-000024-001
+  - contract_id: players-statistics-membership-history
+    path: docs/contracts/players-statistics-membership-history.md
+    producer: players
+    consumer: statistics
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260927-000024-001
+  - contract_id: units-statistics-hierarchy-read
+    path: docs/contracts/units-statistics-hierarchy-read.md
+    producer: units
+    consumer: statistics
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260927-000024-001
