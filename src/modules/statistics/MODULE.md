@@ -68,9 +68,10 @@ membership records.
 
 ## Internal Structure
 `windows.ts` implements the shared Event-time window policy; `ratios.ts`
-preserves raw numerator/denominator and zero-death state; `ranker.ts` consumes
-the Audits and Events source operations and derives public type-partitioned
-Ranker results. Future query families consume these shared primitives.
+preserves raw numerator/denominator and zero-death state; `ranker.ts`,
+`commander.ts`, and `general.ts` consume the Audits and Events source operations
+and derive public query-time results. Future query families consume these shared
+primitives.
 
 ## Extension Points
 Future Audit supersession remains Audits-owned and may change the producer's
