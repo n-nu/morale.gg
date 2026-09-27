@@ -30,9 +30,8 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	**COMPLETED.** Implements the shared Statistics foundation, Audits-owned
 	effective-Audit source operation, and Ranker statistics under Ticket 24's
 	approved architecture. Implementation: `c6c2783`.
-- **TKT-20260927-000026-001 — Commander and General Statistics:** **READY.**
-	Depends on Ticket 25's shared foundation, effective-Audit seam, and window
-	semantics.
+- **TKT-20260927-000026-001 — Commander and General Statistics:**
+	**COMPLETED.** Implementation: `0c9ab43`.
 - **TKT-20260927-000027-001 — Persistent Unit Statistics and Attendance:**
 	**READY.** Depends on Ticket 25's shared foundation, effective-Audit seam, and
 	window semantics; Average Unit Performance ratio semantics are clarified.
