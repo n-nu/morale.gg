@@ -35,8 +35,11 @@ statistics aggregation.
 Server-only workflows create atomic Event units, create/edit creator-owned
 drafts, parse PlayerID results, finalize Audits, and manage Event command
 groups. Finalized Audit results and Event command structures are publicly
-readable. Drafts and draft-management data are private. Exact DTOs and routes
-remain implementation choices within these guarantees.
+readable. `getEffectiveFinalizedAuditObservations` exposes the approved
+Statistics source read, including only the effective finalized Audit, raw
+result/role facts, and command-group descendants. Drafts and draft-management
+data are private. Exact DTOs and routes remain implementation choices within
+these guarantees.
 
 ## Inputs
 
@@ -91,9 +94,11 @@ authorize Event command groups. Group administration uses Events-owned
 
 ## Internal Structure
 
-Future server-only persistence and validation may be organized around atomic
-units, Audits, Player results/roles, and command groups. Parser, route, and
-component names are intentionally not part of this module contract.
+Server-only persistence and validation are organized around atomic units,
+Audits, Player results/roles, and command groups. `server/statistics-source.ts`
+implements the Audits-owned effective-finalized-Audit and raw observation read.
+Parser, route, and component names are intentionally not part of this module
+contract.
 
 ## Extension Points
 
@@ -113,6 +118,7 @@ approval are out of scope for Ticket 20.
 - `events-audits-event-participation-management`
 - `units-audits-submission-authorization`
 - `players-audits-player-resolution`
+- `audits-statistics-effective-finalized-audit`
 
 ## Related ADRs
 
