@@ -33,16 +33,25 @@ async function main() {
       },
     });
 
-    await transaction.authorizedUserMembership.upsert({
-      where: { userId_unitId: { userId: commanderUserId, unitId: unit.id } },
-      update: { authorityLevel: 0 },
-      create: {
-        userId: commanderUserId,
-        unitId: unit.id,
-        authorityLevel: 0,
-        createdByUserId: commanderUserId,
-      },
+    const activeMembership = await transaction.authorizedUserMembership.findFirst({
+      where: { userId: commanderUserId, unitId: unit.id, endedAt: null },
+      select: { id: true },
     });
+    if (activeMembership) {
+      await transaction.authorizedUserMembership.update({
+        where: { id: activeMembership.id },
+        data: { authorityLevel: 0 },
+      });
+    } else {
+      await transaction.authorizedUserMembership.create({
+        data: {
+          userId: commanderUserId,
+          unitId: unit.id,
+          authorityLevel: 0,
+          createdByUserId: commanderUserId,
+        },
+      });
+    }
 
     return unit;
   });

@@ -115,6 +115,10 @@ model EventParticipation {
 model Unit {
   id              String    @id @default(cuid())
   name            String
+    description     String?
+    imageRef        String?
+    discordInvite   String?
+    groupLink       String?
   parentId        String?
   parent          Unit?     @relation("UnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children        Unit[]    @relation("UnitHierarchy")
@@ -160,6 +164,8 @@ model RootUnit {
   unitId          String   @id
   designatedUnit  Unit     @relation("RootDesignation", fields: [unitId], references: [id], onDelete: Restrict)
   units           Unit[]   @relation("UnitRoot")
+  ranks           RankDefinition[]
+  medals          MedalDefinition[]
 }
 
 model AuthorizedUserMembership {
@@ -167,6 +173,7 @@ model AuthorizedUserMembership {
   userId          String
   unitId          String
   authorityLevel  Int
+  endedAt         DateTime?
   createdByUserId String
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -175,10 +182,39 @@ model AuthorizedUserMembership {
   createdBy       User            @relation("MembershipCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   grants          PermissionGrant[]
 
-  @@unique([userId, unitId])
   @@index([userId])
+  @@index([userId, endedAt])
   @@index([unitId])
+  @@index([unitId, endedAt])
   @@index([unitId, authorityLevel])
+}
+
+model RankDefinition {
+  id          String   @id @default(cuid())
+  rootUnitId  String
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rootUnit    RootUnit @relation(fields: [rootUnitId], references: [unitId], onDelete: Restrict)
+
+  @@unique([rootUnitId, name])
+  @@index([rootUnitId, sortOrder, name])
+}
+
+model MedalDefinition {
+  id          String   @id @default(cuid())
+  rootUnitId  String
+  name        String
+  description String?
+  imageRef    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rootUnit    RootUnit @relation(fields: [rootUnitId], references: [unitId], onDelete: Restrict)
+
+  @@unique([rootUnitId, name])
+  @@index([rootUnitId])
 }
 
 enum Permission {

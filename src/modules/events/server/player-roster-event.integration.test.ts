@@ -42,8 +42,8 @@ test("Player roster and Event participation integrate through their real authori
     });
     assert.ok(unit, "a seeded root Unit is required; run the documented database seed");
 
-    const ownerMembership = await prisma.authorizedUserMembership.findUnique({
-      where: { userId_unitId: { userId: unit.commanderUserId, unitId: unit.id } },
+    const ownerMembership = await prisma.authorizedUserMembership.findFirst({
+      where: { userId: unit.commanderUserId, unitId: unit.id, endedAt: null },
       select: { id: true },
     });
     assert.ok(ownerMembership, "the root Unit commander membership is required");

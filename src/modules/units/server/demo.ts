@@ -101,6 +101,10 @@ export function listDemoUnits() {
       return {
         id: unit.id,
         name: unit.name,
+        description: null,
+        imageRef: null,
+        discordInvite: null,
+        groupLink: null,
         parent: parent ? { id: parent.id, name: parent.name } : null,
       };
     });

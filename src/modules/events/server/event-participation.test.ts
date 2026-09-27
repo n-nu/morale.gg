@@ -89,9 +89,11 @@ function installUniquePermissionScenario({
               delegatedFromGrantId: null,
               revokedAt: null,
               membership: {
+                id: "membership-1",
                 userId,
                 unitId,
                 authorityLevel: 1,
+                endedAt: null,
               },
             },
           ]

@@ -3,10 +3,15 @@ import test from "node:test";
 
 import { prisma } from "@/lib/prisma";
 import {
+  canCreateChildUnit,
   canCreateEvent,
+  canDeleteUnit,
+  canManageRootSettings,
   canManageAuthorizedUsers,
   canManageRoster,
   canManageUnit,
+  canMoveUnit,
+  getDelegationSourceGrantId,
   hasEffectiveUnitPermission,
 } from "./authorization";
 
@@ -20,7 +25,7 @@ const commander = "commander";
 const other = "other";
 
 type Snapshot = {
-  units: Array<{ id: string; parentId: string | null; rootUnitId: string | null }>;
+  units: Array<{ id: string; parentId: string | null; rootUnitId: string | null; commanderUserId: string }>;
   roots: Array<{ unitId: string; designatedUnit: { id: string } }>;
   grants: Array<{
     id: string;
@@ -29,18 +34,18 @@ type Snapshot = {
     scope: "SELF" | "SELF_AND_CHILDREN" | "SELF_AND_DESCENDANTS" | null;
     delegatedFromGrantId: string | null;
     revokedAt: Date | null;
-    membership: { userId: string; unitId: string; authorityLevel: number } | null;
+    membership: { id: string; userId: string; unitId: string; authorityLevel: number; endedAt: Date | null } | null;
   }>;
 };
 
 function baseSnapshot(): Snapshot {
   return {
     units: [
-      { id: rootA, parentId: null, rootUnitId: rootA },
-      { id: branch, parentId: rootA, rootUnitId: rootA },
-      { id: grandchild, parentId: branch, rootUnitId: rootA },
-      { id: unrelated, parentId: rootA, rootUnitId: rootA },
-      { id: rootB, parentId: null, rootUnitId: rootB },
+      { id: rootA, parentId: null, rootUnitId: rootA, commanderUserId: commander },
+      { id: branch, parentId: rootA, rootUnitId: rootA, commanderUserId: other },
+      { id: grandchild, parentId: branch, rootUnitId: rootA, commanderUserId: other },
+      { id: unrelated, parentId: rootA, rootUnitId: rootA, commanderUserId: other },
+      { id: rootB, parentId: null, rootUnitId: rootB, commanderUserId: other },
     ],
     roots: [
       { unitId: rootA, designatedUnit: { id: rootA } },
@@ -68,9 +73,11 @@ function addGrant(
     delegatedFromGrantId: values.delegatedFromGrantId ?? null,
     revokedAt: values.revokedAt ?? null,
     membership: values.membership ?? {
+      id: `${values.id}-membership`,
       userId: values.userId ?? actor,
       unitId: values.unitId ?? rootA,
       authorityLevel: 1,
+      endedAt: null,
     },
   });
 }
@@ -93,6 +100,16 @@ function installSnapshot(snapshot: Snapshot) {
     configurable: true,
     value: async () => snapshot.grants,
   });
+  Object.defineProperty(prisma.authorizedUserMembership, "findFirst", {
+    configurable: true,
+    value: async () => ({
+      id: "target-membership",
+      userId: other,
+      unitId: branch,
+      authorityLevel: 3,
+      endedAt: null,
+    }),
+  });
 }
 
 test.afterEach(() => {
@@ -112,6 +129,10 @@ test.afterEach(() => {
     configurable: true,
     value: originalDelegates.grantFindMany,
   });
+  Object.defineProperty(prisma.authorizedUserMembership, "findFirst", {
+    configurable: true,
+    value: originalDelegates.membershipFindFirst,
+  });
 });
 
 const originalDelegates = {
@@ -119,6 +140,7 @@ const originalDelegates = {
   unitFindMany: prisma.unit.findMany,
   rootFindMany: prisma.rootUnit.findMany,
   grantFindMany: prisma.permissionGrant.findMany,
+  membershipFindFirst: prisma.authorizedUserMembership.findFirst,
 };
 
 test("enforces ordinary scopes and downward-only authority", async () => {
@@ -149,6 +171,103 @@ test("denies revoked grants and Commander-only operational access", async () => 
   installSnapshot(snapshot);
   assert.equal(await canManageUnit(actor, rootA), false);
   assert.equal(await canManageUnit(commander, rootA), false);
+});
+
+test("ended authorized-user membership makes its grants ineffective", async () => {
+  const snapshot = baseSnapshot();
+  addGrant(snapshot, {
+    id: "ended-membership-grant",
+    permission: "MANAGE_UNIT",
+    scope: "SELF",
+    membership: {
+      id: "ended-membership",
+      userId: actor,
+      unitId: rootA,
+      authorityLevel: 1,
+      endedAt: new Date(),
+    },
+  });
+  installSnapshot(snapshot);
+
+  assert.equal(await canManageUnit(actor, rootA), false);
+});
+
+test("RootUnit settings belong only to the designated RootUnit Commander", async () => {
+  const snapshot = baseSnapshot();
+  installSnapshot(snapshot);
+
+  assert.equal(await canManageRootSettings(commander, rootA), true);
+  assert.equal(await canManageRootSettings(actor, rootA), false);
+  assert.equal(await canManageRootSettings(commander, rootB), false);
+});
+
+test("structural workflows authorize their operation territory separately", async () => {
+  const snapshot = baseSnapshot();
+  addGrant(snapshot, {
+    id: "commander-structure",
+    permission: "MANAGE_STRUCTURE",
+    scope: null,
+    userId: commander,
+  });
+  addGrant(snapshot, {
+    id: "commander-authorized-users",
+    permission: "MANAGE_AUTHORIZED_USERS",
+    scope: "SELF_AND_CHILDREN",
+    userId: commander,
+  });
+  addGrant(snapshot, {
+    id: "actor-structure",
+    permission: "MANAGE_STRUCTURE",
+    scope: null,
+    userId: actor,
+  });
+  installSnapshot(snapshot);
+
+  assert.equal(await canCreateChildUnit(commander, rootA), true);
+  assert.equal(await canCreateChildUnit(actor, rootA), false);
+  assert.equal(await canMoveUnit(actor, branch, unrelated), true);
+  assert.equal(await canMoveUnit(actor, branch, grandchild), false);
+  assert.equal(await canMoveUnit(actor, branch, rootB), false);
+  assert.equal(await canDeleteUnit(actor, branch), true);
+  assert.equal(await canDeleteUnit(actor, rootA), false);
+});
+
+test("delegation must be narrower than the effective source grant", async () => {
+  const snapshot = baseSnapshot();
+  addGrant(snapshot, {
+    id: "manage-users",
+    permission: "MANAGE_AUTHORIZED_USERS",
+    scope: "SELF_AND_DESCENDANTS",
+    unitId: rootA,
+  });
+  addGrant(snapshot, {
+    id: "roster-source",
+    permission: "MANAGE_ROSTER",
+    scope: "SELF_AND_DESCENDANTS",
+    unitId: rootA,
+  });
+  installSnapshot(snapshot);
+
+  assert.equal(
+    await getDelegationSourceGrantId(
+      actor,
+      "target-membership",
+      branch,
+      "MANAGE_ROSTER",
+      "SELF",
+    ),
+    "roster-source",
+  );
+  assert.equal(
+    await getDelegationSourceGrantId(
+      actor,
+      "target-membership",
+      branch,
+      "MANAGE_ROSTER",
+      "SELF_AND_DESCENDANTS",
+    ),
+    null,
+  );
 });
 
 test("allows Event creation with any valid MANAGE_EVENTS grant", async () => {

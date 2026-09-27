@@ -1,11 +1,18 @@
 import "server-only";
 
-import type { Permission, PermissionScope } from "@prisma/client";
+import type { Permission, PermissionScope, Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+
+type AuthorityDatabase = Pick<
+  Prisma.TransactionClient,
+  "user" | "unit" | "rootUnit" | "permissionGrant" | "authorizedUserMembership"
+>;
 
 type UnitRecord = {
   id: string;
   parentId: string | null;
   rootUnitId: string | null;
+  commanderUserId: string;
 };
 
 type GrantRecord = {
@@ -16,9 +23,11 @@ type GrantRecord = {
   delegatedFromGrantId: string | null;
   revokedAt: Date | null;
   membership: {
+    id: string;
     userId: string;
     unitId: string;
     authorityLevel: number;
+    endedAt: Date | null;
   } | null;
 };
 
@@ -33,16 +42,17 @@ type Ancestry = {
   rootUnitId: string;
 };
 
-async function loadAuthoritySnapshot(): Promise<AuthoritySnapshot> {
-  const { prisma } = await import("@/lib/prisma");
+async function loadAuthoritySnapshot(
+  database: AuthorityDatabase = prisma,
+): Promise<AuthoritySnapshot> {
   const [units, roots, grants] = await Promise.all([
-    prisma.unit.findMany({
-      select: { id: true, parentId: true, rootUnitId: true },
+    database.unit.findMany({
+      select: { id: true, parentId: true, rootUnitId: true, commanderUserId: true },
     }),
-    prisma.rootUnit.findMany({
+    database.rootUnit.findMany({
       select: { unitId: true, designatedUnit: { select: { id: true } } },
     }),
-    prisma.permissionGrant.findMany({
+    database.permissionGrant.findMany({
       select: {
         id: true,
         authorizedUserMembershipId: true,
@@ -51,7 +61,13 @@ async function loadAuthoritySnapshot(): Promise<AuthoritySnapshot> {
         delegatedFromGrantId: true,
         revokedAt: true,
         membership: {
-          select: { userId: true, unitId: true, authorityLevel: true },
+          select: {
+            id: true,
+            userId: true,
+            unitId: true,
+            authorityLevel: true,
+            endedAt: true,
+          },
         },
       },
     }),
@@ -129,7 +145,13 @@ function isGrantLineageValid(
   grant: GrantRecord,
   lineage: Set<string>,
 ): boolean {
-  if (grant.revokedAt !== null || grant.membership === null) return false;
+  if (
+    grant.revokedAt !== null ||
+    grant.membership === null ||
+    grant.membership.endedAt !== null
+  ) {
+    return false;
+  }
   if (lineage.has(grant.id)) return false;
   if (grant.permission === "MANAGE_STRUCTURE" && grant.scope !== null) {
     return false;
@@ -168,13 +190,13 @@ export async function hasEffectiveUnitPermission(
   userId: string,
   unitId: string,
   permission: Permission,
+  database: AuthorityDatabase = prisma,
 ): Promise<boolean> {
   if (userId.trim() === "" || unitId.trim() === "") return false;
 
-  const { prisma } = await import("@/lib/prisma");
   const [user, snapshot] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
-    loadAuthoritySnapshot(),
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    loadAuthoritySnapshot(database),
   ]);
   if (user === null) return false;
 
@@ -203,13 +225,15 @@ export async function hasEffectiveUnitPermission(
   return false;
 }
 
-export async function canCreateEvent(userId: string): Promise<boolean> {
+export async function canCreateEvent(
+  userId: string,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
   if (userId.trim() === "") return false;
 
-  const { prisma } = await import("@/lib/prisma");
   const [user, snapshot] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
-    loadAuthoritySnapshot(),
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    loadAuthoritySnapshot(database),
   ]);
   if (user === null) return false;
 
@@ -226,8 +250,395 @@ export async function canCreateEvent(userId: string): Promise<boolean> {
   return false;
 }
 
-export function canManageUnit(userId: string, unitId: string): Promise<boolean> {
-  return hasEffectiveUnitPermission(userId, unitId, "MANAGE_UNIT");
+export async function canManageRootSettings(
+  userId: string,
+  rootUnitId: string,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
+  if (userId.trim() === "" || rootUnitId.trim() === "") return false;
+
+  const [user, snapshot] = await Promise.all([
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    loadAuthoritySnapshot(database),
+  ]);
+  if (user === null || !snapshot.roots.has(rootUnitId)) return false;
+
+  const root = snapshot.units.get(rootUnitId);
+  return (
+    root !== undefined &&
+    root.parentId === null &&
+    root.rootUnitId === rootUnitId &&
+    root.commanderUserId === userId
+  );
+}
+
+function actorHasStructuralAnchor(
+  snapshot: AuthoritySnapshot,
+  userId: string,
+  sourceAncestry: Ancestry,
+  destinationAncestry?: Ancestry,
+  allowSourceAnchor = false,
+): boolean {
+  for (const grant of snapshot.grants.values()) {
+    if (
+      grant.permission !== "MANAGE_STRUCTURE" ||
+      grant.membership?.userId !== userId ||
+      !isGrantLineageValid(snapshot, grant, new Set())
+    ) {
+      continue;
+    }
+
+    const anchorAncestry = getAncestry(snapshot, grant.membership.unitId);
+    if (
+      anchorAncestry === null ||
+      anchorAncestry.rootUnitId !== sourceAncestry.rootUnitId ||
+      destinationAncestry?.rootUnitId !== undefined &&
+        anchorAncestry.rootUnitId !== destinationAncestry.rootUnitId
+    ) {
+      continue;
+    }
+
+    const sourceDistance = sourceAncestry.unitIds.indexOf(
+      anchorAncestry.unitIds[0],
+    );
+    if (sourceDistance < 0 || (!allowSourceAnchor && sourceDistance === 0)) {
+      continue;
+    }
+
+    if (destinationAncestry !== undefined) {
+      const destinationDistance = destinationAncestry.unitIds.indexOf(
+        anchorAncestry.unitIds[0],
+      );
+      if (destinationDistance < 0) continue;
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+function actorHasPermissionForProspectiveChild(
+  snapshot: AuthoritySnapshot,
+  userId: string,
+  parentAncestry: Ancestry,
+): boolean {
+  for (const grant of snapshot.grants.values()) {
+    if (
+      grant.permission !== "MANAGE_AUTHORIZED_USERS" ||
+      grant.membership?.userId !== userId ||
+      !isGrantLineageValid(snapshot, grant, new Set())
+    ) {
+      continue;
+    }
+
+    const membershipAncestry = getAncestry(snapshot, grant.membership.unitId);
+    if (
+      membershipAncestry === null ||
+      membershipAncestry.rootUnitId !== parentAncestry.rootUnitId
+    ) {
+      continue;
+    }
+
+    const parentDistance = parentAncestry.unitIds.indexOf(
+      membershipAncestry.unitIds[0],
+    );
+    if (parentDistance < 0) continue;
+
+    const childDistance = parentDistance + 1;
+    if (
+      grant.scope === "SELF_AND_CHILDREN" &&
+      childDistance <= 1
+    ) {
+      return true;
+    }
+    if (
+      grant.scope === "SELF_AND_DESCENDANTS" &&
+      childDistance >= 0
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export async function canCreateChildUnit(
+  userId: string,
+  parentUnitId: string,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
+  if (userId.trim() === "" || parentUnitId.trim() === "") return false;
+
+  const [user, snapshot] = await Promise.all([
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    loadAuthoritySnapshot(database),
+  ]);
+  if (user === null) return false;
+
+  const parentAncestry = getAncestry(snapshot, parentUnitId);
+  if (parentAncestry === null) return false;
+
+  const isAncestorCommander = parentAncestry.unitIds.some(
+    (unitId) => snapshot.units.get(unitId)?.commanderUserId === userId,
+  );
+  return (
+    isAncestorCommander &&
+    actorHasStructuralAnchor(snapshot, userId, parentAncestry, undefined, true) &&
+    actorHasPermissionForProspectiveChild(snapshot, userId, parentAncestry)
+  );
+}
+
+export async function canMoveUnit(
+  userId: string,
+  unitId: string,
+  destinationParentId: string,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
+  if (
+    userId.trim() === "" ||
+    unitId.trim() === "" ||
+    destinationParentId.trim() === ""
+  ) {
+    return false;
+  }
+
+  const [user, snapshot] = await Promise.all([
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    loadAuthoritySnapshot(database),
+  ]);
+  if (user === null) return false;
+
+  const sourceAncestry = getAncestry(snapshot, unitId);
+  const destinationAncestry = getAncestry(snapshot, destinationParentId);
+  if (
+    sourceAncestry === null ||
+    destinationAncestry === null ||
+    sourceAncestry.rootUnitId !== destinationAncestry.rootUnitId ||
+    destinationAncestry.unitIds.includes(unitId)
+  ) {
+    return false;
+  }
+
+  return actorHasStructuralAnchor(
+    snapshot,
+    userId,
+    sourceAncestry,
+    destinationAncestry,
+  );
+}
+
+export async function canDeleteUnit(
+  userId: string,
+  unitId: string,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
+  if (userId.trim() === "" || unitId.trim() === "") return false;
+
+  const [user, snapshot] = await Promise.all([
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    loadAuthoritySnapshot(database),
+  ]);
+  if (user === null) return false;
+
+  const targetAncestry = getAncestry(snapshot, unitId);
+  if (targetAncestry === null) return false;
+
+  return actorHasStructuralAnchor(snapshot, userId, targetAncestry);
+}
+
+function actorCanManageAuthorityLevel(
+  snapshot: AuthoritySnapshot,
+  userId: string,
+  targetUnitId: string,
+  targetAuthorityLevel: number,
+): boolean {
+  const targetAncestry = getAncestry(snapshot, targetUnitId);
+  if (targetAncestry === null) return false;
+
+  for (const grant of snapshot.grants.values()) {
+    if (
+      grant.permission !== "MANAGE_AUTHORIZED_USERS" ||
+      grant.membership?.userId !== userId ||
+      !isGrantLineageValid(snapshot, grant, new Set())
+    ) {
+      continue;
+    }
+
+    const membershipAncestry = getAncestry(snapshot, grant.membership.unitId);
+    if (
+      membershipAncestry === null ||
+      !coversTarget(grant, membershipAncestry, targetAncestry)
+    ) {
+      continue;
+    }
+
+    if (grant.membership.unitId !== targetUnitId) {
+      if (targetAncestry.unitIds.includes(grant.membership.unitId)) return true;
+      continue;
+    }
+
+    if (grant.membership.authorityLevel < targetAuthorityLevel) return true;
+  }
+
+  return false;
+}
+
+export async function canManageAuthorizedUser(
+  userId: string,
+  targetMembershipId: string,
+  unitId: string,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
+  if (
+    userId.trim() === "" ||
+    targetMembershipId.trim() === "" ||
+    unitId.trim() === ""
+  ) {
+    return false;
+  }
+
+  const [user, target, snapshot] = await Promise.all([
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    database.authorizedUserMembership.findFirst({
+      where: { id: targetMembershipId, unitId, endedAt: null },
+      select: { unitId: true, authorityLevel: true },
+    }),
+    loadAuthoritySnapshot(database),
+  ]);
+  if (user === null || target === null) return false;
+
+  return actorCanManageAuthorityLevel(
+    snapshot,
+    userId,
+    target.unitId,
+    target.authorityLevel,
+  );
+}
+
+export async function canAddAuthorizedUser(
+  userId: string,
+  unitId: string,
+  authorityLevel: number,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
+  if (
+    userId.trim() === "" ||
+    unitId.trim() === "" ||
+    !Number.isInteger(authorityLevel) ||
+    authorityLevel < 1
+  ) {
+    return false;
+  }
+
+  const [user, snapshot] = await Promise.all([
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    loadAuthoritySnapshot(database),
+  ]);
+  return (
+    user !== null &&
+    actorCanManageAuthorityLevel(snapshot, userId, unitId, authorityLevel)
+  );
+}
+
+function delegatedScopeIsNarrower(
+  sourceScope: PermissionScope,
+  requestedScope: PermissionScope,
+): boolean {
+  if (sourceScope === "SELF_AND_CHILDREN") return requestedScope === "SELF";
+  if (sourceScope === "SELF_AND_DESCENDANTS") {
+    return requestedScope === "SELF" || requestedScope === "SELF_AND_CHILDREN";
+  }
+  return false;
+}
+
+export async function getDelegationSourceGrantId(
+  userId: string,
+  targetMembershipId: string,
+  targetUnitId: string,
+  permission: Permission,
+  scope: PermissionScope | null,
+  database: AuthorityDatabase = prisma,
+): Promise<string | null> {
+  if (
+    userId.trim() === "" ||
+    targetMembershipId.trim() === "" ||
+    targetUnitId.trim() === ""
+  ) {
+    return null;
+  }
+
+  const [user, target, snapshot] = await Promise.all([
+    database.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    database.authorizedUserMembership.findFirst({
+      where: { id: targetMembershipId, unitId: targetUnitId, endedAt: null },
+      select: { unitId: true, authorityLevel: true },
+    }),
+    loadAuthoritySnapshot(database),
+  ]);
+  if (
+    user === null ||
+    target === null ||
+    !actorCanManageAuthorityLevel(
+      snapshot,
+      userId,
+      target.unitId,
+      target.authorityLevel,
+    )
+  ) {
+    return null;
+  }
+
+  const targetAncestry = getAncestry(snapshot, targetUnitId);
+  if (targetAncestry === null) return null;
+
+  for (const grant of snapshot.grants.values()) {
+    if (
+      grant.permission !== permission ||
+      grant.membership?.userId !== userId ||
+      !isGrantLineageValid(snapshot, grant, new Set())
+    ) {
+      continue;
+    }
+
+    const anchorAncestry = getAncestry(snapshot, grant.membership.unitId);
+    if (
+      anchorAncestry === null ||
+      anchorAncestry.rootUnitId !== targetAncestry.rootUnitId
+    ) {
+      continue;
+    }
+
+    if (permission === "MANAGE_STRUCTURE") {
+      if (
+        scope === null &&
+        grant.scope === null &&
+        targetAncestry.unitIds.indexOf(anchorAncestry.unitIds[0]) > 0
+      ) {
+        return grant.id;
+      }
+      continue;
+    }
+
+    if (
+      scope !== null &&
+      grant.scope !== null &&
+      delegatedScopeIsNarrower(grant.scope, scope) &&
+      coversTarget(grant, anchorAncestry, targetAncestry)
+    ) {
+      return grant.id;
+    }
+  }
+
+  return null;
+}
+
+export function canManageUnit(
+  userId: string,
+  unitId: string,
+  database: AuthorityDatabase = prisma,
+): Promise<boolean> {
+  return hasEffectiveUnitPermission(userId, unitId, "MANAGE_UNIT", database);
 }
 
 export function canManageRoster(
@@ -240,11 +651,13 @@ export function canManageRoster(
 export function canManageAuthorizedUsers(
   userId: string,
   unitId: string,
+  database: AuthorityDatabase = prisma,
 ): Promise<boolean> {
   return hasEffectiveUnitPermission(
     userId,
     unitId,
     "MANAGE_AUTHORIZED_USERS",
+    database,
   );
 }
 
