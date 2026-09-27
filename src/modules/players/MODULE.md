@@ -4,7 +4,7 @@ path: src/modules/players
 status: active
 version: 0.1
 last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000020-001
+updated_by_ticket: TKT-20260927-000027-001
 ---
 
 # Players
@@ -53,8 +53,12 @@ the session server-side and calls `canManageRoster` immediately before writing.
 UI controls are convenience only; the server always enforces authorization.
 
 ## Internal Structure
-`server/` contains persistence, workflows and server actions. `components/`
-contains roster presentation and forms. `validation.ts` contains input rules.
+`server/` contains persistence, workflows and server actions.
+`server/statistics-source.ts` accepts the stable game Player ID, resolves its
+internal Player key inside Players, and evaluates the matching UnitMembership
+period at canonical Event time without exposing the internal key to Statistics.
+`components/` contains roster presentation and forms. `validation.ts` contains
+input rules.
 
 ## Extension Points
 Local presentation, validation and queries may evolve within the approved scope.
@@ -68,6 +72,7 @@ game-ID lookup is available. History and individual rosters are unpaginated.
 Unit demo fixtures do not have persistent rosters and show no mutation controls.
 
 ## Related Contracts
+- `docs/contracts/players-statistics-membership-history.md`
 - `docs/contracts/players-units-roster-authorization.md`
 - `docs/contracts/players-audits-player-resolution.md`
 

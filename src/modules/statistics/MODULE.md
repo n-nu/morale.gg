@@ -4,7 +4,7 @@ path: src/modules/statistics
 status: active
 version: 0.1
 last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000024-001
+updated_by_ticket: TKT-20260927-000027-001
 ---
 
 # Statistics
@@ -29,9 +29,9 @@ authoritative gameplay history. Statistics owns no mutable aggregate state.
 ## Public Interface
 Approved public read services for Ranker, Commander, General, Direct Unit
 Performance, Organizational Unit Performance, Average Unit Performance, and
-Player + Unit attendance. `getRankerStatistics` is the implemented public
-query-time Ranker read; it requires no authentication and keys results only to
-game Player identity. Exact routes and DTOs remain implementation choices.
+Player + Unit attendance. These services are implemented as public query-time
+reads and key Player results only to stable game identity. Exact routes and DTOs
+remain implementation choices.
 
 ## Inputs
 Read-only source contracts from Audits, Events, Players, and Units; a requested
@@ -68,10 +68,10 @@ membership records.
 
 ## Internal Structure
 `windows.ts` implements the shared Event-time window policy; `ratios.ts`
-preserves raw numerator/denominator and zero-death state; `ranker.ts`,
-`commander.ts`, and `general.ts` consume the Audits and Events source operations
-and derive public query-time results. Future query families consume these shared
-primitives.
+preserves raw numerator/denominator and zero-death state. `ranker.ts`,
+`commander.ts`, `general.ts`, `unit.ts`, and `attendance.ts` consume the
+Audits/Events sources and relevant Players/Units semantic operations to derive
+public query-time results.
 
 ## Extension Points
 Future Audit supersession remains Audits-owned and may change the producer's

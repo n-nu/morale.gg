@@ -33,8 +33,11 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 - **TKT-20260927-000026-001 — Commander and General Statistics:**
 	**COMPLETED.** Implementation: `0c9ab43`.
 - **TKT-20260927-000027-001 — Persistent Unit Statistics and Attendance:**
-	**READY.** Depends on Ticket 25's shared foundation, effective-Audit seam, and
-	window semantics; Average Unit Performance ratio semantics are clarified.
+	**COMPLETED.** Implements query-time Direct, Organizational, and Average Unit
+	Performance plus historical Player/Unit/Event attendance. Players resolves
+	stable game Player IDs to internal membership keys within its source
+	operation; no contract or schema change was required. Implementation:
+	`649eb3e`.
 
 ---
 
