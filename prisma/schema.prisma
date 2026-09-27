@@ -22,6 +22,7 @@ model User {
   ownedEvents Event[] @relation("EventOwner")
   eventAuthorizations EventAuthorizedUser[] @relation("EventAuthorizedUser")
   addedEventAuthorizations EventAuthorizedUser[] @relation("EventAuthorizationCreator")
+  auditDrafts Audit[] @relation("AuditCreator")
 }
 
 model Account {
@@ -120,6 +121,7 @@ model AtomicEventUnit {
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   eventParticipation   EventParticipation @relation(fields: [eventParticipationId], references: [id], onDelete: Restrict)
+  audit                Audit?
 
   @@index([eventParticipationId, createdAt])
 }
@@ -156,6 +158,80 @@ model Player {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   memberships UnitMembership[]
+  auditResults AuditPlayerResult[]
+  auditRoles AuditRoleAssignment[]
+}
+
+enum AuditLifecycle {
+  DRAFT
+  FINAL
+}
+
+enum AuditUnitType {
+  REGULAR
+  RIFLES
+  CAVALRY
+  ARTILLERY
+}
+
+enum AuditRoleAssignmentRole {
+  COMMANDER
+  FLAG_BEARER
+}
+
+model Audit {
+  id                  String             @id @default(cuid())
+  atomicEventUnitId   String             @unique
+  createdByUserId     String
+  lifecycle           AuditLifecycle     @default(DRAFT)
+  rawData             String?
+  unitType            AuditUnitType?
+  tickets             Int?
+  flagCaptures        Int?
+  flagLosses          Int?
+  stars               Int?
+  submittedAt         DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  atomicEventUnit     AtomicEventUnit    @relation(fields: [atomicEventUnitId], references: [id], onDelete: Restrict)
+  creator             User               @relation("AuditCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  playerResults       AuditPlayerResult[]
+  roles               AuditRoleAssignment[]
+
+  @@index([createdByUserId])
+  @@index([lifecycle])
+}
+
+model AuditPlayerResult {
+  id        String   @id @default(cuid())
+  auditId   String
+  playerId  String
+  kills     Int
+  deaths    Int
+  assists   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  audit     Audit    @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  @@unique([auditId, playerId])
+  @@index([auditId])
+  @@index([playerId])
+}
+
+model AuditRoleAssignment {
+  id        String                  @id @default(cuid())
+  auditId   String
+  playerId  String
+  role      AuditRoleAssignmentRole
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  audit     Audit                   @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  player    Player                  @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  @@unique([auditId, playerId, role])
+  @@index([auditId])
+  @@index([playerId])
 }
 
 model UnitMembership {

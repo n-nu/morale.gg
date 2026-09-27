@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { listEvents } from "@/modules/events/server/queries";
 import {
   getApprovedParticipationContext,
@@ -10,8 +11,12 @@ import {
 } from "@/modules/audits/server/atomic-units";
 import {
   createAtomicEventUnitAction,
+  createAuditDraftAction,
   deleteAtomicEventUnitAction,
+  submitAuditAction,
 } from "@/modules/audits/server/actions";
+import { getAuditForAtomicUnit } from "@/modules/audits/server/reads";
+import { AuditEditor } from "./audit-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +26,7 @@ export default async function AuditsPage({
   searchParams: Promise<{ participation?: string }>;
 }) {
   const params = await searchParams;
-  const events = await listEvents();
+  const [events, viewerUserId] = await Promise.all([listEvents(), getAuthenticatedUserId()]);
   const contexts = (
     await Promise.all(
       events.flatMap(async (event) => {
@@ -48,12 +53,19 @@ export default async function AuditsPage({
   const atomicUnits = selectedContext
     ? await listAtomicEventUnits(selectedContext.participationId)
     : [];
+  const auditViews = await Promise.all(
+    atomicUnits.map(async (atomicUnit) => [
+      atomicUnit.id,
+      await getAuditForAtomicUnit(atomicUnit.id, viewerUserId),
+    ] as const),
+  );
+  const auditsByAtomicUnit = new Map(auditViews);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-10">
       <h1 className="text-3xl font-bold">Audits</h1>
-      <p className="my-3 text-muted">
-        Create the atomic Event-units that will hold future Audit results.
+      <p className="my-3 max-w-3xl text-muted">
+        Select an approved Event participation, create an atomic unit, and submit one immutable Audit for each battlefield unit.
       </p>
 
       {contexts.length === 0 ? (
@@ -91,17 +103,62 @@ export default async function AuditsPage({
                       ) : (
                         <ul className="mt-2 divide-y divide-edge rounded border border-edge">
                           {atomicUnits.map((atomicUnit) => (
-                            <li key={atomicUnit.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
-                              <span>
-                                {atomicUnit.isMandatory ? "Mandatory" : "Optional"}
-                                <span className="ml-2 text-xs text-muted">{atomicUnit.id}</span>
-                              </span>
-                              <form action={deleteAtomicEventUnitAction}>
-                                <input type="hidden" name="atomicEventUnitId" value={atomicUnit.id} />
-                                <button className="text-sm font-semibold text-red-300 underline" type="submit">
-                                  Delete unused unit
-                                </button>
-                              </form>
+                            <li key={atomicUnit.id} className="space-y-4 p-4">
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <span>
+                                  {atomicUnit.isMandatory ? "Mandatory" : "Optional"}
+                                  <span className="ml-2 text-xs text-muted">{atomicUnit.id}</span>
+                                </span>
+                                {auditsByAtomicUnit.get(atomicUnit.id) === null ? (
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <form action={createAuditDraftAction}>
+                                      <input type="hidden" name="atomicEventUnitId" value={atomicUnit.id} />
+                                      <button className="rounded bg-gold px-3 py-2 text-sm font-bold text-gold-ink" type="submit">
+                                        Start Audit
+                                      </button>
+                                    </form>
+                                    <form action={deleteAtomicEventUnitAction}>
+                                      <input type="hidden" name="atomicEventUnitId" value={atomicUnit.id} />
+                                      <button className="text-sm font-semibold text-red-300 underline" type="submit">
+                                        Delete unused unit
+                                      </button>
+                                    </form>
+                                  </div>
+                                ) : null}
+                              </div>
+                              {(() => {
+                                const audit = auditsByAtomicUnit.get(atomicUnit.id);
+                                if (audit === null || audit === undefined) return null;
+                                if (audit.lifecycle === "DRAFT") {
+                                  return (
+                                    <div className="rounded border border-gold/40 bg-surface px-4 py-4">
+                                      <p className="font-semibold text-gold-bright">Draft Audit</p>
+                                      <p className="mt-1 text-sm text-muted">Only the creator can edit this draft. Submission finalizes it permanently.</p>
+                                      <AuditEditor auditId={audit.id} submitAction={submitAuditAction} />
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="rounded border border-green-bright/40 bg-surface px-4 py-4">
+                                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                      <p className="font-semibold text-green-bright">Final Audit: {audit.unitType}</p>
+                                      <span className="text-sm text-muted">Tickets {audit.tickets} / Stars {audit.stars}</span>
+                                    </div>
+                                    <div className="mt-3 grid gap-3 sm:grid-cols-3 text-sm">
+                                      <span>Flag captures: {audit.flagCaptures}</span>
+                                      <span>Flag losses: {audit.flagLosses}</span>
+                                      <span>Players: {audit.results.length}</span>
+                                    </div>
+                                    <div className="mt-4 overflow-x-auto rounded border border-edge">
+                                      <table className="w-full text-left text-sm">
+                                        <thead className="bg-surface-2 text-xs uppercase text-muted"><tr><th className="px-3 py-2">Player</th><th className="px-3 py-2">K</th><th className="px-3 py-2">D</th><th className="px-3 py-2">A</th></tr></thead>
+                                        <tbody>{audit.results.map((result) => <tr key={result.playerId} className="border-t border-edge"><td className="px-3 py-2 font-mono">{result.gamePlayerId}</td><td className="px-3 py-2">{result.kills}</td><td className="px-3 py-2">{result.deaths}</td><td className="px-3 py-2">{result.assists}</td></tr>)}</tbody>
+                                      </table>
+                                    </div>
+                                    <p className="mt-3 text-sm text-muted">{audit.roles.map((role) => `${role.role === "FLAG_BEARER" ? "Flag Bearer" : "Commander"}: ${role.gamePlayerId}`).join(" · ")}</p>
+                                  </div>
+                                );
+                              })()}
                             </li>
                           ))}
                         </ul>
