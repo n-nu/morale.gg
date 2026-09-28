@@ -39,12 +39,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             >
               morale.gg
             </Link>
-            <div className="flex items-center gap-3 md:gap-7">
+            <div className="flex items-center gap-2 md:gap-7">
               {plannedNav.map((item) => (
                 <span
                   key={item}
                   title="Coming soon"
-                  className="hidden cursor-default text-xs font-bold uppercase tracking-[0.1em] text-muted/50 sm:inline"
+                  className="hidden cursor-default text-xs font-bold uppercase tracking-[0.1em] text-muted/50 lg:inline"
                 >
                   {item}
                 </span>
