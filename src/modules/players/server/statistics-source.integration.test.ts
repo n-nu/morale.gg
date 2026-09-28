@@ -11,14 +11,14 @@ test("Players resolves game Player IDs to internal membership keys and evaluates
 
   const suffix = randomUUID();
   const primaryUnit = await prisma.unit.findFirst({
-    where: { rootUnitId: { not: null } },
+    where: { parentId: null, rootUnitId: { not: null } },
     select: { id: true, rootUnitId: true, commanderUserId: true },
   });
   assert.ok(primaryUnit, "a seeded Unit is required; run the documented database seed");
 
   let createdUnitId: string | null = null;
   let secondaryUnit = await prisma.unit.findFirst({
-    where: { id: { not: primaryUnit.id } },
+    where: { id: { not: primaryUnit.id }, parentId: null },
     select: { id: true },
   });
   if (secondaryUnit === null) {

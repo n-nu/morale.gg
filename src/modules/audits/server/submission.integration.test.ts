@@ -14,7 +14,7 @@ test("Audit submission persists identity-only Players, results, roles, and immut
   const existingGamePlayerId = `existing-${suffix}`;
   const mercenaryGamePlayerId = `mercenary-${suffix}`;
   const unit = await prisma.unit.findFirst({
-    where: { rootUnitId: { not: null } },
+    where: { parentId: null, rootUnitId: { not: null } },
     select: { id: true, commanderUserId: true },
   });
   assert.ok(unit, "a seeded Unit is required; run the documented database seed");
@@ -126,18 +126,20 @@ test("Audit submission persists identity-only Players, results, roles, and immut
       /immutable|finalized|restrict/i,
     );
   } finally {
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
-    await prisma.auditPlayerResult.deleteMany({ where: { audit: { atomicEventUnitId: atomicUnit.id } } });
-    await prisma.auditRoleAssignment.deleteMany({ where: { audit: { atomicEventUnitId: atomicUnit.id } } });
-    await prisma.audit.deleteMany({ where: { atomicEventUnitId: atomicUnit.id } });
+    await prisma.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
+      await transaction.auditPlayerResult.deleteMany({ where: { audit: { atomicEventUnitId: atomicUnit.id } } });
+      await transaction.auditRoleAssignment.deleteMany({ where: { audit: { atomicEventUnitId: atomicUnit.id } } });
+      await transaction.audit.deleteMany({ where: { atomicEventUnitId: atomicUnit.id } });
+      await transaction.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+    });
     await prisma.atomicEventUnit.delete({ where: { id: atomicUnit.id } });
     await prisma.eventParticipation.delete({ where: { id: participation.id } });
     await prisma.event.delete({ where: { id: event.id } });
     await prisma.player.deleteMany({ where: { OR: [{ id: existingPlayer.id }, { playerId: mercenaryGamePlayerId }] } });
-    await prisma.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
   }
 });

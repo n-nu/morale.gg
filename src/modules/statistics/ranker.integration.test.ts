@@ -33,32 +33,31 @@ async function cleanupRankerTestData() {
     select: { id: true },
   })).map(({ id }) => id);
 
-  await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
-  await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
-  await prisma.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
-  try {
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
+    await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
+    await transaction.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
     if (auditIds.length > 0) {
-      await prisma.auditPlayerResult.deleteMany({ where: { auditId: { in: auditIds } } });
-      await prisma.auditRoleAssignment.deleteMany({ where: { auditId: { in: auditIds } } });
-      await prisma.audit.deleteMany({ where: { id: { in: auditIds } } });
+      await transaction.auditPlayerResult.deleteMany({ where: { auditId: { in: auditIds } } });
+      await transaction.auditRoleAssignment.deleteMany({ where: { auditId: { in: auditIds } } });
+      await transaction.audit.deleteMany({ where: { id: { in: auditIds } } });
     }
-    if (atomicIds.length > 0) {
-      await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
-    }
-    if (participationIds.length > 0) {
-      await prisma.eventParticipation.deleteMany({ where: { id: { in: participationIds } } });
-    }
-    if (eventIds.length > 0) {
-      await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
-    }
-    if (playerIds.length > 0) {
-      await prisma.unitMembership.deleteMany({ where: { playerId: { in: playerIds } } });
-      await prisma.player.deleteMany({ where: { id: { in: playerIds } } });
-    }
-  } finally {
-    await prisma.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+    await transaction.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
+    await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
+    await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+  });
+  if (atomicIds.length > 0) {
+    await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
+  }
+  if (participationIds.length > 0) {
+    await prisma.eventParticipation.deleteMany({ where: { id: { in: participationIds } } });
+  }
+  if (eventIds.length > 0) {
+    await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
+  }
+  if (playerIds.length > 0) {
+    await prisma.unitMembership.deleteMany({ where: { playerId: { in: playerIds } } });
+    await prisma.player.deleteMany({ where: { id: { in: playerIds } } });
   }
 }
 
@@ -70,12 +69,12 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
   const suffix = randomUUID();
   const now = new Date();
   const primaryUnit = await prisma.unit.findFirst({
-    where: { rootUnitId: { not: null } },
+    where: { parentId: null, rootUnitId: { not: null } },
     select: { id: true, rootUnitId: true, commanderUserId: true },
   });
   assert.ok(primaryUnit, "a seeded Unit is required; run the documented database seed");
   const existingOtherUnit = await prisma.unit.findFirst({
-    where: { id: { not: primaryUnit.id } },
+    where: { id: { not: primaryUnit.id }, parentId: null },
     select: { id: true },
   });
   let createdOtherUnitId: string | null = null;
@@ -272,13 +271,18 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
     assert.deepEqual(sourceAfterRead, sourceSnapshot);
   } finally {
     const atomicIds = atomicUnits.map(({ id }) => id);
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
+    await prisma.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
+      await transaction.auditPlayerResult.deleteMany({ where: { audit: { atomicEventUnitId: { in: atomicIds } } } });
+      await transaction.auditRoleAssignment.deleteMany({ where: { audit: { atomicEventUnitId: { in: atomicIds } } } });
+      await transaction.audit.deleteMany({ where: { atomicEventUnitId: { in: atomicIds } } });
+      await transaction.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+    });
     try {
-      await prisma.auditPlayerResult.deleteMany({ where: { audit: { atomicEventUnitId: { in: atomicIds } } } });
-      await prisma.auditRoleAssignment.deleteMany({ where: { audit: { atomicEventUnitId: { in: atomicIds } } } });
-      await prisma.audit.deleteMany({ where: { atomicEventUnitId: { in: atomicIds } } });
       await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
       await prisma.eventParticipation.deleteMany({ where: { id: { in: participations.map(({ id }) => id) } } });
       await prisma.event.deleteMany({ where: { id: { in: events.map(({ id }) => id) } } });
@@ -291,9 +295,6 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
         });
       }
     } finally {
-      await prisma.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
-      await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
-      await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
       await cleanupRankerTestData();
     }
   }
