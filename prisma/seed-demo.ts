@@ -406,11 +406,12 @@ async function seedEventsAndAudits(tx: TxClient, allPlayers: Array<{ id: string;
     const rootCommander = allPlayers[Math.max(0, event.participants.length * 2 % allPlayers.length)];
     const rootGroupId = `demo-group-${eventId}-root`;
     const rootUnitId = event.participants[0];
+    const rootParticipationId = `demo-participation-${eventId}-${rootUnitId}`;
     const rootAtomicIds = atomicUnitIds.filter((id) => id.includes(eventId) && id.includes(rootUnitId));
     await tx.eventCommandGroup.upsert({
       where: { id: rootGroupId },
-      update: { name: `${event.name} Command`, representedUnitId: rootUnitId, commanderPlayerId: rootCommander.id },
-      create: { id: rootGroupId, eventId, name: `${event.name} Command`, representedUnitId: rootUnitId, commanderPlayerId: rootCommander.id },
+      update: { name: `${event.name} Command`, eventParticipationId: rootParticipationId, side: "DEFENDER", commanderPlayerId: rootCommander.id },
+      create: { id: rootGroupId, eventId, eventParticipationId: rootParticipationId, name: `${event.name} Command`, side: "DEFENDER", commanderPlayerId: rootCommander.id },
     });
 
     const childGroupIds: Array<{ id: string; name: string; representedUnitId: string; commanderPlayerId: string; atomicIds: string[] }> = [];
@@ -422,8 +423,8 @@ async function seedEventsAndAudits(tx: TxClient, allPlayers: Array<{ id: string;
       childGroupIds.push({ id: childGroupId, name: `${event.name} ${index + 1}`, representedUnitId, commanderPlayerId: commander.id, atomicIds: childAtomicIds });
       await tx.eventCommandGroup.upsert({
         where: { id: childGroupId },
-        update: { parentGroupId: rootGroupId, representedUnitId, commanderPlayerId: commander.id },
-        create: { id: childGroupId, eventId, name: `${event.name} ${index + 1}`, representedUnitId, commanderPlayerId: commander.id, parentGroupId: rootGroupId },
+        update: { parentGroupId: rootGroupId, eventParticipationId: `demo-participation-${eventId}-${representedUnitId}`, side: "DEFENDER", commanderPlayerId: commander.id },
+        create: { id: childGroupId, eventId, eventParticipationId: `demo-participation-${eventId}-${representedUnitId}`, name: `${event.name} ${index + 1}`, side: "DEFENDER", commanderPlayerId: commander.id, parentGroupId: rootGroupId },
       });
       for (const atomicId of childAtomicIds) {
         await tx.eventCommandGroupAtomicUnit.upsert({

@@ -7,6 +7,8 @@ import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { bannerArtFor } from "@/modules/events/map-art";
 import { eventTypeStyle } from "@/modules/events/presentation";
 import { canManageEvent } from "@/modules/events/server/authorization";
+import { getPublicEventCommandStructure, type PublicEventCommandGroup } from "@/modules/audits/server/command-groups";
+import { getEventResultState } from "@/modules/events/server/results";
 import {
   getEventById,
   listApprovedEventUnits,
@@ -25,8 +27,6 @@ export async function generateMetadata({
     title: event ? `${event.name} · morale.gg` : "Event · morale.gg",
   };
 }
-
-const STAT_TILES = ["Kills", "Deaths", "Assists", "Tickets", "Flag captures", "Stars"];
 
 function MetaCard({
   label,
@@ -48,6 +48,49 @@ function MetaCard({
   );
 }
 
+function PublicGroupNode({ group }: { group: PublicEventCommandGroup }) {
+  return (
+    <li className="border-l border-edge pl-4">
+      <div className="py-2">
+        <div className="font-semibold text-white">{group.name}</div>
+        <div className="text-xs text-muted">{group.representedUnit.name} · Commander {group.commanderPlayerId}</div>
+        {group.atomicUnits.length > 0 ? (
+          <ul className="mt-2 space-y-1 text-sm text-body-soft">
+            {group.atomicUnits.map((unit) => <li key={unit.id}>{unit.name ?? unit.persistentUnitName} · {unit.side ?? "Side not configured"} · {unit.isMandatory ? "Mandatory" : "Optional"}</li>)}
+          </ul>
+        ) : null}
+        {group.children.length > 0 ? <ul className="mt-2 space-y-1">{group.children.map((child) => <PublicGroupNode key={child.id} group={child} />)}</ul> : null}
+      </div>
+    </li>
+  );
+}
+
+function SideColumn({
+  label,
+  side,
+  flagRef,
+  groups,
+  atomicUnits,
+}: {
+  label: string;
+  side: "ATTACKER" | "DEFENDER";
+  flagRef: string | null;
+  groups: PublicEventCommandGroup[];
+  atomicUnits: PublicEventCommandGroup["atomicUnits"];
+}) {
+  return (
+    <section className="min-w-0 border-t border-edge pt-4" aria-labelledby={`${side.toLowerCase()}-heading`}>
+      <div className="flex items-center gap-3">
+        {flagRef ? <Image src={flagRef} alt={`${label} flag`} width={48} height={32} unoptimized className="h-8 w-12 rounded border border-edge object-cover" /> : <span aria-hidden className={`h-8 w-12 rounded border border-edge ${side === "DEFENDER" ? "bg-blue-900" : "bg-red-900"}`} />}
+        <h3 id={`${side.toLowerCase()}-heading`} className="text-lg font-extrabold text-white">{label}</h3>
+      </div>
+      {groups.length === 0 && atomicUnits.length === 0 ? <p className="mt-4 text-sm text-muted">No {label.toLowerCase()} structure recorded.</p> : (
+        <ul className="mt-3 space-y-2">{groups.map((group) => <PublicGroupNode key={group.id} group={group} />)}{atomicUnits.map((unit) => <li key={unit.id} className="border-l border-edge pl-4 text-sm text-body-soft">{unit.name ?? unit.persistentUnitName} · {unit.isMandatory ? "Mandatory" : "Optional"}</li>)}</ul>
+      )}
+    </section>
+  );
+}
+
 export default async function EventDetailPage({
   params,
 }: PageProps<"/events/[eventId]">) {
@@ -58,8 +101,10 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  const [approvedUnits, viewerUserId] = await Promise.all([
+  const [approvedUnits, structure, resultState, viewerUserId] = await Promise.all([
     listApprovedEventUnits(event.id),
+    getPublicEventCommandStructure(event.id),
+    getEventResultState(event.id),
     getAuthenticatedUserId(),
   ]);
   const viewerCanManage =
@@ -134,40 +179,17 @@ export default async function EventDetailPage({
             </section>
           ) : null}
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-extrabold tracking-tight text-white">
-              Battle statistics
-            </h2>
-            <div className="flex flex-col gap-4 rounded-[10px] border-2 border-dashed border-[#3b3a33] bg-[#121210] px-6 py-5">
-              <div className="flex items-center gap-2.5">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6d7781" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                  <rect x="5" y="11" width="14" height="9" rx="2" />
-                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                </svg>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[15px] font-bold text-muted">
-                    Statistics unlock after the battle
-                  </div>
-                  <div className="text-[13px] text-faint">
-                    Once each participating unit submits its audit and it is
-                    locked, the recorded results appear here.
-                  </div>
-                </div>
+          <section className="flex flex-col gap-3" aria-labelledby="battle-structure-heading">
+            <h2 id="battle-structure-heading" className="text-xl font-extrabold tracking-tight text-white">Battle structure</h2>
+            <p className="text-sm text-muted">Event result: <strong className="text-white">{resultState.effective?.value ?? "Not recorded"}</strong></p>
+            {structure === null || (structure.groups.length === 0 && structure.ungroupedAtomicUnits.length === 0) ? (
+              <div className="rounded-[10px] border border-dashed border-[#3b3a33] bg-[#121210] px-6 py-5 text-sm text-muted">Battle sides not configured</div>
+            ) : (
+              <div className="grid gap-6 rounded-[10px] border border-edge bg-surface px-5 py-5 lg:grid-cols-2">
+                <SideColumn label="Defenders" side="DEFENDER" flagRef={event.defenderFlagRef} groups={structure.groups.filter((group) => group.side === "DEFENDER")} atomicUnits={structure.ungroupedAtomicUnits.filter((unit) => unit.side === "DEFENDER")} />
+                <SideColumn label="Attackers" side="ATTACKER" flagRef={event.attackerFlagRef} groups={structure.groups.filter((group) => group.side === "ATTACKER")} atomicUnits={structure.ungroupedAtomicUnits.filter((unit) => unit.side === "ATTACKER")} />
               </div>
-              <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
-                {STAT_TILES.map((label) => (
-                  <div
-                    key={label}
-                    className="flex flex-col gap-1 rounded-lg border border-edge bg-surface px-3 py-2.5"
-                  >
-                    <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-faint">
-                      {label}
-                    </span>
-                    <span className="text-xl font-bold text-faint">—</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </section>
         </div>
 

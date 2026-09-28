@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type AuditUnitType, type BattlefieldSide } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { canManageEvent } from "@/modules/events/server/authorization";
@@ -9,7 +9,9 @@ export class EventCommandGroupError extends Error {}
 
 export type EventCommandGroupInput = {
   name: string;
-  representedUnitId: string;
+  participationId?: string;
+  representedUnitId?: string;
+  side?: BattlefieldSide | null;
   commanderPlayerId: string;
   parentGroupId?: string | null;
 };
@@ -32,7 +34,9 @@ function normalizedGroupInput(input: EventCommandGroupInput) {
   if (name === "") throw new EventCommandGroupError("Group name is required.");
   return {
     name,
-    representedUnitId: requiredId(input.representedUnitId, "Represented Unit"),
+    participationId: nullableId(input.participationId),
+    representedUnitId: nullableId(input.representedUnitId),
+    side: input.side === "ATTACKER" || input.side === "DEFENDER" ? input.side : (() => { throw new EventCommandGroupError("Select a valid battlefield side."); })(),
     commanderPlayerId: requiredId(input.commanderPlayerId, "Commander Player"),
     parentGroupId: nullableId(input.parentGroupId),
   };
@@ -89,24 +93,31 @@ async function validateEventCommandTree(
   transaction: CommandGroupTransaction,
   eventId: string,
 ) {
-  const [groups, atomicUnits] = await Promise.all([
-    transaction.eventCommandGroup.findMany({
-      where: { eventId },
-      select: { id: true, parentGroupId: true },
-    }),
-    transaction.eventCommandGroupAtomicUnit.findMany({
-      where: { group: { eventId } },
-      select: {
-        groupId: true,
-        atomicEventUnit: { select: { id: true, eventParticipation: { select: { eventId: true } } } },
-      },
-    }),
-  ]);
+  const groups = await transaction.eventCommandGroup.findMany({
+    where: { eventId },
+    select: { id: true, parentGroupId: true, side: true, eventParticipation: { select: { eventId: true } } },
+  });
+  const atomicUnits = await transaction.eventCommandGroupAtomicUnit.findMany({
+    where: { group: { eventId } },
+    select: {
+      groupId: true,
+      atomicEventUnit: { select: { id: true, side: true, eventParticipation: { select: { eventId: true } } } },
+    },
+  });
   const groupsById = new Map(groups.map((group) => [group.id, group]));
 
   for (const group of groups) {
     if (group.parentGroupId !== null && !groupsById.has(group.parentGroupId)) {
       throw new EventCommandGroupError("Child groups must belong to the same Event.");
+    }
+    if (group.eventParticipation !== null && group.eventParticipation.eventId !== eventId) {
+      throw new EventCommandGroupError("Command group claims must belong to the same Event.");
+    }
+    if (group.parentGroupId !== null) {
+      const parent = groupsById.get(group.parentGroupId);
+      if (parent?.side !== null && group.side !== null && parent?.side !== group.side) {
+        throw new EventCommandGroupError("Parent and child command groups must use the same battlefield side.");
+      }
     }
   }
   const atomicUnitsByGroup = new Map<string, string[]>();
@@ -116,6 +127,10 @@ async function validateEventCommandTree(
     }
     if (membership.atomicEventUnit.eventParticipation.eventId !== eventId) {
       throw new EventCommandGroupError("Atomic Event-units must belong to a group in the same Event.");
+    }
+    const group = groupsById.get(membership.groupId);
+    if (group?.side !== null && membership.atomicEventUnit.side !== null && group?.side !== membership.atomicEventUnit.side) {
+      throw new EventCommandGroupError("Atomic Event-units and parent groups must use the same battlefield side.");
     }
     const groupAtomicUnits = atomicUnitsByGroup.get(membership.groupId) ?? [];
     groupAtomicUnits.push(membership.atomicEventUnit.id);
@@ -168,8 +183,17 @@ export async function createEventCommandGroup(
   const values = normalizedGroupInput(input);
   return authorizedEventMutation(userId, normalizedEventId, async (transaction) => {
     await assertParentInEvent(transaction, normalizedEventId, values.parentGroupId);
+    await assertParentSide(transaction, values.parentGroupId, values.side);
+    const participation = await approvedParticipationForEvent(transaction, normalizedEventId, values.participationId, values.representedUnitId);
     return transaction.eventCommandGroup.create({
-      data: { ...values, eventId: normalizedEventId },
+      data: {
+        name: values.name,
+        side: values.side,
+        eventId: normalizedEventId,
+        eventParticipationId: participation.id,
+        commanderPlayerId: values.commanderPlayerId,
+        parentGroupId: values.parentGroupId,
+      },
     });
   });
 }
@@ -186,11 +210,18 @@ export async function updateEventCommandGroup(
     if (!(await transaction.eventCommandGroup.findUnique({ where: { id: normalizedGroupId }, select: { id: true } }))) {
       throw new EventCommandGroupError("Command group not found.");
     }
+    const existingGroup = await transaction.eventCommandGroup.findUnique({
+      where: { id: normalizedGroupId },
+      select: { parentGroupId: true },
+    });
+    const participation = await approvedParticipationForEvent(transaction, eventId, values.participationId, values.representedUnitId);
+    await assertParentSide(transaction, existingGroup?.parentGroupId ?? null, values.side);
     return transaction.eventCommandGroup.update({
       where: { id: normalizedGroupId },
       data: {
         name: values.name,
-        representedUnitId: values.representedUnitId,
+        side: values.side,
+        eventParticipationId: participation.id,
         commanderPlayerId: values.commanderPlayerId,
       },
     });
@@ -206,17 +237,18 @@ export async function attachAtomicEventUnit(
   const normalizedAtomicId = requiredId(atomicEventUnitId, "Atomic Event-unit");
   const eventId = await eventIdForGroup(normalizedGroupId);
   return authorizedEventMutation(userId, eventId, async (transaction) => {
-    const [group, atomicUnit, existingMembership] = await Promise.all([
-      transaction.eventCommandGroup.findUnique({ where: { id: normalizedGroupId }, select: { id: true, eventId: true } }),
-      transaction.atomicEventUnit.findUnique({
-        where: { id: normalizedAtomicId },
-        select: { id: true, eventParticipation: { select: { eventId: true } } },
-      }),
-      transaction.eventCommandGroupAtomicUnit.findUnique({ where: { atomicEventUnitId: normalizedAtomicId }, select: { groupId: true } }),
-    ]);
+    const group = await transaction.eventCommandGroup.findUnique({ where: { id: normalizedGroupId }, select: { id: true, eventId: true, side: true } });
+    const atomicUnit = await transaction.atomicEventUnit.findUnique({
+      where: { id: normalizedAtomicId },
+      select: { id: true, side: true, eventParticipation: { select: { eventId: true } } },
+    });
+    const existingMembership = await transaction.eventCommandGroupAtomicUnit.findUnique({ where: { atomicEventUnitId: normalizedAtomicId }, select: { groupId: true } });
     if (group === null || atomicUnit === null) throw new EventCommandGroupError("Command group or atomic Event-unit not found.");
     if (atomicUnit.eventParticipation.eventId !== eventId) {
       throw new EventCommandGroupError("Atomic Event-unit must belong to the same Event.");
+    }
+    if (group.side !== null && atomicUnit.side !== null && group.side !== atomicUnit.side) {
+      throw new EventCommandGroupError("Atomic Event-units and parent groups must use the same battlefield side.");
     }
     if (existingMembership !== null) {
       throw new EventCommandGroupError("Atomic Event-unit already has a parent group.");
@@ -263,12 +295,16 @@ export async function attachChildEventCommandGroup(
   return authorizedEventMutation(userId, eventId, async (transaction) => {
     const child = await transaction.eventCommandGroup.findUnique({
       where: { id: normalizedChildId },
-      select: { id: true, eventId: true, parentGroupId: true },
+      select: { id: true, eventId: true, parentGroupId: true, side: true },
     });
     if (child === null || child.eventId !== eventId) {
       throw new EventCommandGroupError("Child group must belong to the same Event.");
     }
     if (child.parentGroupId !== null) throw new EventCommandGroupError("Child group already has a parent; use reparenting.");
+    const parent = await transaction.eventCommandGroup.findUnique({ where: { id: normalizedParentId }, select: { side: true } });
+    if (parent?.side !== null && child.side !== null && parent?.side !== child.side) {
+      throw new EventCommandGroupError("Parent and child command groups must use the same battlefield side.");
+    }
     await assertAcyclicReparent(transaction, eventId, normalizedChildId, normalizedParentId);
     return transaction.eventCommandGroup.update({
       where: { id: normalizedChildId },
@@ -307,11 +343,12 @@ export async function reparentEventCommandGroup(
   return authorizedEventMutation(userId, eventId, async (transaction) => {
     const group = await transaction.eventCommandGroup.findUnique({
       where: { id: normalizedGroupId },
-      select: { id: true, eventId: true, parentGroupId: true },
+      select: { id: true, eventId: true, parentGroupId: true, side: true },
     });
     if (group === null) throw new EventCommandGroupError("Command group not found.");
     if (group.eventId !== eventId) throw new EventCommandGroupError("Command group must belong to the same Event.");
     await assertAcyclicReparent(transaction, eventId, normalizedGroupId, normalizedParentId);
+    await assertParentSide(transaction, normalizedParentId, group.side);
     return transaction.eventCommandGroup.update({
       where: { id: normalizedGroupId },
       data: { parentGroupId: normalizedParentId },
@@ -341,6 +378,9 @@ export async function deleteEventCommandGroup(userId: string, groupId: string) {
 
 export type CommandTreeAtomicUnit = {
   id: string;
+  name: string | null;
+  side: BattlefieldSide | null;
+  auditUnitType: AuditUnitType | null;
   isMandatory: boolean;
   createdAt: Date;
   persistentUnitName: string;
@@ -350,6 +390,8 @@ export type CommandTreeAtomicUnit = {
 export type PublicEventCommandGroup = {
   id: string;
   name: string;
+  side: BattlefieldSide | null;
+  participationId: string | null;
   representedUnit: { id: string; name: string };
   commanderPlayerId: string;
   atomicUnits: CommandTreeAtomicUnit[];
@@ -367,8 +409,9 @@ export async function getPublicEventCommandStructure(eventId: string) {
       select: {
         id: true,
         name: true,
+        side: true,
         parentGroupId: true,
-        representedUnit: { select: { id: true, name: true } },
+        eventParticipation: { select: { id: true, unit: { select: { id: true, name: true } } } },
         commanderPlayer: { select: { playerId: true } },
         atomicUnitMemberships: {
           orderBy: [{ createdAt: "asc" }, { atomicEventUnitId: "asc" }],
@@ -376,6 +419,9 @@ export async function getPublicEventCommandStructure(eventId: string) {
             atomicEventUnit: {
               select: {
                 id: true,
+                name: true,
+                side: true,
+                auditUnitType: true,
                 isMandatory: true,
                 createdAt: true,
                 eventParticipation: { select: { unit: { select: { name: true } } } },
@@ -391,6 +437,9 @@ export async function getPublicEventCommandStructure(eventId: string) {
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       select: {
         id: true,
+        name: true,
+        side: true,
+        auditUnitType: true,
         isMandatory: true,
         createdAt: true,
         eventParticipation: { select: { unit: { select: { name: true } } } },
@@ -405,10 +454,15 @@ export async function getPublicEventCommandStructure(eventId: string) {
     nodeById.set(group.id, {
       id: group.id,
       name: group.name,
-      representedUnit: group.representedUnit,
+      side: group.side,
+      participationId: group.eventParticipation?.id ?? null,
+      representedUnit: group.eventParticipation?.unit ?? { id: "", name: "Unconfigured Unit" },
       commanderPlayerId: group.commanderPlayer.playerId,
       atomicUnits: group.atomicUnitMemberships.map(({ atomicEventUnit }) => ({
         id: atomicEventUnit.id,
+        name: atomicEventUnit.name,
+        side: atomicEventUnit.side,
+        auditUnitType: atomicEventUnit.auditUnitType,
         isMandatory: atomicEventUnit.isMandatory,
         createdAt: atomicEventUnit.createdAt,
         persistentUnitName: atomicEventUnit.eventParticipation.unit.name,
@@ -440,6 +494,9 @@ export async function getPublicEventCommandStructure(eventId: string) {
 
   const atomicRead = (atomicUnit: (typeof ungroupedAtomicUnits)[number]): CommandTreeAtomicUnit => ({
     id: atomicUnit.id,
+    name: atomicUnit.name,
+    side: atomicUnit.side,
+    auditUnitType: atomicUnit.auditUnitType,
     isMandatory: atomicUnit.isMandatory,
     createdAt: atomicUnit.createdAt,
     persistentUnitName: atomicUnit.eventParticipation.unit.name,
@@ -488,15 +545,18 @@ export async function getEventCommandGroupManagementOptions(eventId: string) {
   if (normalizedEventId === "") return null;
   const event = await prisma.event.findUnique({ where: { id: normalizedEventId }, select: { id: true } });
   if (event === null) return null;
-  const [groups, units, players, atomicUnits] = await Promise.all([
-    prisma.eventCommandGroup.findMany({ where: { eventId: normalizedEventId }, orderBy: { name: "asc" }, select: { id: true, name: true, parentGroupId: true } }),
-    prisma.unit.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  const [groups, participations, players, atomicUnits] = await Promise.all([
+    prisma.eventCommandGroup.findMany({ where: { eventId: normalizedEventId }, orderBy: { name: "asc" }, select: { id: true, name: true, parentGroupId: true, side: true } }),
+    prisma.eventParticipation.findMany({ where: { eventId: normalizedEventId, status: "APPROVED" }, orderBy: { createdAt: "asc" }, select: { id: true, unitId: true, unit: { select: { id: true, name: true } } } }),
     prisma.player.findMany({ orderBy: { playerId: "asc" }, select: { id: true, playerId: true } }),
     prisma.atomicEventUnit.findMany({
       where: { eventParticipation: { eventId: normalizedEventId } },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       select: {
         id: true,
+        name: true,
+        side: true,
+        auditUnitType: true,
         commandGroupMembership: { select: { groupId: true } },
         eventParticipation: { select: { unit: { select: { name: true } } } },
       },
@@ -504,12 +564,51 @@ export async function getEventCommandGroupManagementOptions(eventId: string) {
   ]);
   return {
     groups,
-    units,
+    participations,
+    units: participations.map(({ unit }) => unit),
     players,
     atomicUnits: atomicUnits.map((unit) => ({
       id: unit.id,
+      name: unit.name,
+      side: unit.side,
+      auditUnitType: unit.auditUnitType,
       commandGroupId: unit.commandGroupMembership?.groupId ?? null,
       representedUnitName: unit.eventParticipation.unit.name,
     })),
   };
+}
+
+async function approvedParticipationForEvent(
+  transaction: CommandGroupTransaction,
+  eventId: string,
+  participationId: string | null,
+  representedUnitId: string | null,
+) {
+  const participation = participationId !== null
+    ? await transaction.eventParticipation.findUnique({
+        where: { id: participationId },
+        select: { id: true, eventId: true, unitId: true, status: true },
+      })
+    : representedUnitId === null
+      ? null
+      : await transaction.eventParticipation.findFirst({
+          where: { eventId, unitId: representedUnitId, status: "APPROVED" },
+          select: { id: true, eventId: true, unitId: true, status: true },
+        });
+  if (participation === null || participation.eventId !== eventId || participation.status !== "APPROVED") {
+    throw new EventCommandGroupError("An approved EventParticipation from this Event is required.");
+  }
+  return participation;
+}
+
+async function assertParentSide(
+  transaction: CommandGroupTransaction,
+  parentGroupId: string | null,
+  side: BattlefieldSide | null,
+) {
+  if (parentGroupId === null || side === null) return;
+  const parent = await transaction.eventCommandGroup.findUnique({ where: { id: parentGroupId }, select: { side: true } });
+  if (parent?.side !== null && parent?.side !== side) {
+    throw new EventCommandGroupError("Parent and child command groups must use the same battlefield side.");
+  }
 }

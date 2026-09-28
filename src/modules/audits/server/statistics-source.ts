@@ -72,7 +72,7 @@ function getCommandGroupDescendants(
     id: string;
     eventId: string;
     parentGroupId: string | null;
-    representedUnitId: string;
+    eventParticipation: { unitId: string } | null;
     commanderPlayer: { playerId: string };
     atomicUnitMemberships: Array<{ atomicEventUnitId: string }>;
   }>,
@@ -103,7 +103,7 @@ function getCommandGroupDescendants(
     groupId: group.id,
     eventId: group.eventId,
     parentGroupId: group.parentGroupId,
-    representedUnitId: group.representedUnitId,
+    representedUnitId: group.eventParticipation?.unitId ?? "",
     commanderGamePlayerId: group.commanderPlayer.playerId,
     descendantAtomicEventUnitIds: collectAtomicUnitIds(group.id, new Set()),
   }));
@@ -158,7 +158,7 @@ export async function getEffectiveFinalizedAuditObservations(
         id: true,
         eventId: true,
         parentGroupId: true,
-        representedUnitId: true,
+        eventParticipation: { select: { unitId: true } },
         commanderPlayer: { select: { playerId: true } },
         atomicUnitMemberships: { select: { atomicEventUnitId: true } },
       },

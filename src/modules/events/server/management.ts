@@ -195,6 +195,29 @@ export interface UpdateEventDetailsInput {
   description?: string;
   opponent?: string;
   map?: string;
+  defenderFlagRef?: string;
+  attackerFlagRef?: string;
+}
+
+function validateImageReference(value: unknown): string | null {
+  const reference = typeof value === "string" ? value.trim() : "";
+  if (reference === "") return null;
+  if (reference.startsWith("/")) {
+    if (reference.startsWith("//") || reference.includes("\\") || reference.split("/").includes("..")) {
+      throw new Error("Flag image reference must be a safe site path or HTTPS URL.");
+    }
+    return reference;
+  }
+  let url: URL;
+  try {
+    url = new URL(reference);
+  } catch {
+    throw new Error("Flag image reference must be a safe site path or HTTPS URL.");
+  }
+  if (url.protocol !== "https:" || url.username !== "" || url.password !== "") {
+    throw new Error("Flag image reference must be a safe site path or HTTPS URL.");
+  }
+  return reference;
 }
 
 /**
@@ -252,6 +275,8 @@ export async function updateEventDetails(
       description: input.description?.trim() || null,
       opponent: input.opponent?.trim() || null,
       map: input.map?.trim() || null,
+      defenderFlagRef: validateImageReference(input.defenderFlagRef),
+      attackerFlagRef: validateImageReference(input.attackerFlagRef),
     },
   });
 }

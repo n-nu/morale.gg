@@ -100,6 +100,7 @@ test("Event command groups enforce authority and preserve a strict historical tr
     createEventCommandGroup(userId, eventId, {
       name,
       representedUnitId: representedUnit.id,
+      side: "DEFENDER",
       commanderPlayerId: commanderPlayer.id,
     });
 
@@ -113,10 +114,11 @@ test("Event command groups enforce authority and preserve a strict historical tr
       const renamed = await updateEventCommandGroup(manager.id, corps.id, {
         name: "Field Corps",
         representedUnitId: alternateRepresentedUnit?.id ?? representedUnit.id,
+        side: "DEFENDER",
         commanderPlayerId: secondPlayer.id,
       });
       assert.equal(renamed.name, "Field Corps");
-      assert.equal(renamed.representedUnitId, alternateRepresentedUnit?.id ?? representedUnit.id);
+      assert.equal(renamed.eventParticipationId, participation.id);
       assert.equal(renamed.commanderPlayerId, secondPlayer.id);
 
       await assert.rejects(

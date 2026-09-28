@@ -13,6 +13,11 @@ import {
   authorizeEventUserByEmail,
   updateEventDetails,
 } from "@/modules/events/server/management";
+import {
+  proposeEventResultCorrection,
+  reviewEventResultCorrection,
+  setInitialEventResult,
+} from "@/modules/events/server/results";
 
 function managePath(eventId: string): string {
   return `/events/${eventId}/manage`;
@@ -67,7 +72,28 @@ export async function updateEventDetailsAction(
       description: String(formData.get("description") ?? ""),
       opponent: String(formData.get("opponent") ?? ""),
       map: String(formData.get("map") ?? ""),
+      defenderFlagRef: String(formData.get("defenderFlagRef") ?? ""),
+      attackerFlagRef: String(formData.get("attackerFlagRef") ?? ""),
     });
+  });
+}
+
+export async function setInitialEventResultAction(eventId: string, formData: FormData): Promise<void> {
+  await runManageAction(eventId, "Event result recorded.", async (userId) => {
+    await setInitialEventResult(userId, eventId, String(formData.get("value") ?? ""));
+  });
+}
+
+export async function proposeEventResultCorrectionAction(eventId: string, formData: FormData): Promise<void> {
+  await runManageAction(eventId, "Correction proposed and awaiting approval.", async (userId) => {
+    await proposeEventResultCorrection(userId, eventId, String(formData.get("value") ?? ""));
+  });
+}
+
+export async function reviewEventResultCorrectionAction(eventId: string, formData: FormData): Promise<void> {
+  await runManageAction(eventId, "Correction review recorded.", async (userId) => {
+    const decision = String(formData.get("decision") ?? "") === "APPROVE" ? "APPROVE" : "REJECT";
+    await reviewEventResultCorrection(userId, eventId, String(formData.get("resultId") ?? ""), decision);
   });
 }
 

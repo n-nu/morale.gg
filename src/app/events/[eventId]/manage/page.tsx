@@ -19,7 +19,11 @@ import {
   denyParticipationAction,
   revokeManagerAction,
   updateEventDetailsAction,
+  proposeEventResultCorrectionAction,
+  reviewEventResultCorrectionAction,
+  setInitialEventResultAction,
 } from "./actions";
+import { getEventResultState } from "@/modules/events/server/results";
 import { ScheduleInput } from "./schedule-input";
 
 export const dynamic = "force-dynamic";
@@ -97,6 +101,7 @@ export default async function ManageEventPage({
   }
 
   const { event, isOwner, managers, participations } = view;
+    const resultState = await getEventResultState(event.id);
   const type = eventTypeStyle(event.eventType);
   const pending = participations.filter((p) => p.status === "REQUESTED");
   const decided = participations.filter((p) => p.status !== "REQUESTED");
@@ -151,6 +156,16 @@ export default async function ManageEventPage({
             <form action={updateAction} autoComplete="off" className="flex flex-col gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className={labelClass}>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                  <label className={labelClass}>
+                                    Defender flag image reference
+                                    <input name="defenderFlagRef" defaultValue={event.defenderFlagRef ?? ""} placeholder="/flags/defender.png or https://..." className={inputClass} />
+                                  </label>
+                                  <label className={labelClass}>
+                                    Attacker flag image reference
+                                    <input name="attackerFlagRef" defaultValue={event.attackerFlagRef ?? ""} placeholder="/flags/attacker.png or https://..." className={inputClass} />
+                                  </label>
+                                </div>
                   Event name
                   <input
                     name="name"
@@ -213,6 +228,43 @@ export default async function ManageEventPage({
                 </button>
               </div>
             </form>
+          </section>
+
+          <section className="flex flex-col gap-4 rounded-[10px] border border-edge bg-surface px-6 py-5" aria-labelledby="event-result-heading">
+            <div>
+              <h2 id="event-result-heading" className="text-[17px] font-extrabold text-white">Event result</h2>
+              <p className="mt-1 text-sm text-muted">Results are available after the scheduled Event time.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="font-semibold">Current result:</span>
+              <span>{resultState.effective?.value ?? "Not recorded"}</span>
+            </div>
+            {!resultState.effective ? (
+              <form action={setInitialEventResultAction.bind(null, event.id)} className="flex flex-wrap items-end gap-3">
+                <label className={labelClass}>Result<select name="value" defaultValue="DRAW" className={inputClass}><option value="DEFENDER_WIN">Defender Win</option><option value="ATTACKER_WIN">Attacker Win</option><option value="DRAW">Draw</option></select></label>
+                <button type="submit" className="rounded-lg bg-gold px-4 py-2.5 text-sm font-bold text-gold-ink">Set result</button>
+              </form>
+            ) : resultState.pending ? (
+              <div className="border-t border-edge pt-4 text-sm">
+                <p>Proposed: <strong>{resultState.pending.value}</strong></p>
+                <p className="mt-1 text-muted">Status: Awaiting approval</p>
+                {resultState.pending.proposedByUserId !== userId ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <form action={reviewEventResultCorrectionAction.bind(null, event.id)}><input type="hidden" name="resultId" value={resultState.pending.id} /><input type="hidden" name="decision" value="APPROVE" /><button type="submit" className="rounded-lg border border-type-green px-4 py-2 text-sm font-bold text-green-bright">Approve</button></form>
+                    <form action={reviewEventResultCorrectionAction.bind(null, event.id)}><input type="hidden" name="resultId" value={resultState.pending.id} /><input type="hidden" name="decision" value="REJECT" /><button type="submit" className="rounded-lg border border-type-red px-4 py-2 text-sm font-bold text-type-red">Reject</button></form>
+                  </div>
+                ) : <p className="mt-2 text-muted">Another authorized Event manager must review this correction.</p>}
+              </div>
+            ) : (
+              <form action={proposeEventResultCorrectionAction.bind(null, event.id)} className="flex flex-wrap items-end gap-3">
+                <label className={labelClass}>Propose correction<select name="value" defaultValue={resultState.effective.value === "DRAW" ? "DEFENDER_WIN" : "DRAW"} className={inputClass}>
+                  {resultState.effective.value !== "DEFENDER_WIN" ? <option value="DEFENDER_WIN">Defender Win</option> : null}
+                  {resultState.effective.value !== "ATTACKER_WIN" ? <option value="ATTACKER_WIN">Attacker Win</option> : null}
+                  {resultState.effective.value !== "DRAW" ? <option value="DRAW">Draw</option> : null}
+                </select></label>
+                <button type="submit" className="rounded-lg border border-gold px-4 py-2.5 text-sm font-bold text-gold">Propose correction</button>
+              </form>
+            )}
           </section>
 
           <section className="overflow-hidden rounded-[10px] border border-edge bg-surface">
@@ -412,6 +464,12 @@ export default async function ManageEventPage({
             className="text-sm font-bold text-gold hover:text-gold-bright"
           >
             ← View public event page
+          </Link>
+          <Link
+            href={`/events/${event.id}/command-structure`}
+            className="rounded-lg border border-gold px-4 py-2 text-center text-sm font-bold text-gold hover:bg-gold hover:text-gold-ink"
+          >
+            Open Battle Structure editor
           </Link>
           <Link
             href="/events/manage"
