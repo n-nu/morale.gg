@@ -38,6 +38,17 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	stable game Player IDs to internal membership keys within its source
 	operation; no contract or schema change was required. Implementation:
 	`649eb3e`.
+- **TKT-20260927-000028-001 — MVP Statistics Presentation and Public Results
+	Integration Plan:** **COMPLETED / approved planning-only ticket.** No
+	production UI, Statistics, schema, contract, or persistence changes were
+	introduced. No new ADR or BCR is required. Archived under
+	`tickets/COMPLETED/2026/09/`.
+- **TKT-20260927-000029-001 — Player Statistics Presentation and Shared Public
+	Statistics UI:** **READY.** Owns the shared presentation foundation,
+	`/statistics` discovery route, and public Player Statistics experience.
+- **TKT-20260927-000030-001 — Unit Statistics and Attendance Presentation:**
+	**DRAFT / blocked by Ticket 29.** Reuses Ticket 29's shared presentation
+	foundation for Unit Statistics and attendance.
 
 ---
 
