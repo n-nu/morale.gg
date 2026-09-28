@@ -21,6 +21,7 @@ import {
   moveUnit,
   revokePermissionGrant,
   updateAuthorizedUserLevel,
+  updateUnitImage,
   updateUnitProfile,
 } from "./workflows";
 
@@ -68,10 +69,23 @@ export async function updateUnitProfileAction(data: FormData): Promise<void> {
     unitId,
     name: value(data, "name"),
     description: value(data, "description"),
-    imageRef: value(data, "imageRef"),
+    imageRef: data.has("imageRef") ? value(data, "imageRef") : undefined,
     discordInvite: value(data, "discordInvite"),
     groupLink: value(data, "groupLink"),
   }));
+}
+
+export async function updateUnitImageAction(data: FormData): Promise<void> {
+  const unitId = value(data, "unitId");
+  await runUnitAction(unitId, "Unit image saved.", () => updateUnitImage({
+    unitId,
+    imageRef: value(data, "imageRef"),
+  }));
+}
+
+export async function removeUnitImageAction(data: FormData): Promise<void> {
+  const unitId = value(data, "unitId");
+  await runUnitAction(unitId, "Unit image removed.", () => updateUnitImage({ unitId, imageRef: "" }));
 }
 
 export async function addAuthorizedUserAction(data: FormData): Promise<void> {

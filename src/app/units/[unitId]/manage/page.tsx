@@ -6,6 +6,7 @@ import { getAuthenticatedUserId } from "@/lib/website-admin";
 import {
   canCreateChildUnit,
   canDeleteUnit,
+  canManageAuthorizedUser,
   canManageAuthorizedUsers,
   canManageRootSettings,
   canManageUnit,
@@ -19,9 +20,11 @@ import { listRootMedals, listRootRanks } from "@/modules/units/server/catalogs";
 import {
   AuthorizedUserManagement,
   ManagementNotice,
+  ManagementSectionNav,
   OrganizationCatalogs,
-  StructuralManagement,
-  UnitProfileForm,
+  OrganizationManagement,
+  UnitLifecycle,
+  UnitOverview,
 } from "@/modules/units/components/management";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +88,21 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
   ]);
   const notice = queryValue(query.notice);
   const error = queryValue(query.error);
+  // Row controls follow the existing server resolver; workflows re-check every mutation.
+  const manageableMembershipIds = memberships
+    ? (await Promise.all(memberships
+      .filter((membership) => membership.endedAt === null)
+      .map(async (membership) => (await canManageAuthorizedUser(userId, membership.id, unitId)) ? membership.id : null)))
+      .filter((id): id is string => id !== null)
+    : [];
+  const showStructure = canManageOrganization && rootUnitId === unitId && unit.rootUnit !== null;
+  const sections = [
+    { id: "overview", label: "Overview" },
+    { id: "organization", label: "Organization" },
+    ...(showStructure ? [{ id: "structure", label: "Structure" }] : []),
+    ...(canAdministerUsers && memberships ? [{ id: "access", label: "Access" }] : []),
+    ...(canDelete ? [{ id: "lifecycle", label: "Lifecycle" }] : []),
+  ];
 
   return (
     <>
@@ -108,60 +126,57 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
         </Link>
       </header>
 
+      <ManagementSectionNav sections={sections} />
       <ManagementNotice notice={notice} error={error} />
 
-      {canManageRootFromChild && rootUnitId ? (
-        <p className="units-management-root-link">
-          <Link href={`/units/${encodeURIComponent(rootUnitId)}/manage`}>Open RootUnit organization settings</Link>
-        </p>
-      ) : null}
+      <section id="overview" className="units-management-section" aria-labelledby="unit-overview-heading">
+        <div className="units-section-title">
+          <h2 id="unit-overview-heading">Overview</h2>
+          <span>{canEditProfile ? "MANAGE_UNIT" : "Read-only"}</span>
+        </div>
+        <UnitOverview unit={unit} canEdit={canEditProfile} />
+      </section>
 
-      {canEditProfile ? (
-        <section className="units-management-section" aria-labelledby="unit-profile-heading">
+      <section id="organization" className="units-management-section" aria-labelledby="organization-heading">
+        <div className="units-section-title">
+          <h2 id="organization-heading">Organization</h2>
+          <span>Operation-specific structure authority</span>
+        </div>
+        <OrganizationManagement
+          unit={{ id: unit.id, name: unit.name, parent: unit.parent, children: unit.children }}
+          canCreateChild={canCreateChild}
+          moveDestinations={moveDestinations}
+          rootSettingsHref={canManageRootFromChild && rootUnitId ? `/units/${encodeURIComponent(rootUnitId)}/manage#structure` : undefined}
+        />
+      </section>
+
+      {showStructure && rootUnitId ? (
+        <section id="structure" className="units-management-section" aria-labelledby="structure-heading">
           <div className="units-section-title">
-            <h2 id="unit-profile-heading">Unit profile</h2>
-            <span>MANAGE_UNIT</span>
+            <h2 id="structure-heading">Structure</h2>
+            <span>RootUnit owner</span>
           </div>
-          <UnitProfileForm unit={unit} />
+          <OrganizationCatalogs rootUnitId={rootUnitId} ranks={ranks} medals={medals} />
         </section>
       ) : null}
 
       {canAdministerUsers && memberships ? (
-        <section className="units-management-section" aria-labelledby="authorized-users-heading">
+        <section id="access" className="units-management-section" aria-labelledby="authorized-users-heading">
           <div className="units-section-title">
             <h2 id="authorized-users-heading">Authorized Users</h2>
             <span>MANAGE_AUTHORIZED_USERS</span>
           </div>
-          <AuthorizedUserManagement unitId={unitId} entries={memberships} />
+          <AuthorizedUserManagement unitId={unitId} entries={memberships} manageableMembershipIds={manageableMembershipIds} />
         </section>
       ) : null}
 
-      {canCreateChild || canDelete || moveDestinations.length > 0 ? (
-        <section className="units-management-section" aria-labelledby="structure-heading">
+      {canDelete ? (
+        <section id="lifecycle" className="units-management-section is-danger" aria-labelledby="lifecycle-heading">
           <div className="units-section-title">
-            <h2 id="structure-heading">Unit hierarchy</h2>
-            <span>Operation-specific structure authority</span>
+            <h2 id="lifecycle-heading">Lifecycle</h2>
+            <span>Destructive actions</span>
           </div>
-          <StructuralManagement
-            unit={{ id: unit.id, name: unit.name, parent: unit.parent, children: unit.children }}
-            canCreateChild={canCreateChild}
-            canDelete={canDelete}
-            moveDestinations={moveDestinations}
-          />
-        </section>
-      ) : null}
-
-      {canManageOrganization && rootUnitId === unitId && unit.rootUnit ? (
-        <section className="units-management-section" aria-labelledby="organization-settings-heading">
-          <div className="units-section-title">
-            <h2 id="organization-settings-heading">Organization settings</h2>
-            <span>RootUnit owner</span>
-          </div>
-          <OrganizationCatalogs
-            rootUnitId={rootUnitId}
-            ranks={ranks}
-            medals={medals}
-          />
+          <UnitLifecycle unitId={unit.id} unitName={unit.name} />
         </section>
       ) : null}
     </>

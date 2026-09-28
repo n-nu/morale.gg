@@ -19,6 +19,7 @@ import {
   requiredText,
   validateAuthorityLevel,
   validateGrant,
+  validateImageReference,
   validateUnitProfile,
 } from "../validation";
 
@@ -83,13 +84,15 @@ export function unitWorkflows(dependencies: {
       unitId: unknown;
       name: unknown;
       description: unknown;
-      imageRef: unknown;
+      imageRef?: unknown;
       discordInvite: unknown;
       groupLink: unknown;
     }) {
       const userId = await authenticatedUserId();
       const unitId = requiredText(input.unitId, "Unit");
-      const profile = validateUnitProfile(input);
+      const { imageRef, ...profile } = validateUnitProfile({ ...input, imageRef: input.imageRef });
+      // An omitted image reference is managed by updateUnitImage and must stay unchanged.
+      const data = input.imageRef === undefined ? profile : { ...profile, imageRef };
 
       return db.$transaction(async (tx) => {
         const unit = await tx.unit.findUnique({ where: { id: unitId }, select: { id: true } });
@@ -97,7 +100,22 @@ export function unitWorkflows(dependencies: {
         if (!(await canManageUnit(userId, unitId, tx))) {
           throw new UnitManagementError("You do not have permission to manage this Unit profile.");
         }
-        return tx.unit.update({ where: { id: unitId }, data: profile });
+        return tx.unit.update({ where: { id: unitId }, data });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    },
+
+    async updateUnitImage(input: { unitId: unknown; imageRef: unknown }) {
+      const userId = await authenticatedUserId();
+      const unitId = requiredText(input.unitId, "Unit");
+      const imageRef = validateImageReference(input.imageRef);
+
+      return db.$transaction(async (tx) => {
+        const unit = await tx.unit.findUnique({ where: { id: unitId }, select: { id: true } });
+        if (!unit) throw new UnitManagementError("Unit not found.");
+        if (!(await canManageUnit(userId, unitId, tx))) {
+          throw new UnitManagementError("You do not have permission to manage this Unit image.");
+        }
+        return tx.unit.update({ where: { id: unitId }, data: { imageRef } });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     },
 
@@ -448,6 +466,7 @@ export function unitWorkflows(dependencies: {
 
 export const {
   updateUnitProfile,
+  updateUnitImage,
   addAuthorizedUser,
   updateAuthorizedUserLevel,
   endAuthorizedUserMembership,
