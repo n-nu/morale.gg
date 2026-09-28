@@ -5,7 +5,7 @@ documentation_path: src/modules/events/MODULE.md
 status: stable
 version: 0.1
 last_reviewed: 2026-09-28
-updated_by_ticket: TKT-20260928-000033-001
+updated_by_ticket: TKT-20260928-000034-001
 ---
 
 # Events -> Audits Event Battlefield Management
@@ -49,10 +49,17 @@ Event. Audits validates that the participation, Event, and target structure
 are consistent. This contract does not authorize creating Audit drafts,
 editing drafts, submitting, or finalizing Audits.
 
+Atomic units and groups may be created with nullable `side` (`UNSORTED`) and
+without a parent. Placement determines side. A group move updates the side of
+the group, all descendant groups, and attached atomic units in one authorized
+transaction. An unassigned group cannot parent an assigned-side descendant.
+
 ## Guarantees
 
 Events remains authoritative for Event manager authorization and participation
 status. Approved participation is acceptance only and does not assign a side.
+Null side is durable manager configuration state, not invalid data. Only a
+`canManageEvent`-authorized manager read may return unassigned nodes.
 
 ## Constraints
 

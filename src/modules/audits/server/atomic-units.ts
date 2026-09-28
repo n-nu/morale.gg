@@ -18,7 +18,7 @@ export type CreateAtomicEventUnitInput = {
 export type EventAtomicEventUnitInput = CreateAtomicEventUnitInput & {
   eventId: string;
   name: string;
-  side: BattlefieldSide;
+  side: BattlefieldSide | null;
   auditUnitType: AuditUnitType;
 };
 
@@ -31,7 +31,8 @@ function requiredText(value: string, label: string, maximum = 120): string {
   return normalized;
 }
 
-function requiredSide(value: BattlefieldSide): BattlefieldSide {
+function requiredSide(value: BattlefieldSide | null): BattlefieldSide | null {
+  if (value === null) return null;
   if (value === "ATTACKER" || value === "DEFENDER") return value;
   throw new AtomicEventUnitError("Select a valid battlefield side.");
 }
@@ -107,7 +108,7 @@ export type UpdateEventAtomicEventUnitInput = {
   eventId: string;
   atomicEventUnitId: string;
   name: string;
-  side: BattlefieldSide;
+  side?: BattlefieldSide | null;
   auditUnitType: AuditUnitType;
   participationId: string;
   isMandatory: boolean;
@@ -138,7 +139,6 @@ export async function updateEventAtomicEventUnit(
     where: { id: input.atomicEventUnitId },
     data: {
       name: requiredText(input.name, "Atomic Event-unit name"),
-      side: requiredSide(input.side),
       auditUnitType: requiredAuditUnitType(input.auditUnitType),
       eventParticipationId: context.participationId,
       isMandatory: input.isMandatory,

@@ -8,9 +8,13 @@ type ServerAction = (data: FormData) => Promise<void>;
 type DraggedNode = {
   type: "group" | "atomic";
   id: string;
+  descendantIds?: string[];
 };
 
+let activeDraggedNode: DraggedNode | null = null;
+
 function readDraggedNode(event: React.DragEvent): DraggedNode | null {
+  if (activeDraggedNode !== null) return activeDraggedNode;
   const raw = event.dataTransfer.getData("application/x-morale-battle-node");
   if (!raw) return null;
   try {
@@ -21,74 +25,97 @@ function readDraggedNode(event: React.DragEvent): DraggedNode | null {
   }
 }
 
-export function DraggableNode({
+export function DragHandle({
   type,
   id,
-  children,
+  descendantIds = [],
+  label,
 }: {
   type: DraggedNode["type"];
   id: string;
-  children: ReactNode;
+  descendantIds?: string[];
+  label: string;
 }) {
   return (
-    <div
+    <button
+      type="button"
       draggable
       onDragStart={(event) => {
+        activeDraggedNode = { type, id, descendantIds };
         event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("application/x-morale-battle-node", JSON.stringify({ type, id }));
+        event.dataTransfer.setData("application/x-morale-battle-node", JSON.stringify(activeDraggedNode));
       }}
-      className="cursor-grab active:cursor-grabbing"
+      onDragEnd={() => { activeDraggedNode = null; }}
+      aria-label={`Drag ${label}`}
+      title={`Drag ${label}`}
+      className="grid h-7 w-7 shrink-0 cursor-grab grid-cols-2 place-content-center gap-0.5 rounded text-faint hover:bg-white/5 hover:text-foreground active:cursor-grabbing"
     >
-      {children}
-    </div>
+      {Array.from({ length: 6 }, (_, index) => <span key={index} className="h-1 w-1 rounded-full bg-current" />)}
+    </button>
   );
 }
 
 export function DropTarget({
   eventId,
-  groupId,
-  reparentAction,
-  attachAtomicAction,
+  destination,
+  label,
+  moveAction,
+  className = "",
+  inline = false,
   children,
 }: {
   eventId: string;
-  groupId: string;
-  reparentAction: ServerAction;
-  attachAtomicAction: ServerAction;
+  destination: { groupId: string } | { side: "ATTACKER" | "DEFENDER" | null };
+  label: string;
+  moveAction: ServerAction;
+  className?: string;
+  inline?: boolean;
   children: ReactNode;
 }) {
-  const [active, setActive] = useState(false);
+  const [state, setState] = useState<"idle" | "valid" | "invalid">("idle");
+  const canAccept = (node: DraggedNode | null) => {
+    if (node === null) return false;
+    if (!("groupId" in destination)) return true;
+    return node.type !== "group"
+      || (node.id !== destination.groupId && !node.descendantIds?.includes(destination.groupId));
+  };
+
+  const Target = inline ? "span" : "div";
 
   return (
-    <div
+    <Target
       onDragOver={(event) => {
-        if (readDraggedNode(event)) {
-          event.preventDefault();
-          setActive(true);
-        }
+        event.stopPropagation();
+        const node = readDraggedNode(event);
+        const valid = canAccept(node);
+        if (node !== null) event.preventDefault();
+        event.dataTransfer.dropEffect = valid ? "move" : "none";
+        setState(node === null ? "idle" : valid ? "valid" : "invalid");
       }}
-      onDragLeave={() => setActive(false)}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setState("idle");
+      }}
       onDrop={async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        setActive(false);
         const node = readDraggedNode(event);
-        if (!node) return;
+        const valid = canAccept(node);
+        setState(valid ? "idle" : "invalid");
+        if (!node || !valid) return;
         const data = new FormData();
         data.set("eventId", eventId);
-        if (node.type === "group") {
-          data.set("groupId", node.id);
-          data.set("parentGroupId", groupId);
-          await reparentAction(data);
-        } else {
-          data.set("groupId", groupId);
-          data.set("atomicEventUnitId", node.id);
-          await attachAtomicAction(data);
-        }
+        data.set("nodeType", node.type);
+        data.set("nodeId", node.id);
+        data.set("destination", "groupId" in destination
+          ? `group:${destination.groupId}`
+          : `side:${destination.side ?? "UNSORTED"}`);
+        await moveAction(data);
       }}
-      className={active ? "rounded border border-gold bg-gold/10" : "rounded"}
+      role="group"
+      aria-label={label}
+      className={`min-w-0 rounded transition-colors ${className} ${state === "valid" ? "outline outline-2 outline-gold bg-gold/10" : state === "invalid" ? "outline outline-2 outline-type-red bg-type-red/10" : ""}`}
     >
       {children}
-    </div>
+    </Target>
   );
 }

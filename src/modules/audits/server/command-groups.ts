@@ -36,7 +36,11 @@ function normalizedGroupInput(input: EventCommandGroupInput) {
     name,
     participationId: nullableId(input.participationId),
     representedUnitId: nullableId(input.representedUnitId),
-    side: input.side === "ATTACKER" || input.side === "DEFENDER" ? input.side : (() => { throw new EventCommandGroupError("Select a valid battlefield side."); })(),
+    side: input.side === undefined || input.side === null
+      ? null
+      : input.side === "ATTACKER" || input.side === "DEFENDER"
+        ? input.side
+        : (() => { throw new EventCommandGroupError("Select a valid battlefield side."); })(),
     commanderPlayerId: requiredId(input.commanderPlayerId, "Commander Player"),
     parentGroupId: nullableId(input.parentGroupId),
   };
@@ -115,7 +119,7 @@ async function validateEventCommandTree(
     }
     if (group.parentGroupId !== null) {
       const parent = groupsById.get(group.parentGroupId);
-      if (parent?.side !== null && group.side !== null && parent?.side !== group.side) {
+      if (parent?.side !== group.side) {
         throw new EventCommandGroupError("Parent and child command groups must use the same battlefield side.");
       }
     }
@@ -129,7 +133,7 @@ async function validateEventCommandTree(
       throw new EventCommandGroupError("Atomic Event-units must belong to a group in the same Event.");
     }
     const group = groupsById.get(membership.groupId);
-    if (group?.side !== null && membership.atomicEventUnit.side !== null && group?.side !== membership.atomicEventUnit.side) {
+    if (group?.side !== membership.atomicEventUnit.side) {
       throw new EventCommandGroupError("Atomic Event-units and parent groups must use the same battlefield side.");
     }
     const groupAtomicUnits = atomicUnitsByGroup.get(membership.groupId) ?? [];
@@ -212,15 +216,14 @@ export async function updateEventCommandGroup(
     }
     const existingGroup = await transaction.eventCommandGroup.findUnique({
       where: { id: normalizedGroupId },
-      select: { parentGroupId: true },
+      select: { parentGroupId: true, side: true },
     });
     const participation = await approvedParticipationForEvent(transaction, eventId, values.participationId, values.representedUnitId);
-    await assertParentSide(transaction, existingGroup?.parentGroupId ?? null, values.side);
+    await assertParentSide(transaction, existingGroup?.parentGroupId ?? null, existingGroup?.side ?? null);
     return transaction.eventCommandGroup.update({
       where: { id: normalizedGroupId },
       data: {
         name: values.name,
-        side: values.side,
         eventParticipationId: participation.id,
         commanderPlayerId: values.commanderPlayerId,
       },
@@ -247,15 +250,14 @@ export async function attachAtomicEventUnit(
     if (atomicUnit.eventParticipation.eventId !== eventId) {
       throw new EventCommandGroupError("Atomic Event-unit must belong to the same Event.");
     }
-    if (group.side !== null && atomicUnit.side !== null && group.side !== atomicUnit.side) {
-      throw new EventCommandGroupError("Atomic Event-units and parent groups must use the same battlefield side.");
-    }
     if (existingMembership !== null) {
       throw new EventCommandGroupError("Atomic Event-unit already has a parent group.");
     }
-    return transaction.eventCommandGroupAtomicUnit.create({
+    const membership = await transaction.eventCommandGroupAtomicUnit.create({
       data: { groupId: normalizedGroupId, atomicEventUnitId: normalizedAtomicId },
     });
+    await transaction.atomicEventUnit.update({ where: { id: normalizedAtomicId }, data: { side: group.side } });
+    return membership;
   });
 }
 
@@ -302,10 +304,9 @@ export async function attachChildEventCommandGroup(
     }
     if (child.parentGroupId !== null) throw new EventCommandGroupError("Child group already has a parent; use reparenting.");
     const parent = await transaction.eventCommandGroup.findUnique({ where: { id: normalizedParentId }, select: { side: true } });
-    if (parent?.side !== null && child.side !== null && parent?.side !== child.side) {
-      throw new EventCommandGroupError("Parent and child command groups must use the same battlefield side.");
-    }
+    if (parent === null) throw new EventCommandGroupError("Parent group must belong to the same Event.");
     await assertAcyclicReparent(transaction, eventId, normalizedChildId, normalizedParentId);
+    await setGroupSubtreeSide(transaction, eventId, normalizedChildId, parent.side);
     return transaction.eventCommandGroup.update({
       where: { id: normalizedChildId },
       data: { parentGroupId: normalizedParentId },
@@ -336,6 +337,7 @@ export async function reparentEventCommandGroup(
   userId: string,
   groupId: string,
   parentGroupId: string | null,
+  rootSide?: BattlefieldSide | null,
 ) {
   const normalizedGroupId = requiredId(groupId, "Command group");
   const normalizedParentId = nullableId(parentGroupId);
@@ -348,7 +350,16 @@ export async function reparentEventCommandGroup(
     if (group === null) throw new EventCommandGroupError("Command group not found.");
     if (group.eventId !== eventId) throw new EventCommandGroupError("Command group must belong to the same Event.");
     await assertAcyclicReparent(transaction, eventId, normalizedGroupId, normalizedParentId);
-    await assertParentSide(transaction, normalizedParentId, group.side);
+    const parent = normalizedParentId === null
+      ? null
+      : await transaction.eventCommandGroup.findUnique({ where: { id: normalizedParentId }, select: { side: true } });
+    if (normalizedParentId !== null && parent === null) {
+      throw new EventCommandGroupError("Parent group must belong to the same Event.");
+    }
+    const targetSide = normalizedParentId === null
+      ? rootSide === undefined ? group.side : rootSide
+      : parent?.side ?? null;
+    await setGroupSubtreeSide(transaction, eventId, normalizedGroupId, targetSide);
     return transaction.eventCommandGroup.update({
       where: { id: normalizedGroupId },
       data: { parentGroupId: normalizedParentId },
@@ -398,7 +409,7 @@ export type PublicEventCommandGroup = {
   children: PublicEventCommandGroup[];
 };
 
-export async function getPublicEventCommandStructure(eventId: string) {
+async function readEventCommandStructure(eventId: string, includeUnsorted: boolean) {
   const normalizedEventId = eventId.trim();
   if (normalizedEventId === "") return null;
   const [event, groups, ungroupedAtomicUnits] = await Promise.all([
@@ -503,11 +514,41 @@ export async function getPublicEventCommandStructure(eventId: string) {
     unitType: atomicUnit.audit?.lifecycle === "FINAL" ? atomicUnit.audit.unitType : null,
   });
 
+  const visibleGroups = includeUnsorted
+    ? roots
+    : roots.flatMap((group) => {
+        const assignedGroup = (node: PublicEventCommandGroup): PublicEventCommandGroup | null => {
+          if (node.side === null) return null;
+          return {
+            ...node,
+            atomicUnits: node.atomicUnits.filter((unit) => unit.side !== null),
+            children: node.children.flatMap((child) => {
+              const visibleChild = assignedGroup(child);
+              return visibleChild === null ? [] : [visibleChild];
+            }),
+          };
+        };
+        const visible = assignedGroup(group);
+        return visible === null ? [] : [visible];
+      });
+  const visibleAtomicUnits = ungroupedAtomicUnits
+    .map(atomicRead)
+    .filter((unit) => includeUnsorted || unit.side !== null);
+
   return {
     event,
-    groups: roots,
-    ungroupedAtomicUnits: ungroupedAtomicUnits.map(atomicRead),
+    groups: visibleGroups,
+    ungroupedAtomicUnits: visibleAtomicUnits,
   };
+}
+
+export async function getPublicEventCommandStructure(eventId: string) {
+  return readEventCommandStructure(eventId, false);
+}
+
+export async function getManagerEventCommandStructure(userId: string, eventId: string) {
+  if (userId.trim() === "" || !(await canManageEvent(userId, eventId))) return null;
+  return readEventCommandStructure(eventId, true);
 }
 
 export async function getUniqueDescendantAtomicUnits(
@@ -610,5 +651,123 @@ async function assertParentSide(
   const parent = await transaction.eventCommandGroup.findUnique({ where: { id: parentGroupId }, select: { side: true } });
   if (parent?.side !== null && parent?.side !== side) {
     throw new EventCommandGroupError("Parent and child command groups must use the same battlefield side.");
+  }
+}
+
+export type BattlefieldNodeMove =
+  | { type: "group"; id: string }
+  | { type: "atomic"; id: string };
+
+export type BattlefieldMoveTarget =
+  | { groupId: string }
+  | { side: BattlefieldSide | null };
+
+export async function moveEventBattlefieldNode(
+  userId: string,
+  eventId: string,
+  node: BattlefieldNodeMove,
+  target: BattlefieldMoveTarget,
+) {
+  const normalizedEventId = requiredId(eventId, "Event");
+  const nodeId = requiredId(node.id, "Battlefield node");
+  if (!(("groupId" in target)) && target.side !== null && target.side !== "ATTACKER" && target.side !== "DEFENDER") {
+    throw new EventCommandGroupError("Select a valid battlefield destination.");
+  }
+  return authorizedEventMutation(userId, normalizedEventId, async (transaction) => {
+    let targetGroup: { id: string; side: BattlefieldSide | null } | null = null;
+    if ("groupId" in target) {
+      targetGroup = await transaction.eventCommandGroup.findUnique({
+        where: { id: requiredId(target.groupId, "Target group") },
+        select: { id: true, side: true },
+      });
+      if (targetGroup === null) throw new EventCommandGroupError("Target group must belong to the same Event.");
+      const groupEventId = await transaction.eventCommandGroup.findUnique({
+        where: { id: targetGroup.id },
+        select: { eventId: true },
+      });
+      if (groupEventId?.eventId !== normalizedEventId) {
+        throw new EventCommandGroupError("Target group must belong to the same Event.");
+      }
+    }
+
+    const targetSide = targetGroup === null
+      ? ("side" in target ? target.side : null)
+      : targetGroup.side;
+
+    if (node.type === "atomic") {
+      const atomicUnit = await transaction.atomicEventUnit.findUnique({
+        where: { id: nodeId },
+        select: { id: true, eventParticipation: { select: { eventId: true } } },
+      });
+      if (atomicUnit === null || atomicUnit.eventParticipation.eventId !== normalizedEventId) {
+        throw new EventCommandGroupError("Atomic Event-unit must belong to the same Event.");
+      }
+      if (targetGroup !== null) {
+        await transaction.eventCommandGroupAtomicUnit.upsert({
+          where: { atomicEventUnitId: nodeId },
+          create: { atomicEventUnitId: nodeId, groupId: targetGroup.id },
+          update: { groupId: targetGroup.id },
+        });
+      } else {
+        await transaction.eventCommandGroupAtomicUnit.deleteMany({ where: { atomicEventUnitId: nodeId } });
+      }
+      return transaction.atomicEventUnit.update({ where: { id: nodeId }, data: { side: targetSide } });
+    }
+
+    const group = await transaction.eventCommandGroup.findUnique({
+      where: { id: nodeId },
+      select: { id: true, eventId: true },
+    });
+    if (group === null || group.eventId !== normalizedEventId) {
+      throw new EventCommandGroupError("Command group must belong to the same Event.");
+    }
+    if (targetGroup !== null) {
+      await assertAcyclicReparent(transaction, normalizedEventId, nodeId, targetGroup.id);
+    }
+    await setGroupSubtreeSide(transaction, normalizedEventId, nodeId, targetSide);
+    return transaction.eventCommandGroup.update({
+      where: { id: nodeId },
+      data: { parentGroupId: targetGroup?.id ?? null },
+    });
+  });
+}
+
+async function setGroupSubtreeSide(
+  transaction: CommandGroupTransaction,
+  eventId: string,
+  rootGroupId: string,
+  side: BattlefieldSide | null,
+) {
+  const groups = await transaction.eventCommandGroup.findMany({
+    where: { eventId },
+    select: { id: true, parentGroupId: true },
+  });
+  const childrenByParent = new Map<string, string[]>();
+  for (const group of groups) {
+    if (group.parentGroupId === null) continue;
+    const children = childrenByParent.get(group.parentGroupId) ?? [];
+    children.push(group.id);
+    childrenByParent.set(group.parentGroupId, children);
+  }
+  const subtree: string[] = [];
+  const pending = [rootGroupId];
+  const seen = new Set<string>();
+  while (pending.length > 0) {
+    const groupId = pending.pop();
+    if (groupId === undefined || seen.has(groupId)) continue;
+    seen.add(groupId);
+    subtree.push(groupId);
+    pending.push(...(childrenByParent.get(groupId) ?? []));
+  }
+  await transaction.eventCommandGroup.updateMany({ where: { id: { in: subtree } }, data: { side } });
+  const memberships = await transaction.eventCommandGroupAtomicUnit.findMany({
+    where: { groupId: { in: subtree } },
+    select: { atomicEventUnitId: true },
+  });
+  if (memberships.length > 0) {
+    await transaction.atomicEventUnit.updateMany({
+      where: { id: { in: memberships.map(({ atomicEventUnitId }) => atomicEventUnitId) } },
+      data: { side },
+    });
   }
 }

@@ -11,6 +11,9 @@ import {
   attachAtomicEventUnit,
   attachChildEventCommandGroup,
   createEventCommandGroup,
+  getManagerEventCommandStructure,
+  getPublicEventCommandStructure,
+  moveEventBattlefieldNode,
 } from "./command-groups";
 
 test("Event managers create approved atomic claims and server-side side checks protect the tree", async () => {
@@ -34,21 +37,44 @@ test("Event managers create approved atomic claims and server-side side checks p
   try {
     const attackerAtomic = await createEventAtomicEventUnit({ userId: manager.id, eventId: event.id, participationId: participation.id, name: "Attacker line", side: "ATTACKER", auditUnitType: "REGULAR", isMandatory: true });
     const defenderAtomic = await createEventAtomicEventUnit({ userId: manager.id, eventId: event.id, participationId: participation.id, name: "Defender line", side: "DEFENDER", auditUnitType: "RIFLES", isMandatory: false });
+    const unsortedAtomic = await createEventAtomicEventUnit({ userId: manager.id, eventId: event.id, participationId: participation.id, name: "Unsorted line", side: null, auditUnitType: "CAVALRY", isMandatory: true });
     assert.equal(attackerAtomic.side, "ATTACKER");
     assert.equal(attackerAtomic.eventParticipationId, participation.id);
+    assert.equal(unsortedAtomic.side, null);
 
     const defenderGroup = await createEventCommandGroup(owner.id, event.id, { name: "Defender group", participationId: participation.id, side: "DEFENDER", commanderPlayerId: commander.id });
     const attackerGroup = await createEventCommandGroup(owner.id, event.id, { name: "Attacker group", participationId: participation.id, side: "ATTACKER", commanderPlayerId: commander.id });
+    const unsortedGroup = await createEventCommandGroup(owner.id, event.id, { name: "Unsorted group", participationId: participation.id, commanderPlayerId: commander.id });
+    assert.equal(unsortedGroup.side, null);
 
-    await assert.rejects(
-      () => attachAtomicEventUnit(manager.id, defenderGroup.id, attackerAtomic.id),
-      /same battlefield side/i,
-    );
+    await moveEventBattlefieldNode(manager.id, event.id, { type: "atomic", id: attackerAtomic.id }, { groupId: defenderGroup.id });
+    assert.equal((await prisma.atomicEventUnit.findUnique({ where: { id: attackerAtomic.id } }))?.side, "DEFENDER");
     await attachAtomicEventUnit(manager.id, defenderGroup.id, defenderAtomic.id);
-    await assert.rejects(
-      () => attachChildEventCommandGroup(manager.id, defenderGroup.id, attackerGroup.id),
-      /same battlefield side/i,
-    );
+    await moveEventBattlefieldNode(manager.id, event.id, { type: "atomic", id: attackerAtomic.id }, { groupId: attackerGroup.id });
+    await attachChildEventCommandGroup(manager.id, attackerGroup.id, unsortedGroup.id);
+    const movedGroup = await attachChildEventCommandGroup(manager.id, defenderGroup.id, attackerGroup.id);
+    assert.equal(movedGroup.side, "DEFENDER");
+    assert.equal((await prisma.eventCommandGroup.findUnique({ where: { id: unsortedGroup.id } }))?.side, "DEFENDER");
+    assert.equal((await prisma.atomicEventUnit.findUnique({ where: { id: attackerAtomic.id } }))?.side, "DEFENDER");
+
+    await moveEventBattlefieldNode(manager.id, event.id, { type: "group", id: attackerGroup.id }, { side: "ATTACKER" });
+    assert.equal((await prisma.eventCommandGroup.findUnique({ where: { id: attackerGroup.id } }))?.side, "ATTACKER");
+    assert.equal((await prisma.eventCommandGroup.findUnique({ where: { id: unsortedGroup.id } }))?.side, "ATTACKER");
+    assert.equal((await prisma.atomicEventUnit.findUnique({ where: { id: attackerAtomic.id } }))?.side, "ATTACKER");
+    await moveEventBattlefieldNode(manager.id, event.id, { type: "group", id: attackerGroup.id }, { side: null });
+    await moveEventBattlefieldNode(manager.id, event.id, { type: "atomic", id: unsortedAtomic.id }, { side: "ATTACKER" });
+    await moveEventBattlefieldNode(manager.id, event.id, { type: "atomic", id: unsortedAtomic.id }, { side: null });
+
+    const publicStructure = await getPublicEventCommandStructure(event.id);
+    const managerStructure = await getManagerEventCommandStructure(manager.id, event.id);
+    const unauthorizedManagerStructure = await getManagerEventCommandStructure(owner.id, "missing-event");
+    assert.ok(publicStructure);
+    assert.ok(managerStructure);
+    assert.equal(unauthorizedManagerStructure, null);
+    assert.equal(publicStructure.groups.some(({ id }) => id === attackerGroup.id), false);
+    assert.equal(publicStructure.ungroupedAtomicUnits.some(({ id }) => id === unsortedAtomic.id), false);
+    assert.equal(managerStructure.groups.some(({ id }) => id === attackerGroup.id), true);
+    assert.equal(managerStructure.ungroupedAtomicUnits.some(({ id }) => id === unsortedAtomic.id), true);
   } finally {
     await prisma.eventCommandGroupAtomicUnit.deleteMany({ where: { group: { eventId: event.id } } });
     await prisma.eventCommandGroup.updateMany({ where: { eventId: event.id }, data: { parentGroupId: null } });

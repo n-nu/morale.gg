@@ -3,8 +3,8 @@ module_id: audits
 path: src/modules/audits
 status: active
 version: 0.1
-last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000020-001
+last_reviewed: 2026-09-28
+updated_by_ticket: TKT-20260928-000034-001
 ---
 
 # Audits
@@ -16,11 +16,13 @@ give those results their historical context.
 
 ## Ownership
 
-- Atomic Event-unit identity, battlefield name, fixed ATTACKER/DEFENDER side,
+- Atomic Event-unit identity, battlefield name, nullable side (`UNSORTED`,
+  ATTACKER, or DEFENDER),
   Audit Unit type, and mandatory/optional participation metadata;
 - Audit drafts, finalization, Unit type, Unit statistics, and player results;
 - Audit Player role assignments;
-- Event command groups and their strict tree; and
+- Event command groups and their strict tree, including durable Unsorted
+  configuration state; and
 - public finalized Audit and command-structure reads; and
 - Event-manager battlefield-structure mutations through the Events-owned seam.
 
@@ -37,8 +39,10 @@ statistics aggregation.
 Server-only workflows create and configure atomic Event units through the
 Events-owned manager seam or existing Audit workflow, create/edit
 creator-owned drafts, parse PlayerID results, finalize Audits, and manage
-Event command groups. Finalized Audit results and Event command structures are publicly
-readable. `getEffectiveFinalizedAuditObservations` exposes the approved
+Event command groups. Finalized Audit results and assigned-side Event
+structures are publicly readable. The manager structure reader requires
+Events-owned `canManageEvent` and is the only read that returns Unsorted nodes.
+`getEffectiveFinalizedAuditObservations` exposes the approved
 Statistics source read, including only the effective finalized Audit, raw
 result/role facts, and command-group descendants. Drafts and draft-management
 data are private. Exact DTOs and routes remain implementation choices within
@@ -70,8 +74,11 @@ the submitting Auth.js User identity.
 
 - Each atomic Event unit belongs to exactly one approved EventParticipation;
   one EventParticipation may have many atomic units.
-- Atomic units and command groups use only ATTACKER or DEFENDER; hierarchy
-  mutations reject cross-side descendants and parents.
+- Atomic units and command groups may be Unsorted (`side = null`) or assigned
+  to ATTACKER/DEFENDER. Unsorted is manager-only configuration state.
+- A group and every descendant have the same side. Organizer moves update the
+  moved subtree atomically; an unassigned group cannot contain an assigned
+  descendant.
 - Each atomic Event unit has zero or one Audit. The atomic unit, not the Audit,
   is the stable battlefield identity.
 - Only the creator edits an unfinished draft. Submission finalizes atomically;

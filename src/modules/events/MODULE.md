@@ -3,8 +3,8 @@ module_id: events
 path: src/modules/events
 status: active
 version: 0.2
-last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000020-001
+last_reviewed: 2026-09-28
+updated_by_ticket: TKT-20260928-000034-001
 ---
 
 # Events
@@ -58,13 +58,18 @@ Audit work builds on approved Event participation through the
   past), with presentation-level event-type filtering via query parameters.
 - Route `/events/[eventId]`: public, unauthenticated Event detail. Approved
   participating Units are shown; statistics remain future functionality.
+  One Battle Structure tree shows assigned Defender/Attacker hierarchy only;
+  null-side manager configuration nodes are not returned to public readers.
 - Route `/events/calendar`: public, unauthenticated month-calendar view of
   the same Event data.
 - Route `/events/manage`: authenticated list of Events the User owns or
   explicitly manages.
 - Route `/events/[eventId]/manage`: authenticated Event-management workflow
   (event settings, owner-only manager administration, participation review
-  and approval/denial), gated server-side by `canManageEvent`.
+  and approval/denial plus the embedded Battle Structure organizer), gated
+  server-side by `canManageEvent`.
+- The former `/events/[eventId]/command-structure` URL is a compatibility
+  redirect and is not a separate advertised feature.
 - Public Event detail exposes APPROVED participating Units only; pending and
   denied participation stays management-only.
 - `getCanonicalEventTimes` provides Statistics with Events-owned canonical

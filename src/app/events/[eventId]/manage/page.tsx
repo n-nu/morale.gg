@@ -25,6 +25,7 @@ import {
 } from "./actions";
 import { getEventResultState } from "@/modules/events/server/results";
 import { ScheduleInput } from "./schedule-input";
+import { BattleStructureManager } from "./battle-structure";
 
 export const dynamic = "force-dynamic";
 
@@ -143,6 +144,8 @@ export default async function ManageEventPage({
       </header>
 
       <Banner notice={notice} error={error} />
+
+      <BattleStructureManager eventId={event.id} userId={userId} />
 
       <div className="mt-7 flex flex-col gap-7 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
@@ -464,12 +467,6 @@ export default async function ManageEventPage({
             className="text-sm font-bold text-gold hover:text-gold-bright"
           >
             ← View public event page
-          </Link>
-          <Link
-            href={`/events/${event.id}/command-structure`}
-            className="rounded-lg border border-gold px-4 py-2 text-center text-sm font-bold text-gold hover:bg-gold hover:text-gold-ink"
-          >
-            Open Battle Structure editor
           </Link>
           <Link
             href="/events/manage"

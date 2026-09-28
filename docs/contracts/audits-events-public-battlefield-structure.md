@@ -5,7 +5,7 @@ documentation_path: src/modules/audits/MODULE.md
 status: stable
 version: 0.1
 last_reviewed: 2026-09-28
-updated_by_ticket: TKT-20260928-000033-001
+updated_by_ticket: TKT-20260928-000034-001
 ---
 
 # Audits -> Events Public Battlefield Structure
@@ -26,21 +26,29 @@ making Events depend on Audits private persistence.
 
 ## Inputs
 
-Event ID and, for protected manager options, server-resolved manager identity.
+Event ID for public structure reads; server-resolved manager identity for
+protected configuration reads.
 
 ## Outputs
 
 Side-separated groups and atomic units, approved participation-backed Unit
 display, names, mandatory state, Audit type/finalized state, group Commander
-display, parent/child structure, and safe move/create option data. Private
-Audit drafts, submitter identity, authority rows, and raw IDs not needed by a
-server route are excluded from public DTOs.
+display, parent/child structure, and safe move/create option data. The public
+reader returns only assigned-side roots and descendants. A manager-only read
+authorized through `canManageEvent` may additionally return null-side
+`UNSORTED` nodes. Private Audit drafts, submitter identity, authority rows,
+and raw IDs not needed by a server route are excluded from public DTOs.
 
 ## Semantics
 
-Sides are only `ATTACKER` and `DEFENDER`. The reader preserves the strict tree,
-unique atomic descendants, and pending-versus-finalized result state. Public
-reads do not expose requested/denied participation or unrelated units.
+Assigned sides are only `ATTACKER` and `DEFENDER`; nullable side is
+manager-only `UNSORTED` configuration state. The reader preserves the strict
+tree, unique atomic descendants, and pending-versus-finalized result state.
+Public reads do not expose unassigned nodes, requested/denied participation,
+or unrelated units.
+The Event page renders one Battle Structure section. Atomic disclosures may
+show pending Unit Statistics and Participating Players placeholders; they do
+not expose draft Audit Player rows or calculate Ticket 35 metrics.
 
 ## Guarantees
 
