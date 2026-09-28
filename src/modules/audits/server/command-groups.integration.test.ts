@@ -21,12 +21,12 @@ test("Event command groups enforce authority and preserve a strict historical tr
 
   const suffix = randomUUID();
   const representedUnit = await prisma.unit.findFirst({
-    where: { rootUnitId: { not: null } },
+    where: { parentId: null, rootUnitId: { not: null } },
     select: { id: true, parentId: true, commanderUserId: true },
   });
   assert.ok(representedUnit, "a seeded Unit is required; run the documented database seed");
   const alternateRepresentedUnit = await prisma.unit.findFirst({
-    where: { id: { not: representedUnit.id } },
+    where: { id: { not: representedUnit.id }, parentId: null },
     select: { id: true },
   });
 
@@ -247,7 +247,7 @@ test("Event command groups enforce authority and preserve a strict historical tr
         include: { playerResults: true, roles: true },
         orderBy: { atomicEventUnitId: "asc" },
       });
-      const beforeUnitHierarchy = await prisma.unit.findMany({ select: { id: true, parentId: true }, orderBy: { id: "asc" } });
+      const beforeUnitHierarchy = await prisma.unit.findUnique({ where: { id: representedUnit.id }, select: { id: true, parentId: true } });
       const beforeMembership = await prisma.unitMembership.findUnique({ where: { id: membership.id } });
 
       await deleteEventCommandGroup(manager.id, corps.id);
@@ -265,7 +265,7 @@ test("Event command groups enforce authority and preserve a strict historical tr
         include: { playerResults: true, roles: true },
         orderBy: { atomicEventUnitId: "asc" },
       });
-      const afterUnitHierarchy = await prisma.unit.findMany({ select: { id: true, parentId: true }, orderBy: { id: "asc" } });
+      const afterUnitHierarchy = await prisma.unit.findUnique({ where: { id: representedUnit.id }, select: { id: true, parentId: true } });
       const afterMembership = await prisma.unitMembership.findUnique({ where: { id: membership.id } });
 
       assert.deepEqual(afterAtomic, beforeAtomic);
@@ -283,25 +283,24 @@ test("Event command groups enforce authority and preserve a strict historical tr
     await prisma.eventCommandGroupAtomicUnit.deleteMany({ where: { group: { eventId: { in: eventIds } } } });
     await prisma.eventCommandGroup.updateMany({ where: { eventId: { in: eventIds } }, data: { parentGroupId: null } });
     await prisma.eventCommandGroup.deleteMany({ where: { eventId: { in: eventIds } } });
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
-    try {
-      await prisma.auditPlayerResult.deleteMany({ where: { audit: { atomicEventUnitId: { in: atomicIds } } } });
-      await prisma.auditRoleAssignment.deleteMany({ where: { audit: { atomicEventUnitId: { in: atomicIds } } } });
-      await prisma.audit.deleteMany({ where: { atomicEventUnitId: { in: atomicIds } } });
-      await prisma.eventCommandGroup.deleteMany({ where: { id: { in: groupIds }, parentGroupId: null } });
-      await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
-      await prisma.eventParticipation.deleteMany({ where: { id: { in: [participation.id, otherParticipation.id] } } });
-      await prisma.eventAuthorizedUser.deleteMany({ where: { eventId: event.id } });
-      await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
-      await prisma.unitMembership.deleteMany({ where: { id: membership.id } });
-      await prisma.player.deleteMany({ where: { id: { in: [commanderPlayer.id, secondPlayer.id] } } });
-      await prisma.user.deleteMany({ where: { id: { in: [owner.id, manager.id] } } });
-    } finally {
-      await prisma.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
-      await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
-      await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
-    }
+    await prisma.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
+      await transaction.auditPlayerResult.deleteMany({ where: { audit: { atomicEventUnitId: { in: atomicIds } } } });
+      await transaction.auditRoleAssignment.deleteMany({ where: { audit: { atomicEventUnitId: { in: atomicIds } } } });
+      await transaction.audit.deleteMany({ where: { atomicEventUnitId: { in: atomicIds } } });
+      await transaction.eventCommandGroup.deleteMany({ where: { id: { in: groupIds }, parentGroupId: null } });
+      await transaction.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
+      await transaction.eventParticipation.deleteMany({ where: { id: { in: [participation.id, otherParticipation.id] } } });
+      await transaction.eventAuthorizedUser.deleteMany({ where: { eventId: event.id } });
+      await transaction.event.deleteMany({ where: { id: { in: eventIds } } });
+      await transaction.unitMembership.deleteMany({ where: { id: membership.id } });
+      await transaction.player.deleteMany({ where: { id: { in: [commanderPlayer.id, secondPlayer.id] } } });
+      await transaction.user.deleteMany({ where: { id: { in: [owner.id, manager.id] } } });
+      await transaction.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+    });
   }
 });

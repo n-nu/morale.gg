@@ -12,7 +12,7 @@ test("PostgreSQL attendance uses historical game Player identity and independent
 
   const suffix = randomUUID();
   const parentUnit = await prisma.unit.findFirst({
-    where: { rootUnitId: { not: null } },
+    where: { parentId: null, rootUnitId: { not: null } },
     select: { id: true, rootUnitId: true, commanderUserId: true },
   });
   assert.ok(parentUnit, "a seeded Unit is required; run the documented database seed");
@@ -217,28 +217,32 @@ test("PostgreSQL attendance uses historical game Player identity and independent
     assert.equal(combat.unitTypes[0].totals.kills, 18);
   } finally {
     const atomicIds = atomicUnits.map(({ id }) => id);
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
-    await prisma.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
-    try {
-      await prisma.auditPlayerResult.deleteMany({ where: { auditId: { in: auditIds } } });
-      await prisma.auditRoleAssignment.deleteMany({ where: { auditId: { in: auditIds } } });
-      await prisma.audit.deleteMany({ where: { id: { in: auditIds } } });
-      await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
-      await prisma.eventParticipation.deleteMany({ where: { id: { in: participationIds } } });
-      await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
-      await prisma.unitMembership.deleteMany({ where: { playerId: { in: players.map(({ id }) => id) } } });
-      await prisma.player.deleteMany({ where: { id: { in: players.map(({ id }) => id) } } });
-      if (createdUnitIds.length > 0) {
-        await prisma.$transaction(async (transaction) => {
-          await transaction.authorizedUserMembership.deleteMany({ where: { unitId: { in: createdUnitIds } } });
-          await transaction.unit.deleteMany({ where: { id: { in: createdUnitIds } } });
-        });
-      }
-    } finally {
-      await prisma.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
-      await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
-      await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+    await prisma.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
+      await transaction.auditPlayerResult.deleteMany({ where: { auditId: { in: auditIds } } });
+      await transaction.auditRoleAssignment.deleteMany({ where: { auditId: { in: auditIds } } });
+      await transaction.audit.deleteMany({ where: { id: { in: auditIds } } });
+      await transaction.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
+      await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+    });
+    await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
+    await prisma.eventParticipation.deleteMany({ where: { id: { in: participationIds } } });
+    await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
+    await prisma.unitMembership.deleteMany({ where: { playerId: { in: players.map(({ id }) => id) } } });
+    await prisma.player.deleteMany({ where: { id: { in: players.map(({ id }) => id) } } });
+    if (createdUnitIds.length > 0) {
+      assert.deepEqual(await prisma.eventParticipation.findMany({
+        where: { unitId: { in: createdUnitIds } },
+        select: { id: true, event: { select: { name: true } } },
+      }), []);
+      await prisma.$transaction(async (transaction) => {
+        await transaction.authorizedUserMembership.deleteMany({ where: { unitId: { in: createdUnitIds } } });
+        await transaction.unit.deleteMany({ where: { id: { in: createdUnitIds } } });
+      });
+      assert.ok(await prisma.unit.findUnique({ where: { id: parentUnit.id } }));
     }
   }
 });
