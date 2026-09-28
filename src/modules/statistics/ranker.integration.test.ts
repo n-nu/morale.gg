@@ -6,8 +6,66 @@ import { prisma } from "@/lib/prisma";
 
 import { getRankerStatistics } from "./ranker";
 
+async function cleanupRankerTestData() {
+  const prefix = "ranker-";
+  const playerIds = (await prisma.player.findMany({
+    where: { playerId: { startsWith: prefix } },
+    select: { id: true },
+  })).map(({ id }) => id);
+
+  const eventIds = (await prisma.event.findMany({
+    where: { name: { startsWith: "Ranker " } },
+    select: { id: true },
+  })).map(({ id }) => id);
+
+  const participationIds = (await prisma.eventParticipation.findMany({
+    where: { eventId: { in: eventIds } },
+    select: { id: true },
+  })).map(({ id }) => id);
+
+  const atomicIds = (await prisma.atomicEventUnit.findMany({
+    where: { eventParticipationId: { in: participationIds } },
+    select: { id: true },
+  })).map(({ id }) => id);
+
+  const auditIds = (await prisma.audit.findMany({
+    where: { atomicEventUnitId: { in: atomicIds } },
+    select: { id: true },
+  })).map(({ id }) => id);
+
+  await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
+  await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
+  await prisma.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
+  try {
+    if (auditIds.length > 0) {
+      await prisma.auditPlayerResult.deleteMany({ where: { auditId: { in: auditIds } } });
+      await prisma.auditRoleAssignment.deleteMany({ where: { auditId: { in: auditIds } } });
+      await prisma.audit.deleteMany({ where: { id: { in: auditIds } } });
+    }
+    if (atomicIds.length > 0) {
+      await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
+    }
+    if (participationIds.length > 0) {
+      await prisma.eventParticipation.deleteMany({ where: { id: { in: participationIds } } });
+    }
+    if (eventIds.length > 0) {
+      await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
+    }
+    if (playerIds.length > 0) {
+      await prisma.unitMembership.deleteMany({ where: { playerId: { in: playerIds } } });
+      await prisma.player.deleteMany({ where: { id: { in: playerIds } } });
+    }
+  } finally {
+    await prisma.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
+    await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
+    await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+  }
+}
+
 test("public Ranker reads aggregate effective Audits by Event time and historical type", async () => {
   assert.ok(process.env.DATABASE_URL, "DATABASE_URL is required for this integration test");
+
+  await cleanupRankerTestData();
 
   const suffix = randomUUID();
   const now = new Date();
@@ -236,6 +294,7 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
       await prisma.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
       await prisma.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
       await prisma.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
+      await cleanupRankerTestData();
     }
   }
 });
