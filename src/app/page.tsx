@@ -20,26 +20,27 @@ export default function Home() {
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">
           Community
         </p>
-        <h1 className="mt-2 text-5xl font-extrabold tracking-tight text-white">
+        <h1 className="mt-2 text-[44px] font-extrabold leading-none tracking-tight text-white sm:text-5xl">
           morale.gg
         </h1>
         <p className="mt-4 max-w-xl text-base leading-7 text-muted">
-          Statistics, rosters, and event management for organized Napoleonic
-          Wars communities. Feature modules (units, players, audits,
-          statistics) are being added incrementally.
+          Records, rosters, and operations for organized Napoleonic Wars communities.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/events"
-            className="rounded-lg bg-gold px-6 py-3 text-sm font-bold text-gold-ink transition-colors hover:bg-gold-bright"
+            className="rounded-md bg-gold px-5 py-2.5 text-sm font-bold text-gold-ink transition-colors hover:bg-gold-bright"
           >
             Browse events
           </Link>
           <Link
             href="/units"
-            className="rounded-lg border border-edge-strong bg-surface px-6 py-3 text-sm font-bold text-white transition-colors hover:border-gold hover:text-gold"
+            className="rounded-md border border-edge-strong bg-surface px-5 py-2.5 text-sm font-bold text-white transition-colors hover:border-gold hover:text-gold"
           >
             Browse units
+          </Link>
+          <Link href="/statistics" className="rounded-md border border-edge-strong px-5 py-2.5 text-sm font-bold text-white transition-colors hover:border-gold hover:text-gold">
+            Statistics
           </Link>
         </div>
       </div>

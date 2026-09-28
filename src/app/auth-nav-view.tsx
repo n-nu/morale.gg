@@ -1,5 +1,5 @@
 const controlClass =
-  "rounded-md bg-gold px-4 py-2 text-[13px] font-bold text-gold-ink transition-colors hover:bg-gold-bright";
+  "rounded-md bg-gold px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-gold-ink transition-colors hover:bg-gold-bright";
 
 export function hasAuthenticatedUser(
   session: { user?: unknown } | null | undefined,

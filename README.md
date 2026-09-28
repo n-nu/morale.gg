@@ -153,6 +153,39 @@ npm run db:seed
 
 The local PostgreSQL service uses the official `postgres:16` image and a named Docker volume for persistence. `DATABASE_URL` remains the single application database configuration used by Prisma and Next.js.
 
+## Demo dataset for visual review
+
+A development-only mock dataset is available for browsing the app as if it were an active Napoleonic Wars community. The seed is intentionally scoped to demo-only IDs and records and is designed to run without touching unrelated local data.
+
+```bash
+npm run seed:demo
+npm run seed:demo:reset
+```
+
+The seed script:
+
+- is disabled in production;
+- creates demo-only Users, Players, Units, Events, EventParticipation, AtomicEventUnit, Audits, and command groups;
+- uses the existing Prisma schema and workflow patterns instead of inventing new domain rules;
+- removes only records whose IDs or demo player IDs fall under the demo namespace.
+
+Required environment:
+
+- `DATABASE_URL` pointing to a local development database;
+- `ROOT_UNIT_NAME` optional, used for the root organization label;
+- `NODE_ENV` must not be `production` when seeding.
+
+Expected approximate counts after a successful seed are:
+
+- 6 nation roots under the main root Unit;
+- about 45–55 persistent Units;
+- 120–150 Players;
+- 12–14 Events;
+- 30–45 EventParticipation rows;
+- about 20–30 finalized Audits plus several draft or pending audit states.
+
+Use `npm run seed:demo:reset` before reseeding to remove only the demo-owned rows and then rerun `npm run seed:demo`.
+
 ## Shared Backend Setup
 
 The MVP backend runs inside the Next.js server-side application layer. Browser/client code

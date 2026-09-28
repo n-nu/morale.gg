@@ -1,11 +1,11 @@
 import Link from "next/link";
+import { Breadcrumbs, PageHeader } from "@/app/presentation";
 
 export default function UnitNotFound() {
   return (
     <>
-      <h1 className="text-3xl font-semibold">Unit not found</h1>
-      <p className="mt-3 text-neutral-400">This unit does not exist or is no longer available.</p>
-      <Link href="/units" className="mt-5 inline-block py-2 text-white underline">Browse all units</Link>
+      <Breadcrumbs items={[{ label: "Community", href: "/events" }, { label: "Units", href: "/units" }, { label: "Not found" }]} />
+      <PageHeader category="Unit directory" title="Unit not found" description="This Unit does not exist or is no longer available." actions={<Link href="/units" className="text-sm font-bold text-gold underline underline-offset-4 hover:text-gold-bright">Browse all Units</Link>} />
     </>
   );
 }

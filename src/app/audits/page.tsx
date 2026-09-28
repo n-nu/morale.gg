@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Breadcrumbs, PageHeader } from "@/app/presentation";
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { listEvents } from "@/modules/events/server/queries";
 import {
@@ -62,22 +63,20 @@ export default async function AuditsPage({
   const auditsByAtomicUnit = new Map(auditViews);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-10">
-      <h1 className="text-3xl font-bold">Audits</h1>
-      <p className="my-3 max-w-3xl text-muted">
-        Select an approved Event participation, create an atomic unit, and submit one immutable Audit for each battlefield unit.
-      </p>
+    <main className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-16 md:px-10">
+      <Breadcrumbs items={[{ label: "Community", href: "/events" }, { label: "Audits" }]} />
+      <PageHeader category="Records and administration" title="Audits" description="Finalized event records and authorized submissions." />
 
       {contexts.length === 0 ? (
-        <p className="mt-8 rounded border border-dashed border-edge p-5">
-          No approved Event participations are available.
-        </p>
+          <p className="mt-8 border-y border-edge py-5 text-sm text-muted">
+            No approved Event participations are available.
+          </p>
       ) : (
         <section className="mt-8 space-y-6" aria-labelledby="participations-heading">
           <h2 id="participations-heading" className="text-xl font-semibold">
             Approved participations
           </h2>
-          <ul className="divide-y divide-edge rounded border border-edge">
+          <ul className="divide-y divide-edge border-y border-edge">
             {contexts.map((context) => (
               <li key={context.participationId} className="p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -101,7 +100,7 @@ export default async function AuditsPage({
                       {atomicUnits.length === 0 ? (
                         <p className="mt-2 text-sm text-muted">No atomic units created yet.</p>
                       ) : (
-                        <ul className="mt-2 divide-y divide-edge rounded border border-edge">
+                        <ul className="mt-2 divide-y divide-edge border-y border-edge">
                           {atomicUnits.map((atomicUnit) => (
                             <li key={atomicUnit.id} className="space-y-4 p-4">
                               <div className="flex flex-wrap items-center justify-between gap-3">

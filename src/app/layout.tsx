@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     "morale.gg: statistics, rosters, and event management for organized multiplayer-game communities.",
 };
 
-const plannedNav = ["Community", "Audits", "Leaderboards"];
+const plannedNav = ["Leaderboards"];
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -32,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <header className="h-16 border-b border-edge bg-surface">
-          <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between gap-2 overflow-x-auto px-4 md:gap-7 md:px-10">
+          <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between gap-2 overflow-x-auto px-6 md:gap-6 md:px-10">
             <Link
               href="/"
               className="text-lg font-extrabold tracking-tight text-white md:text-xl"
@@ -41,17 +41,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             <div className="flex items-center gap-2 md:gap-7">
               {plannedNav.map((item) => (
-                <span
-                  key={item}
-                  title="Coming soon"
-                  className="hidden cursor-default text-xs font-bold uppercase tracking-[0.1em] text-muted/50 lg:inline"
-                >
+                <span key={item} title="Coming soon" className="hidden cursor-default text-xs font-bold uppercase tracking-[0.1em] text-muted/50 lg:inline">
                   {item}
                 </span>
               ))}
+              <NavLink href="/players">Players</NavLink>
               <NavLink href="/statistics">Statistics</NavLink>
               <NavLink href="/events">Events</NavLink>
               <NavLink href="/units">Units</NavLink>
+              <NavLink href="/audits">Audits</NavLink>
               <AuthNav />
             </div>
           </nav>

@@ -49,9 +49,14 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	presentation foundation, `/statistics` discovery, and public Player
 	Statistics experience. Archived under `tickets/COMPLETED/2026/09/`.
 - **TKT-20260927-000030-001 — Unit Statistics and Attendance Presentation:**
-	**READY.** Ticket 29 is a completed historical dependency. Reuse its shared
-	window selector/resolution, ratio and Unit-type presentation, empty/error
-	states, and responsive conventions for Unit Statistics and attendance.
+	**COMPLETED.** PR #17 merged at
+	`4ccda7c2addd2c3b6ef48dcd669941b0b858f7a9`. Reuses Ticket 29's
+	shared presentation for Direct, Organizational, and Average Unit Performance
+	and public Player+Unit attendance. Archived under `tickets/COMPLETED/2026/09/`.
+	Tickets 24-30 complete the Statistics feature: Audit observations → Statistics
+	computation → Player presentation → Unit presentation → Attendance presentation.
+	Further Statistics tickets require a concrete defect or an explicitly
+	approved new product feature; MVP integration/polish is a separate phase.
 
 ---
 

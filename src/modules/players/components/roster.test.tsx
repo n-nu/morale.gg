@@ -14,7 +14,9 @@ test("public roster links Players and hides mutation controls", async () => {
     { id: "membership", startedAt: new Date("2026-09-25T12:00:00Z"), player: { id: "internal", playerId: "123", name: "Player One" } },
   ]} />);
   assert.match(html, /href="\/players\/internal"/);
-  assert.match(html, /Game ID: 123/);
+  assert.match(html, /123/);
+  assert.match(html, /<table/);
+  assert.match(html, /Attendance · Unit/);
   assert.doesNotMatch(html, /End membership|Add to roster/);
 });
 
@@ -38,4 +40,25 @@ test("empty roster and registration form provide a usable starting point", async
   assert.match(html, /Player name/);
   assert.match(html, /Register Player/);
   assert.doesNotMatch(html, /name="userId"/);
+});
+
+test("roster labels player-combat values as overall and preserves selected window and type", async () => {
+  const { Roster } = await import("./roster");
+  const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage={false} window="all-time" entries={[{
+    id: "membership",
+    startedAt: new Date("2026-09-25T12:00:00Z"),
+    player: { id: "internal", playerId: "123", name: "Player One" },
+    ranker: {
+      distinctEvents: 3,
+      unitTypes: {
+        REGULAR: { kills: 6, deaths: 2, assists: 4, kdr: "3" },
+      },
+    },
+    attendance: { obligations: 2, present: 1, absent: 1, pending: 0, percentage: 50, noResolvedData: false },
+  }]} />);
+
+  assert.match(html, /Overall Player Statistics · All Time · not Unit-scoped/);
+  assert.match(html, /Result type/);
+  assert.match(html, />3<\/td>/);
+  assert.match(html, /50% · 1\/2/);
 });
