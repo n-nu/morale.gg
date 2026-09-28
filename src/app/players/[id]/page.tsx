@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 
 import { getPlayer, getPlayerMemberships } from "@/modules/players/server/queries";
 import {
+  getAttendanceSummaryForPlayerUnit,
   getCommanderStatistics,
   getGeneralStatistics,
   getRankerStatistics,
 } from "@/modules/statistics";
 import {
   StatisticsEmptyState,
+  AttendanceSummaryPanel,
+  StatisticsErrorState,
   StatisticsRatio,
   TypeSummaryCard,
   UnitTypeLabel,
@@ -49,6 +52,23 @@ export default async function PlayerPage({
     getGeneralStatistics(selectedWindow),
   ]);
 
+  let attendanceSummaries: Array<{ membership: (typeof memberships)[number]; summary: Awaited<ReturnType<typeof getAttendanceSummaryForPlayerUnit>> }> = [];
+  let attendanceError = false;
+  try {
+    attendanceSummaries = await Promise.all(
+      memberships.map(async (membership) => ({
+        membership,
+        summary: await getAttendanceSummaryForPlayerUnit({
+          gamePlayerId: player.playerId,
+          unitId: membership.unitId,
+          window: selectedWindow,
+        }),
+      })),
+    );
+  } catch {
+    attendanceError = true;
+  }
+
   const rankerEntry = ranker.players.find((entry) => entry.gamePlayerId === player.playerId);
   const commanderEntry = commander.players.find((entry) => entry.gamePlayerId === player.playerId);
   const generalEntry = general.players.find((entry) => entry.gamePlayerId === player.playerId);
@@ -83,6 +103,26 @@ export default async function PlayerPage({
           </ul>
         ) : (
           <p className="mt-4 text-muted">No membership history yet.</p>
+        )}
+      </section>
+
+      <section className="mb-10" aria-labelledby="attendance-heading">
+        <h2 id="attendance-heading" className="text-2xl font-semibold text-white">Attendance by Unit</h2>
+        <p className="mt-2 text-sm text-muted">Player: {PlayerName(player)}. Window: {selectedWindow}.</p>
+        {attendanceError ? <div className="mt-4"><StatisticsErrorState message="Attendance could not be loaded for this Player." /></div> : attendanceSummaries.length === 0 ? (
+          <div className="mt-4"><StatisticsEmptyState title="No Unit attendance scope" description="This Player has no public Unit identity to use for attendance." /></div>
+        ) : (
+          <div className="mt-4 space-y-5">
+            {attendanceSummaries.map(({ membership, summary }) => (
+              <article key={membership.id} className="rounded-xl border border-edge bg-surface p-5">
+                <h3 className="text-lg font-semibold text-white">
+                  <Link className="underline" href={`/units/${membership.unitId}`}>{membership.unit.name}</Link>
+                </h3>
+                <p className="mt-1 text-sm text-muted">Attendance for this Player and persistent Unit.</p>
+                <AttendanceSummaryPanel summary={summary} />
+              </article>
+            ))}
+          </div>
         )}
       </section>
 
