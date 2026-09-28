@@ -16,11 +16,13 @@ give those results their historical context.
 
 ## Ownership
 
-- Atomic Event-unit identity and mandatory/optional participation metadata;
+- Atomic Event-unit identity, battlefield name, fixed ATTACKER/DEFENDER side,
+  Audit Unit type, and mandatory/optional participation metadata;
 - Audit drafts, finalization, Unit type, Unit statistics, and player results;
 - Audit Player role assignments;
 - Event command groups and their strict tree; and
-- public finalized Audit and command-structure reads.
+- public finalized Audit and command-structure reads; and
+- Event-manager battlefield-structure mutations through the Events-owned seam.
 
 ## Non-Ownership
 
@@ -32,9 +34,10 @@ statistics aggregation.
 
 ## Public Interface
 
-Server-only workflows create atomic Event units, create/edit creator-owned
-drafts, parse PlayerID results, finalize Audits, and manage Event command
-groups. Finalized Audit results and Event command structures are publicly
+Server-only workflows create and configure atomic Event units through the
+Events-owned manager seam or existing Audit workflow, create/edit
+creator-owned drafts, parse PlayerID results, finalize Audits, and manage
+Event command groups. Finalized Audit results and Event command structures are publicly
 readable. `getEffectiveFinalizedAuditObservations` exposes the approved
 Statistics source read, including only the effective finalized Audit, raw
 result/role facts, and command-group descendants. Drafts and draft-management
@@ -67,6 +70,8 @@ the submitting Auth.js User identity.
 
 - Each atomic Event unit belongs to exactly one approved EventParticipation;
   one EventParticipation may have many atomic units.
+- Atomic units and command groups use only ATTACKER or DEFENDER; hierarchy
+  mutations reject cross-side descendants and parents.
 - Each atomic Event unit has zero or one Audit. The atomic unit, not the Audit,
   is the stable battlefield identity.
 - Only the creator edits an unfinished draft. Submission finalizes atomically;
@@ -83,14 +88,19 @@ the submitting Auth.js User identity.
 - Finalized references protect Event, EventParticipation, Unit, and Player
   history from unsafe deletion. Drafts may be discarded by their creator;
   empty atomic units may be deleted when no command-group dependency exists.
+- EventParticipation is the authoritative represented Unit claim for atomic
+  units and command groups; duplicate descriptive Unit identities are not
+  authoritative.
 
 ## Permissions / Authority
 
-`canSubmitAudit(userId, unitId)` authorizes atomic-unit creation, Audit draft
-creation, and Audit finalization for an approved participation of that Unit.
-Editing an existing draft additionally requires creator ownership. It does not
-authorize Event command groups. Group administration uses Events-owned
-`canManageEvent`, regardless of the represented persistent Unit.
+`canSubmitAudit(userId, unitId)` authorizes Audit draft creation and Audit
+finalization for an approved participation of that Unit. Event-manager
+atomic-unit construction and battlefield placement use Events-owned
+`canManageEvent` through the approved Events -> Audits seam. The two decisions
+never imply one another. Editing an existing draft additionally requires
+creator ownership. Group administration uses Events-owned `canManageEvent`,
+regardless of the represented Unit.
 
 ## Internal Structure
 
@@ -119,10 +129,14 @@ approval are out of scope for Ticket 20.
 - `units-audits-submission-authorization`
 - `players-audits-player-resolution`
 - `audits-statistics-effective-finalized-audit`
+- `events-audits-event-battlefield-management`
+- `audits-events-public-battlefield-structure`
+- `statistics-events-event-battle-reader`
 
 ## Related ADRs
 
 - ADR-20260927-006 (accepted Audit domain and Event-scoped structures)
+- ADR-20260928-008 (accepted Event Battlefield sides, results, and reads)
 
 ## AI Working Rules
 

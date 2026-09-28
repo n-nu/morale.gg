@@ -295,6 +295,22 @@ Groups may be edited or deleted by Event managers without mutating atomic units
 or finalized Audits. Nested future statistics flatten to unique atomic Audits
 and partition combat values by Unit type.
 
+### Event Battlefield Sides and Result
+
+The Event Battle domain has exactly two fixed sides: `ATTACKER` and
+`DEFENDER`. Atomic Event units and Event command groups store explicit side
+values; EventParticipation remains acceptance of a persistent Unit and is not
+side placement. Same-side hierarchy is enforced server-side. Optional Event
+side image references reuse validated site-path/HTTPS image behavior; blue and
+red are presentation fallbacks only.
+
+An Event result is an authoritative manager fact with values
+`ATTACKER_WIN`, `DEFENDER_WIN`, or `DRAW`. It is eligible after the existing
+Event scheduled time has passed, is not derived from Statistics, and retains
+history through immutable effective/revision records. Correction approval is
+pending the explicit product-owner decision recorded in ADR-20260928-008 and
+BCR-20260928-006.
+
 ---
 
 ### Derived Statistics / Leaderboards
@@ -404,6 +420,8 @@ The following are current MVP-level rules unless changed through the approved ar
     authority, including across RootUnit boundaries.
 - Events cannot normally be created in the past.
 - All unit participation requires explicit approval.
+- Battlefield side assignment is explicit and limited to ATTACKER or DEFENDER;
+  side is never inferred from participation, Unit identity, or color.
 - Event cancellation/deletion is permitted only before the event occurs and while the event has no audits.
 
 ### Audits
@@ -413,6 +431,8 @@ The following are current MVP-level rules unless changed through the approved ar
   EventParticipation may have multiple atomic Event units.
 - Submitted Audits, Player results, and roles are immutable in the MVP.
 - Submitted audit data is authoritative for derived statistics.
+- Event managers may construct/manage battlefield structure through
+  `canManageEvent`; this never grants `canSubmitAudit`.
 
 ### Public Access
 
