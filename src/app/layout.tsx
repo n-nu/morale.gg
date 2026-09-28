@@ -32,14 +32,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <header className="h-16 border-b border-edge bg-surface">
-          <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-6 md:px-10">
+          <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between gap-2 px-4 md:gap-7 md:px-10">
             <Link
               href="/"
-              className="text-xl font-extrabold tracking-tight text-white"
+              className="text-lg font-extrabold tracking-tight text-white md:text-xl"
             >
               morale.gg
             </Link>
-            <div className="flex items-center gap-5 md:gap-7">
+            <div className="flex items-center gap-3 md:gap-7">
               {plannedNav.map((item) => (
                 <span
                   key={item}
@@ -49,6 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   {item}
                 </span>
               ))}
+              <NavLink href="/statistics">Statistics</NavLink>
               <NavLink href="/events">Events</NavLink>
               <NavLink href="/units">Units</NavLink>
               <AuthNav />
