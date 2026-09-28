@@ -13,17 +13,46 @@ import {
   canManageUnit,
 } from "@/modules/units/server/authorization";
 import { RosterSection } from "@/modules/players/server/roster-section";
+import {
+  getAverageUnitPerformance,
+  getDirectUnitPerformance,
+  getOrganizationalUnitPerformance,
+} from "@/modules/statistics";
+import { resolveStatisticsWindow, StatisticsErrorState } from "@/modules/statistics/presentation";
+import { StatisticsWindowSelector } from "@/modules/statistics/window-selector";
+import { UnitStatisticsSections } from "@/modules/statistics/unit-presentation";
 
 export const dynamic = "force-dynamic";
 
 export default async function UnitPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ unitId: string }>;
+  searchParams: Promise<{ window?: string | string[] }>;
 }) {
   const { unitId } = await params;
+  const { window } = await searchParams;
   const unit = await getUnit(unitId);
   if (!unit) notFound();
+
+  const selectedWindow = resolveStatisticsWindow(window);
+  let statistics: {
+    direct: Awaited<ReturnType<typeof getDirectUnitPerformance>>;
+    organizational: Awaited<ReturnType<typeof getOrganizationalUnitPerformance>>;
+    average: Awaited<ReturnType<typeof getAverageUnitPerformance>>;
+  } | null = null;
+  let statisticsError = false;
+  try {
+    const [direct, organizational, average] = await Promise.all([
+      getDirectUnitPerformance(unitId, selectedWindow),
+      getOrganizationalUnitPerformance(unitId, selectedWindow),
+      getAverageUnitPerformance(unitId, selectedWindow),
+    ]);
+    statistics = { direct, organizational, average };
+  } catch {
+    statisticsError = true;
+  }
 
   const userId = await getAuthenticatedUserId();
   const canManage = userId !== null && !isUnitsDemoMode()
@@ -77,7 +106,17 @@ export default async function UnitPage({
         <div className="units-stats">
           <span><strong>{unit.children.length}</strong>Child units</span>
         </div>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold">Unit Statistics</h2>
+          <StatisticsWindowSelector value={selectedWindow} />
+        </div>
       </div>
+      <section className="mt-8" aria-labelledby="unit-statistics-heading">
+        <h2 id="unit-statistics-heading" className="sr-only">Unit Statistics</h2>
+        {statisticsError ? <StatisticsErrorState message="The Unit Statistics reader could not load this view." /> : statistics ? (
+          <UnitStatisticsSections direct={statistics.direct} organizational={statistics.organizational} average={statistics.average} />
+        ) : null}
+      </section>
       <section aria-labelledby="parent-heading" className="mt-8">
         <div className="units-section-title">
           <h2 id="parent-heading">Parent unit</h2>

@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import {
+  AttendanceSummaryPanel,
   StatisticsRatio,
   UnitTypeLabel,
   parseStatisticsWindow,
@@ -38,4 +40,16 @@ test("window parsing respects the approved defaults and values", () => {
   assert.equal(parseStatisticsWindow("all-time"), "all-time");
   assert.equal(parseStatisticsWindow(undefined), "14d");
   assert.equal(resolveStatisticsWindow({ get: () => "30d" }), "30d");
+});
+
+test("attendance states avoid false zero percentages", () => {
+  const noRequirement = renderToStaticMarkup(<AttendanceSummaryPanel summary={{ obligations: 0, present: 0, absent: 0, pending: 0, percentage: null, noResolvedData: false }} />);
+  const pending = renderToStaticMarkup(<AttendanceSummaryPanel summary={{ obligations: 2, present: 0, absent: 0, pending: 2, percentage: null, noResolvedData: true }} />);
+  const resolved = renderToStaticMarkup(<AttendanceSummaryPanel summary={{ obligations: 2, present: 1, absent: 1, pending: 0, percentage: 50, noResolvedData: false }} />);
+  assert.match(noRequirement, /No attendance requirement/);
+  assert.doesNotMatch(noRequirement, /0%/);
+  assert.match(pending, /Pending/);
+  assert.doesNotMatch(pending, /0%/);
+  assert.match(resolved, /50% resolved attendance/);
+  assert.match(resolved, /Absent/);
 });

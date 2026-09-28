@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { RatioMetric } from "./ratios";
 import {
   DEFAULT_STATISTICS_WINDOW,
@@ -93,7 +94,7 @@ export function StatMetric({
   value,
 }: {
   label: string;
-  value: string | number;
+  value: string | number | ReactNode;
 }) {
   return (
     <div className="rounded-lg border border-edge bg-surface-2 p-3">
@@ -110,12 +111,43 @@ export function TypeSummaryCard({
 }: {
   unitType: keyof typeof UnitTypeLabel;
   title?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="rounded-xl border border-edge bg-surface p-4">
       <h4 className="mb-3 text-base font-semibold text-white">{title ?? getUnitTypeLabel(unitType)}</h4>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</div>
     </section>
+  );
+}
+
+export function AttendanceSummaryPanel({
+  summary,
+}: {
+  summary: {
+    obligations: number;
+    present: number;
+    absent: number;
+    pending: number;
+    percentage: number | null;
+    noResolvedData: boolean;
+  };
+}) {
+  const status = summary.obligations === 0
+    ? "No attendance requirement"
+    : summary.noResolvedData
+      ? "Pending"
+      : `${summary.percentage}% resolved attendance`;
+
+  return (
+    <div className="mt-4 rounded-xl border border-edge bg-surface p-5">
+      <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <StatMetric label="Obligations" value={summary.obligations} />
+        <StatMetric label="Present" value={summary.present} />
+        <StatMetric label="Absent" value={summary.absent} />
+        <StatMetric label="Pending" value={summary.pending} />
+        <StatMetric label="Resolved attendance" value={status} />
+      </dl>
+    </div>
   );
 }
