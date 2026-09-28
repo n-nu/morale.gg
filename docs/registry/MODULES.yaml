@@ -28,3 +28,11 @@ modules:
     established_by: TKT-20260927-000020-001
     last_reviewed: 2026-09-27
     updated_by_ticket: TKT-20260927-000020-001
+  - module_id: statistics
+    path: src/modules/statistics
+    manifest: src/modules/statistics/MODULE.md
+    status: active
+    version: 0.1
+    established_by: TKT-20260927-000024-001
+    last_reviewed: 2026-09-27
+    updated_by_ticket: TKT-20260927-000024-001

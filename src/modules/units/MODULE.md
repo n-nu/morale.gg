@@ -4,7 +4,7 @@ path: src/modules/units
 status: active
 version: 0.1
 last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000020-001
+updated_by_ticket: TKT-20260927-000027-001
 ---
 
 # Units
@@ -117,6 +117,8 @@ memberships, grants, revocation, delegation lineage, and scope at decision time;
 Commander status does not bypass operational grants. `components/unit-links.tsx`
 renders reusable hierarchy links. Route adapters and route-specific states live
 in `src/app/units/`.
+`server/statistics-source.ts` provides read-only direct Unit identity and
+deduplicated descendant subtree resolution for Statistics perspectives.
 
 ## Extension Points
 Local read presentation and query improvements may preserve this boundary. Future cross-module consumers require an approved documented contract before integration.
@@ -138,6 +140,7 @@ demo Units have no persistent rosters. Commander bootstrap is server-only and
 has no public UI.
 
 ## Related Contracts
+- `docs/contracts/units-statistics-hierarchy-read.md` (stable).
 - `events-units-event-creation-authorization` (stable).
 - `units-audits-submission-authorization` (stable).
 

@@ -17,6 +17,28 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	completion of linked-unit creation, unit management, or roster functionality. The remaining
 	MVP stories require their domain models, authorization, workflows, and public views.
 
+## Statistics Architecture Planning
+
+- **TKT-20260927-000024-001 — Statistics Architecture and Derived Performance Model:**
+	**COMPLETED / approved architecture.** `ADR-20260927-007` is Accepted and
+	`BCR-20260927-005` is Approved. The active `statistics` module and four stable
+	read-only source contracts are registered. Audits owns effective-finalized-
+	Audit determination; Events owns canonical occurrence time and normalization;
+	Statistics owns the shared 14-day/30-day/all-time window policy. No feature
+	implementation is included.
+- **TKT-20260927-000025-001 — Statistics Foundation and Ranker Statistics:**
+	**COMPLETED.** Implements the shared Statistics foundation, Audits-owned
+	effective-Audit source operation, and Ranker statistics under Ticket 24's
+	approved architecture. Implementation: `c6c2783`.
+- **TKT-20260927-000026-001 — Commander and General Statistics:**
+	**COMPLETED.** Implementation: `0c9ab43`.
+- **TKT-20260927-000027-001 — Persistent Unit Statistics and Attendance:**
+	**COMPLETED.** Implements query-time Direct, Organizational, and Average Unit
+	Performance plus historical Player/Unit/Event attendance. Players resolves
+	stable game Player IDs to internal membership keys within its source
+	operation; no contract or schema change was required. Implementation:
+	`649eb3e`.
+
 ---
 
 # MVP Success Condition

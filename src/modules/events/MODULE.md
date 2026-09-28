@@ -63,6 +63,8 @@ Audit work builds on approved Event participation through the
   and approval/denial), gated server-side by `canManageEvent`.
 - Public Event detail exposes APPROVED participating Units only; pending and
   denied participation stays management-only.
+- `getCanonicalEventTimes` provides Statistics with Events-owned canonical
+  occurrence timestamps without selecting a Statistics window.
 - Events consumes the server-only
   `events-units-event-creation-authorization` contract and exposes the
   `events-audits-event-participation-management` contract to Audits.
@@ -122,6 +124,8 @@ Event.
 ## Internal Structure
 
 - `server/queries.ts` — server-only read/query functions.
+- `server/statistics-source.ts` — canonical Event identity and normalized
+  occurrence-time read for Statistics.
 - `server/create-event.ts` — server-only domain creation path (verification
   and authenticated authorization boundary).
 - `server/authorization.ts` — owner/explicit-manager decisions and owner-only
@@ -162,6 +166,7 @@ Event.
 
 - `events-units-event-creation-authorization` (stable).
 - `events-audits-event-participation-management` (stable).
+- `events-statistics-event-time` (stable).
 
 ## Related ADRs
 
