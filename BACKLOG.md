@@ -44,11 +44,14 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	introduced. No new ADR or BCR is required. Archived under
 	`tickets/COMPLETED/2026/09/`.
 - **TKT-20260927-000029-001 — Player Statistics Presentation and Shared Public
-	Statistics UI:** **READY.** Owns the shared presentation foundation,
-	`/statistics` discovery route, and public Player Statistics experience.
+	Statistics UI:** **COMPLETED.** PR #15 merged at
+	`74fcd3c016a250424ad58fb1ba1b0005ba66a448`. Delivers the shared
+	presentation foundation, `/statistics` discovery, and public Player
+	Statistics experience. Archived under `tickets/COMPLETED/2026/09/`.
 - **TKT-20260927-000030-001 — Unit Statistics and Attendance Presentation:**
-	**DRAFT / blocked by Ticket 29.** Reuses Ticket 29's shared presentation
-	foundation for Unit Statistics and attendance.
+	**READY.** Ticket 29 is a completed historical dependency. Reuse its shared
+	window selector/resolution, ratio and Unit-type presentation, empty/error
+	states, and responsive conventions for Unit Statistics and attendance.
 
 ---
 
