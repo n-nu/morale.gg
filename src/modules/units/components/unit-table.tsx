@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-type UnitRow = {
+export type UnitRow = {
   id: string;
   name: string;
   imageRef: string | null;
@@ -12,7 +12,7 @@ type UnitRow = {
 };
 
 // Build the index only when the server supplies a new list of units.
-function buildHierarchy(units: UnitRow[]) {
+export function buildHierarchy(units: UnitRow[]) {
   const ids = new Set(units.map((unit) => unit.id));
   const children = new Map<string, UnitRow[]>();
   for (const unit of units) {
@@ -26,7 +26,7 @@ function buildHierarchy(units: UnitRow[]) {
   return { roots, children };
 }
 
-function getVisibleRows(
+export function getVisibleRows(
   roots: UnitRow[],
   children: Map<string, UnitRow[]>,
   expanded: Set<string>,
@@ -70,11 +70,12 @@ export function UnitTable({ units }: { units: UnitRow[] }) {
         <div>
           <button
             type="button"
+            aria-label="Expand all units"
             onClick={() => setExpanded(new Set(children.keys()))}
           >
             Expand all
           </button>
-          <button type="button" onClick={() => setExpanded(new Set())}>
+          <button type="button" aria-label="Collapse all units" onClick={() => setExpanded(new Set())}>
             Collapse all
           </button>
         </div>
@@ -95,7 +96,7 @@ export function UnitTable({ units }: { units: UnitRow[] }) {
               const childCount = children.get(unit.id)?.length ?? 0;
               const isExpanded = expanded.has(unit.id);
               return (
-                <tr key={unit.id} data-root={!unit.parent || undefined}>
+                <tr key={unit.id} data-root={!unit.parent || undefined} data-open-branch={isExpanded || undefined}>
                   <th scope="row">
                     <div
                       className="unit-tree-name"
@@ -126,7 +127,7 @@ export function UnitTable({ units }: { units: UnitRow[] }) {
                     </div>
                   </th>
                   <td className="units-table-secondary">
-                    <span className="unit-count">{childCount || "—"}</span>
+                    <span className="unit-count">{childCount}</span>
                   </td>
                 </tr>
               );

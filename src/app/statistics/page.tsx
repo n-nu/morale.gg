@@ -1,47 +1,41 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { Breadcrumbs, PageEmptyState, PageHeader, PageShell, SectionHeading } from "@/app/presentation";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Statistics · morale.gg" };
 
 export default async function StatisticsPage() {
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-10 md:px-10">
-      <header className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">Public statistics</p>
-        <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-white">Statistics</h1>
-        <p className="mt-3 max-w-3xl text-base text-muted">
-          Discover the community’s public performance records by player, unit, and event history.
-          This page is a simple entry point to the existing public statistics surfaces.
-        </p>
-      </header>
+    <PageShell className="pt-1">
+      <Breadcrumbs items={[{ label: "Community", href: "/events" }, { label: "Statistics" }]} />
+      <PageHeader category="Records" title="Statistics" description="Public performance and attendance." />
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <Link href="/players" className="rounded-xl border border-edge bg-surface p-5 transition-colors hover:border-gold">
-          <h2 className="text-lg font-semibold text-white">Players</h2>
-          <p className="mt-2 text-sm text-muted">Browse player profiles and their Ranker, Commander, and General statistics.</p>
-        </Link>
-        <Link href="/units" className="rounded-xl border border-edge bg-surface p-5 transition-colors hover:border-gold">
-          <h2 className="text-lg font-semibold text-white">Units</h2>
-          <p className="mt-2 text-sm text-muted">Review unit hierarchy and the public performance context behind formations.</p>
-        </Link>
-        <Link href="/events" className="rounded-xl border border-edge bg-surface p-5 transition-colors hover:border-gold">
-          <h2 className="text-lg font-semibold text-white">Events</h2>
-          <p className="mt-2 text-sm text-muted">Follow the public event calendar and the related battle history.</p>
-        </Link>
-        <Link href="/audits" className="rounded-xl border border-edge bg-surface p-5 transition-colors hover:border-gold">
-          <h2 className="text-lg font-semibold text-white">Audit results</h2>
-          <p className="mt-2 text-sm text-muted">Explore finalized public audit records and their event-linked outcomes.</p>
-        </Link>
-      </div>
-
-      <section className="mt-10 rounded-xl border border-edge bg-surface p-6">
-        <h2 className="text-xl font-semibold text-white">Statistics categories</h2>
-        <ul className="mt-4 grid gap-3 md:grid-cols-2">
-          <li className="rounded-lg border border-edge bg-surface-2 p-3 text-sm text-muted">Ranker: player combat totals and per-Audit performance.</li>
-          <li className="rounded-lg border border-edge bg-surface-2 p-3 text-sm text-muted">Commander: battlefield command performance and command-group results.</li>
-          <li className="rounded-lg border border-edge bg-surface-2 p-3 text-sm text-muted">General: command-group and atomic-unit totals by unit type.</li>
-          <li className="rounded-lg border border-edge bg-surface-2 p-3 text-sm text-muted">Attendance: obligations and resolved participation states.</li>
+      <section className="mt-7" aria-labelledby="statistics-destinations">
+        <SectionHeading id="statistics-destinations" title="Explore records" />
+        <ul className="divide-y divide-edge border-b border-edge">
+          {[
+            ["Players", "Ranker, Commander, General, and attendance", "/players"],
+            ["Units", "Organization and unit performance", "/units"],
+            ["Events", "Schedule and historical context", "/events"],
+            ["Audit results", "Finalized event records", "/audits"],
+          ].map(([title, detail, href]) => (
+            <li key={href}>
+              <Link href={href} className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-3 transition-colors hover:text-gold">
+                <span className="font-bold text-foreground">{title}</span>
+                <span className="text-sm text-muted">{detail}</span>
+              </Link>
+            </li>
+          ))}
         </ul>
       </section>
-    </main>
+
+      <section className="mt-8" aria-labelledby="statistics-categories">
+        <SectionHeading id="statistics-categories" title="Categories" />
+        <PageEmptyState title="Ranker · Commander · General · Attendance">
+          Results are grouped by their existing Unit-type and attendance definitions.
+        </PageEmptyState>
+      </section>
+    </PageShell>
   );
 }

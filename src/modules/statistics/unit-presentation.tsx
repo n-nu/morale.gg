@@ -3,7 +3,6 @@ import {
   StatisticsRatio,
   StatMetric,
   TypeSummaryCard,
-  UnitTypeLabel,
 } from "./presentation";
 import type {
   AverageUnitPerformance,
@@ -27,21 +26,17 @@ function PerformanceTypeResults({
   average: boolean;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-1">
       {typeOrder.map((unitType) => {
         const typeStats = performance.unitTypes.find((entry) => entry.unitType === unitType);
-        if (!typeStats) {
-          return (
-            <StatisticsEmptyState
-              key={unitType}
-              title={`${UnitTypeLabel[unitType]}: no observations`}
-              description={`There are no ${UnitTypeLabel[unitType]} observations in this window.`}
-            />
-          );
-        }
+        if (!typeStats) return null;
 
         return (
-          <TypeSummaryCard key={unitType} unitType={unitType}>
+          <TypeSummaryCard
+            key={unitType}
+            unitType={unitType}
+            defaultOpen={performance.unitTypes[0]?.unitType === unitType}
+          >
             {average ? (
               <AverageMetrics typeStats={typeStats as AverageUnitPerformance["unitTypes"][number]} />
             ) : (
@@ -99,29 +94,47 @@ export function UnitStatisticsSections({
   average: AverageUnitPerformance;
 }) {
   return (
-    <div className="space-y-10">
+    <div className="space-y-7">
       <section aria-labelledby="direct-performance-heading">
-        <h2 id="direct-performance-heading" className="text-2xl font-semibold text-white">Direct Performance</h2>
-        <p className="mt-2 text-sm text-muted">Observations attributed directly to this Unit only.</p>
+        <h2 id="direct-performance-heading" className="text-lg font-extrabold text-white">Direct Performance</h2>
         {direct.unitTypes.length === 0 ? (
-          <div className="mt-4"><StatisticsEmptyState title="No direct observations" description="This Unit has no directly attributed observations in the selected window." /></div>
-        ) : <div className="mt-4"><PerformanceTypeResults performance={direct} average={false} /></div>}
+          <StatisticsEmptyState title="No direct observations" description="No directly attributed observations in this window." />
+        ) : (
+          <details className="mt-2 border-y border-edge">
+            <summary className="cursor-pointer list-none py-2 text-sm font-semibold text-gold outline-none hover:text-gold-bright focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
+              {direct.unitTypes.length} Unit types
+            </summary>
+            <div className="pb-3"><PerformanceTypeResults performance={direct} average={false} /></div>
+          </details>
+        )}
       </section>
 
       <section aria-labelledby="organizational-performance-heading">
-        <h2 id="organizational-performance-heading" className="text-2xl font-semibold text-white">Organizational Performance</h2>
-        <p className="mt-2 text-sm text-muted">This Unit and its descendants, using the Statistics reader result.</p>
+        <h2 id="organizational-performance-heading" className="text-lg font-extrabold text-white">Organizational Performance</h2>
         {organizational.unitTypes.length === 0 ? (
-          <div className="mt-4"><StatisticsEmptyState title="No organizational observations" description="This Unit and its descendants have no observations in the selected window." /></div>
-        ) : <div className="mt-4"><PerformanceTypeResults performance={organizational} average={false} /></div>}
+          <StatisticsEmptyState title="No organizational observations" description="This Unit and its descendants have no observations in this window." />
+        ) : (
+          <details className="mt-2 border-y border-edge">
+            <summary className="cursor-pointer list-none py-2 text-sm font-semibold text-gold outline-none hover:text-gold-bright focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
+              {organizational.unitTypes.length} Unit types
+            </summary>
+            <div className="pb-3"><PerformanceTypeResults performance={organizational} average={false} /></div>
+          </details>
+        )}
       </section>
 
       <section aria-labelledby="average-performance-heading">
-        <h2 id="average-performance-heading" className="text-2xl font-semibold text-white">Average Unit Performance</h2>
-        <p className="mt-2 text-sm text-muted">Equal-Unit-weight additive averages for qualifying Units. KDR is not averaged here.</p>
+        <h2 id="average-performance-heading" className="text-lg font-extrabold text-white">Average Unit Performance</h2>
         {average.unitTypes.length === 0 ? (
-          <div className="mt-4"><StatisticsEmptyState title="No qualifying Unit observations" description="No Unit contributed observations to the average in the selected window." /></div>
-        ) : <div className="mt-4"><PerformanceTypeResults performance={average} average /></div>}
+          <StatisticsEmptyState title="No qualifying Unit observations" description="No Unit contributed to the average in this window." />
+        ) : (
+          <details className="mt-2 border-y border-edge">
+            <summary className="cursor-pointer list-none py-2 text-sm font-semibold text-gold outline-none hover:text-gold-bright focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
+              {average.qualifyingUnitCount} qualifying Units · {average.unitTypes.length} Unit types
+            </summary>
+            <div className="pb-3"><PerformanceTypeResults performance={average} average /></div>
+          </details>
+        )}
       </section>
     </div>
   );

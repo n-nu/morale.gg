@@ -44,9 +44,10 @@ test("Unit perspectives are labeled and organizational output is distinct from d
 test("Average Unit Performance omits KDR and preserves all Unit type labels", () => {
   const html = renderToStaticMarkup(<UnitStatisticsSections direct={{ ...direct, unitTypes: [] }} organizational={organizational} average={average} />);
   assert.equal(html.match(/>KDR</g)?.length ?? 0, 1);
-  assert.match(html, /Rifles: no observations/);
-  assert.match(html, /Cavalry: no observations/);
-  assert.match(html, /Artillery: no observations/);
+  assert.match(html, />Regular</);
+  assert.doesNotMatch(html, />Rifles</);
+  assert.doesNotMatch(html, />Cavalry</);
+  assert.doesNotMatch(html, />Artillery</);
 });
 
 test("Direct empty state remains visible while Organizational results render", () => {

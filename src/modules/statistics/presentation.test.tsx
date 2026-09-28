@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   AttendanceSummaryPanel,
+  StatisticsDisclosure,
   StatisticsRatio,
   UnitTypeLabel,
   parseStatisticsWindow,
@@ -52,4 +53,24 @@ test("attendance states avoid false zero percentages", () => {
   assert.doesNotMatch(pending, /0%/);
   assert.match(resolved, /50% resolved attendance/);
   assert.match(resolved, /Absent/);
+});
+
+test("statistics disclosure is collapsed by default and can render open", () => {
+  const collapsed = renderToStaticMarkup(
+    <StatisticsDisclosure title="Ranker" summary="4 events">
+      <p>Additional metrics</p>
+    </StatisticsDisclosure>,
+  );
+  const open = renderToStaticMarkup(
+    <StatisticsDisclosure title="Commander" defaultOpen>
+      <p>Command details</p>
+    </StatisticsDisclosure>,
+  );
+
+  assert.match(collapsed, /<h2[^>]*>Ranker<\/h2>/);
+  assert.match(collapsed, /Ranker details/);
+  assert.match(collapsed, /summary="4 events"|4 events/);
+  assert.doesNotMatch(collapsed, /<details open/);
+  assert.match(open, /<details open/);
+  assert.match(open, /Command details/);
 });

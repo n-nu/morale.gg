@@ -5,11 +5,11 @@ import { useActionState } from "react";
 import { addMembershipAction, endMembershipAction, registerPlayerAction, type FormState } from "../server/actions";
 
 const initialState: FormState = { message: "", ok: false };
-const inputClass = "w-full rounded border border-edge bg-background px-3 py-2 text-foreground";
-const buttonClass = "rounded bg-gold px-4 py-2 font-semibold text-gold-ink disabled:opacity-50";
+const inputClass = "min-h-10 w-full rounded-md border border-edge-strong bg-background px-3 py-2 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-gold";
+const buttonClass = "min-h-10 rounded-md bg-gold px-4 py-2 text-sm font-bold text-gold-ink transition-colors hover:bg-gold-bright disabled:opacity-50";
 
 function Feedback({ state }: { state: FormState }) {
-  return state.message ? <p role={state.ok ? "status" : "alert"} className="mt-2 text-sm">
+  return state.message ? <p role={state.ok ? "status" : "alert"} className={`mt-2 text-sm ${state.ok ? "text-green-bright" : "text-red-200"}`}>
     {state.message}{state.playerId && <> <Link className="underline" href={`/players/${state.playerId}`}>View Player</Link></>}
   </p> : null;
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Breadcrumbs, PageHeader, SectionHeading } from "@/app/presentation";
 import { getPlayer, getPlayerMemberships } from "@/modules/players/server/queries";
 import {
   getAttendanceSummaryForPlayerUnit,
@@ -9,26 +10,18 @@ import {
   getRankerStatistics,
 } from "@/modules/statistics";
 import {
-  StatisticsEmptyState,
   AttendanceSummaryPanel,
+  StatisticsDisclosure,
+  StatisticsEmptyState,
   StatisticsErrorState,
-  StatisticsRatio,
-  TypeSummaryCard,
-  UnitTypeLabel,
   resolveStatisticsWindow,
 } from "@/modules/statistics/presentation";
+import { PlayerStatisticsSections } from "@/modules/statistics/player-presentation";
 import { StatisticsWindowSelector } from "@/modules/statistics/window-selector";
 
 export const dynamic = "force-dynamic";
 
-const typeOrder = ["REGULAR", "RIFLES", "CAVALRY", "ARTILLERY"] as const;
-
-function formatMetric(value: number) {
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(2).replace(/\.0+$/, "");
-}
-
-function PlayerName(player: { name: string | null; playerId: string }) {
+function playerName(player: { name: string | null; playerId: string }) {
   return player.name?.trim() || player.playerId;
 }
 
@@ -52,7 +45,10 @@ export default async function PlayerPage({
     getGeneralStatistics(selectedWindow),
   ]);
 
-  let attendanceSummaries: Array<{ membership: (typeof memberships)[number]; summary: Awaited<ReturnType<typeof getAttendanceSummaryForPlayerUnit>> }> = [];
+  let attendanceSummaries: Array<{
+    membership: (typeof memberships)[number];
+    summary: Awaited<ReturnType<typeof getAttendanceSummaryForPlayerUnit>>;
+  }> = [];
   let attendanceError = false;
   try {
     attendanceSummaries = await Promise.all(
@@ -74,267 +70,76 @@ export default async function PlayerPage({
   const generalEntry = general.players.find((entry) => entry.gamePlayerId === player.playerId);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-10">
-      <header className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">Public profile</p>
-        <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-white">{PlayerName(player)}</h1>
-            <p className="mt-2 break-all text-muted">Game Player ID: {player.playerId}</p>
-          </div>
-          <StatisticsWindowSelector value={selectedWindow} />
-        </div>
-      </header>
+    <>
+      <Breadcrumbs items={[
+        { label: "Community", href: "/events" },
+        { label: "Players", href: "/players" },
+        { label: playerName(player) },
+      ]} />
+      <PageHeader
+        category="Player record"
+        title={playerName(player)}
+        description={<>Game Player ID: <span className="break-all font-mono text-xs">{player.playerId}</span></>}
+        actions={<StatisticsWindowSelector value={selectedWindow} />}
+      />
 
-      <section className="mb-10 rounded-xl border border-edge bg-surface p-5">
-        <h2 className="text-xl font-semibold text-white">Membership history</h2>
-        {memberships.length ? (
-          <ul className="mt-4 divide-y divide-edge">
-            {memberships.map((membership) => (
-              <li key={membership.id} className="py-4">
-                <Link className="font-semibold underline" href={`/units/${membership.unitId}`}>
-                  {membership.unit.name}
-                </Link>
-                <p className="text-sm text-muted">
-                  Joined {membership.startedAt.toISOString().replace("T", " ").slice(0, 19)} UTC · {membership.endedAt ? `Ended ${membership.endedAt.toISOString().replace("T", " ").slice(0, 19)} UTC` : "Active"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-4 text-muted">No membership history yet.</p>
-        )}
-      </section>
+      <PlayerStatisticsSections
+        ranker={rankerEntry}
+        commander={commanderEntry}
+        general={generalEntry}
+        window={selectedWindow}
+      />
 
-      <section className="mb-10" aria-labelledby="attendance-heading">
-        <h2 id="attendance-heading" className="text-2xl font-semibold text-white">Attendance by Unit</h2>
-        <p className="mt-2 text-sm text-muted">Player: {PlayerName(player)}. Window: {selectedWindow}.</p>
-        {attendanceError ? <div className="mt-4"><StatisticsErrorState message="Attendance could not be loaded for this Player." /></div> : attendanceSummaries.length === 0 ? (
-          <div className="mt-4"><StatisticsEmptyState title="No Unit attendance scope" description="This Player has no public Unit identity to use for attendance." /></div>
+      <section className="mt-8" aria-labelledby="attendance-heading">
+        <SectionHeading id="attendance-heading" title="Attendance by Unit" detail={selectedWindow} />
+        {attendanceError ? (
+          <div className="mt-3"><StatisticsErrorState message="Attendance could not be loaded for this Player." /></div>
+        ) : attendanceSummaries.length === 0 ? (
+          <div className="mt-3"><StatisticsEmptyState title="No Unit attendance scope" description="This Player has no Unit membership history to use for attendance." /></div>
         ) : (
-          <div className="mt-4 space-y-5">
+          <div className="divide-y divide-edge border-b border-edge">
             {attendanceSummaries.map(({ membership, summary }) => (
-              <article key={membership.id} className="rounded-xl border border-edge bg-surface p-5">
-                <h3 className="text-lg font-semibold text-white">
-                  <Link className="underline" href={`/units/${membership.unitId}`}>{membership.unit.name}</Link>
-                </h3>
-                <p className="mt-1 text-sm text-muted">Attendance for this Player and persistent Unit.</p>
-                <AttendanceSummaryPanel summary={summary} />
+              <article key={membership.id} className="py-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-2">
+                  <Link href={`/units/${membership.unitId}`} className="text-sm font-bold text-foreground underline decoration-edge-strong underline-offset-4 hover:text-gold">
+                    {membership.unit.name}
+                  </Link>
+                  <details>
+                    <summary className="cursor-pointer list-none text-xs font-semibold text-gold outline-none hover:text-gold-bright focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
+                      {summary.obligations === 0 ? "No requirement" : summary.noResolvedData ? "Pending" : `${summary.percentage}% resolved`}
+                    </summary>
+                    <div className="pt-2"><AttendanceSummaryPanel summary={summary} /></div>
+                  </details>
+                </div>
               </article>
             ))}
           </div>
         )}
       </section>
 
-      {!rankerEntry && !commanderEntry && !generalEntry ? (
-        <StatisticsEmptyState
-          title="No statistics in this window"
-          description="This public Player has no Ranker, Commander, or General observations for the selected period."
-        />
-      ) : null}
-
-      {rankerEntry ? (
-        <section className="mb-10 space-y-5" aria-labelledby="ranker-heading">
-          <div className="flex items-center justify-between gap-4">
-            <h2 id="ranker-heading" className="text-2xl font-semibold text-white">Ranker</h2>
-            <span className="rounded-full border border-edge bg-surface px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-muted">
-              {rankerEntry.distinctEvents} distinct events
-            </span>
-          </div>
-
-          {typeOrder.map((unitType) => {
-            const typeStats = rankerEntry.unitTypes.find((entry) => entry.unitType === unitType);
-            if (!typeStats) return null;
-            const totals = typeStats.totals;
-            return (
-              <TypeSummaryCard key={unitType} unitType={unitType} title={UnitTypeLabel[unitType]}>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Kills</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(totals.kills)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Deaths</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(totals.deaths)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Assists</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(totals.assists)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">KDR</p>
-                  <p className="mt-2 text-lg font-semibold text-white"><StatisticsRatio ratio={typeStats.killDeathRatio} /></p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">(K+A)/D</p>
-                  <p className="mt-2 text-lg font-semibold text-white"><StatisticsRatio ratio={typeStats.killAssistDeathRatio} /></p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Audit appearances</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{typeStats.auditAppearances}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg kills / appearance</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(typeStats.averagesPerAuditAppearance.kills)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg deaths / appearance</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(typeStats.averagesPerAuditAppearance.deaths)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg assists / appearance</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(typeStats.averagesPerAuditAppearance.assists)}</p>
-                </div>
-              </TypeSummaryCard>
-            );
-          })}
-        </section>
-      ) : null}
-
-      {commanderEntry ? (
-        <section className="mb-10 space-y-5" aria-labelledby="commander-heading">
-          <h2 id="commander-heading" className="text-2xl font-semibold text-white">Commander</h2>
-          {typeOrder.map((unitType) => {
-            const stats = commanderEntry.unitTypes.find((entry) => entry.unitType === unitType);
-            if (!stats) return null;
-            return (
-              <TypeSummaryCard key={unitType} unitType={unitType} title={UnitTypeLabel[unitType]}>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Battles commanded</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.battlesCommanded}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Total kills</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.kills}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Total deaths</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.deaths}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Total assists</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.assists}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Pooled KDR</p>
-                  <p className="mt-2 text-lg font-semibold text-white"><StatisticsRatio ratio={stats.killDeathRatio} /></p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Tickets</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.tickets}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Flag captures</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.flagCaptures}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Flag losses</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.flagLosses}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Stars</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.stars}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg kills / battle</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerBattle.kills)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg deaths / battle</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerBattle.deaths)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg assists / battle</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerBattle.assists)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg tickets / battle</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerBattle.tickets)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg flag captures / battle</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerBattle.flagCaptures)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg flag losses / battle</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerBattle.flagLosses)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg stars / battle</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerBattle.stars)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg player count / battle</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerBattle.playerCount)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg KDR</p>
-                  <p className="mt-2 text-lg font-semibold text-white"><StatisticsRatio ratio={stats.averageKillDeathRatio} /></p>
-                </div>
-              </TypeSummaryCard>
-            );
-          })}
-        </section>
-      ) : null}
-
-      {generalEntry ? (
-        <section className="mb-10 space-y-5" aria-labelledby="general-heading">
-          <h2 id="general-heading" className="text-2xl font-semibold text-white">General</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-lg border border-edge bg-surface p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Qualifying groups</p>
-              <p className="mt-2 text-lg font-semibold text-white">{generalEntry.qualifyingGroupsCommanded}</p>
-            </div>
-            <div className="rounded-lg border border-edge bg-surface p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Distinct events</p>
-              <p className="mt-2 text-lg font-semibold text-white">{generalEntry.distinctEventsCommanded}</p>
-            </div>
-            <div className="rounded-lg border border-edge bg-surface p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Total atomic units</p>
-              <p className="mt-2 text-lg font-semibold text-white">{generalEntry.totalAtomicUnitsCommanded}</p>
-            </div>
-          </div>
-          {typeOrder.map((unitType) => {
-            const stats = generalEntry.combatByType.find((entry) => entry.unitType === unitType);
-            if (!stats) return null;
-            return (
-              <TypeSummaryCard key={unitType} unitType={unitType} title={UnitTypeLabel[unitType]}>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Atomic units</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.atomicUnits}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Kills</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.kills}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Deaths</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.deaths}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Assists</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{stats.totals.assists}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">KDR</p>
-                  <p className="mt-2 text-lg font-semibold text-white"><StatisticsRatio ratio={stats.killDeathRatio} /></p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg kills / unit</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerAtomicUnit.kills)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg deaths / unit</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerAtomicUnit.deaths)}</p>
-                </div>
-                <div className="rounded-lg border border-edge bg-surface-2 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Avg assists / unit</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatMetric(stats.averagesPerAtomicUnit.assists)}</p>
-                </div>
-              </TypeSummaryCard>
-            );
-          })}
-        </section>
-      ) : null}
-    </div>
+      <section className="mt-8" aria-labelledby="membership-history-heading">
+        <StatisticsDisclosure
+          title="Membership history"
+          headingLevel={2}
+          headingId="membership-history-heading"
+          summary={`${memberships.length} records`}
+        >
+          {memberships.length ? (
+            <ul className="divide-y divide-edge border-b border-edge">
+              {memberships.map((membership) => (
+                <li key={membership.id} className="py-3">
+                  <Link className="font-semibold text-foreground underline decoration-edge-strong underline-offset-4 hover:text-gold" href={`/units/${membership.unitId}`}>
+                    {membership.unit.name}
+                  </Link>
+                  <p className="mt-1 text-sm text-muted">
+                    Joined {membership.startedAt.toISOString().replace("T", " ").slice(0, 19)} UTC · {membership.endedAt ? `Ended ${membership.endedAt.toISOString().replace("T", " ").slice(0, 19)} UTC` : "Active"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-sm text-muted">No membership history.</p>}
+        </StatisticsDisclosure>
+      </section>
+    </>
   );
 }
