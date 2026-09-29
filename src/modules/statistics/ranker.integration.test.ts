@@ -6,65 +6,8 @@ import { prisma } from "@/lib/prisma";
 
 import { getRankerStatistics } from "./ranker";
 
-async function cleanupRankerTestData() {
-  const prefix = "ranker-";
-  const playerIds = (await prisma.player.findMany({
-    where: { playerId: { startsWith: prefix } },
-    select: { id: true },
-  })).map(({ id }) => id);
-
-  const eventIds = (await prisma.event.findMany({
-    where: { name: { startsWith: "Ranker " } },
-    select: { id: true },
-  })).map(({ id }) => id);
-
-  const participationIds = (await prisma.eventParticipation.findMany({
-    where: { eventId: { in: eventIds } },
-    select: { id: true },
-  })).map(({ id }) => id);
-
-  const atomicIds = (await prisma.atomicEventUnit.findMany({
-    where: { eventParticipationId: { in: participationIds } },
-    select: { id: true },
-  })).map(({ id }) => id);
-
-  const auditIds = (await prisma.audit.findMany({
-    where: { atomicEventUnitId: { in: atomicIds } },
-    select: { id: true },
-  })).map(({ id }) => id);
-
-  await prisma.$transaction(async (transaction) => {
-    await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" DISABLE TRIGGER audit_player_result_final_immutability');
-    await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" DISABLE TRIGGER audit_role_assignment_final_immutability');
-    await transaction.$executeRawUnsafe('ALTER TABLE "Audit" DISABLE TRIGGER audit_final_immutability');
-    if (auditIds.length > 0) {
-      await transaction.auditPlayerResult.deleteMany({ where: { auditId: { in: auditIds } } });
-      await transaction.auditRoleAssignment.deleteMany({ where: { auditId: { in: auditIds } } });
-      await transaction.audit.deleteMany({ where: { id: { in: auditIds } } });
-    }
-    await transaction.$executeRawUnsafe('ALTER TABLE "Audit" ENABLE TRIGGER audit_final_immutability');
-    await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
-    await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
-  });
-  if (atomicIds.length > 0) {
-    await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
-  }
-  if (participationIds.length > 0) {
-    await prisma.eventParticipation.deleteMany({ where: { id: { in: participationIds } } });
-  }
-  if (eventIds.length > 0) {
-    await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
-  }
-  if (playerIds.length > 0) {
-    await prisma.unitMembership.deleteMany({ where: { playerId: { in: playerIds } } });
-    await prisma.player.deleteMany({ where: { id: { in: playerIds } } });
-  }
-}
-
 test("public Ranker reads aggregate effective Audits by Event time and historical type", async () => {
   assert.ok(process.env.DATABASE_URL, "DATABASE_URL is required for this integration test");
-
-  await cleanupRankerTestData();
 
   const suffix = randomUUID();
   const now = new Date();
@@ -243,12 +186,17 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
     const rosteredDefault = playerFor(defaultResult, rosteredPlayer.playerId);
     assert.ok(rosteredDefault);
     assert.equal(defaultResult.window, "14d");
-    assert.deepEqual(new Set(defaultResult.players.map(({ gamePlayerId }) => gamePlayerId)), new Set(players.map(({ playerId }) => playerId)));
+    for (const result of [defaultResult, thirtyDayResult, allTimeResult]) {
+      for (const { playerId } of players) {
+        assert.equal(result.players.filter(({ gamePlayerId }) => gamePlayerId === playerId).length, 1, `expected exactly one ${result.window} Ranker row for ${playerId}`);
+      }
+    }
     assert.equal(rosteredDefault.distinctEvents, 1);
     assert.deepEqual(rosteredDefault.unitTypes.map(({ unitType }) => unitType), ["ARTILLERY", "REGULAR", "RIFLES"]);
 
     const regular = rosteredDefault.unitTypes.find(({ unitType }) => unitType === "REGULAR");
     assert.ok(regular);
+    assert.equal(regular.auditAppearances, 2);
     assert.deepEqual(regular.totals, { kills: 14, deaths: 4, assists: 6 });
     assert.deepEqual(regular.averagesPerAuditAppearance, { kills: 7, deaths: 2, assists: 3 });
     assert.equal(regular.killDeathRatio.value, 3.5);
@@ -256,6 +204,8 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
 
     const rifles = rosteredDefault.unitTypes.find(({ unitType }) => unitType === "RIFLES");
     assert.ok(rifles);
+    assert.deepEqual(rifles.totals, { kills: 5, deaths: 0, assists: 1 });
+    assert.equal(rifles.auditAppearances, 1);
     assert.equal(rifles.killDeathRatio.state, "ZERO_DENOMINATOR");
     assert.equal(rifles.killDeathRatio.denominator, 0);
     assert.equal(rifles.killDeathRatio.display, "5 K");
@@ -264,9 +214,40 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
     const artillery = rosteredDefault.unitTypes.find(({ unitType }) => unitType === "ARTILLERY");
     assert.ok(artillery);
     assert.deepEqual(artillery.totals, { kills: 3, deaths: 0, assists: 0 });
+    assert.equal(artillery.auditAppearances, 1);
     assert.equal(rosteredDefault.unitTypes.some(({ unitType }) => unitType === "CAVALRY"), false);
     assert.equal(playerFor(thirtyDayResult, rosteredPlayer.playerId)?.distinctEvents, 2);
-    assert.equal(playerFor(allTimeResult, rosteredPlayer.playerId)?.unitTypes.some(({ unitType }) => unitType === "CAVALRY"), true);
+    assert.deepEqual(playerFor(thirtyDayResult, rosteredPlayer.playerId), playerFor(allTimeResult, rosteredPlayer.playerId));
+    const cavalry = playerFor(allTimeResult, rosteredPlayer.playerId)?.unitTypes.find(({ unitType }) => unitType === "CAVALRY");
+    assert.ok(cavalry);
+    assert.deepEqual(cavalry.totals, { kills: 2, deaths: 1, assists: 0 });
+    assert.equal(cavalry.auditAppearances, 1);
+    for (const [fixture, totals, killDeathRatio, killAssistDeathRatio] of [
+      [mercenaryPlayer, { kills: 1, deaths: 1, assists: 0 }, 1, 1],
+      [elsewherePlayer, { kills: 3, deaths: 2, assists: 1 }, 1.5, 2],
+      [neverRosteredPlayer, { kills: 0, deaths: 1, assists: 0 }, 0, 0],
+    ] as const) {
+      assert.deepEqual(playerFor(defaultResult, fixture.playerId), {
+        gamePlayerId: fixture.playerId,
+        distinctEvents: 1,
+        unitTypes: [{
+          unitType: "REGULAR",
+          totals,
+          averagesPerAuditAppearance: totals,
+          killDeathRatio: {
+            numerator: totals.kills, denominator: totals.deaths,
+            state: "RATIO", value: killDeathRatio, display: String(killDeathRatio),
+          },
+          killAssistDeathRatio: {
+            numerator: totals.kills + totals.assists, denominator: totals.deaths,
+            state: "RATIO", value: killAssistDeathRatio, display: String(killAssistDeathRatio),
+          },
+          auditAppearances: 1,
+        }],
+      });
+      assert.deepEqual(playerFor(thirtyDayResult, fixture.playerId), playerFor(defaultResult, fixture.playerId));
+      assert.deepEqual(playerFor(allTimeResult, fixture.playerId), playerFor(defaultResult, fixture.playerId));
+    }
     assert.equal(JSON.stringify(defaultResult).includes(primaryUnit.commanderUserId), false);
     assert.deepEqual(sourceAfterRead, sourceSnapshot);
   } finally {
@@ -282,20 +263,16 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
       await transaction.$executeRawUnsafe('ALTER TABLE "AuditRoleAssignment" ENABLE TRIGGER audit_role_assignment_final_immutability');
       await transaction.$executeRawUnsafe('ALTER TABLE "AuditPlayerResult" ENABLE TRIGGER audit_player_result_final_immutability');
     });
-    try {
-      await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
-      await prisma.eventParticipation.deleteMany({ where: { id: { in: participations.map(({ id }) => id) } } });
-      await prisma.event.deleteMany({ where: { id: { in: events.map(({ id }) => id) } } });
-      await prisma.unitMembership.deleteMany({ where: { playerId: { in: players.map(({ id }) => id) } } });
-      await prisma.player.deleteMany({ where: { id: { in: players.map(({ id }) => id) } } });
-      if (createdOtherUnitId !== null) {
-        await prisma.$transaction(async (transaction) => {
-          await transaction.authorizedUserMembership.deleteMany({ where: { unitId: createdOtherUnitId! } });
-          await transaction.unit.delete({ where: { id: createdOtherUnitId! } });
-        });
-      }
-    } finally {
-      await cleanupRankerTestData();
+    await prisma.atomicEventUnit.deleteMany({ where: { id: { in: atomicIds } } });
+    await prisma.eventParticipation.deleteMany({ where: { id: { in: participations.map(({ id }) => id) } } });
+    await prisma.event.deleteMany({ where: { id: { in: events.map(({ id }) => id) } } });
+    await prisma.unitMembership.deleteMany({ where: { playerId: { in: players.map(({ id }) => id) } } });
+    await prisma.player.deleteMany({ where: { id: { in: players.map(({ id }) => id) } } });
+    if (createdOtherUnitId !== null) {
+      await prisma.$transaction(async (transaction) => {
+        await transaction.authorizedUserMembership.deleteMany({ where: { unitId: createdOtherUnitId! } });
+        await transaction.unit.delete({ where: { id: createdOtherUnitId! } });
+      });
     }
   }
 });

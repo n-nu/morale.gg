@@ -29,8 +29,9 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	`Player.playerId`; internal relational identity remains `Player.id`.
 	Archived under `tickets/COMPLETED/2026/09/`.
 - **TKT-20260928-000038-001 — Ranker Integration Test Must Be Independent of
-	Demo Data: READY.** The canonical ticket was recovered from lost/unmerged
-	history and restored under `tickets/OPEN/`; implementation remains pending.
+	Demo Data: REVIEW.** Fixture-specific global-reader assertions and bounded
+	cleanup pass with seeded demo Players. Review record is under
+	`tickets/ACTIVE/`; production Ranker behavior is unchanged.
 - **TKT-20260928-000034-001: Event Battle Structure Domain and Manager
 	Editor: COMPLETED.** Implementation and review revision commits `53d44a3` and
 	`9b8575a` merged in PR #19 at
@@ -95,10 +96,11 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	editor, and Event result workflow after the explicit correction-approver
 	decision is resolved.
 - **TKT-20260928-000035-001 — Event Battle Statistics Read and Public
-	Presentation:** **REVIEW.** Implementation `3e6462d` synchronized with
-	`main` on `feat/event-battle-statistics`. Implements the approved
-	Event-scoped Statistics reader, Battle DTO, progressive disclosure, pending
-	result states, and outcome styling. No historical Rank work is planned.
+	Presentation:** **COMPLETED.** Implementation `3e6462d`, main integration
+	`cc83e8f`, and verification/fix `d2c919e` merged in PR #23 at
+	`f3161b1da1f3243a9e12743cb63eb5a0e8cfd1ab`. Archived under
+	`tickets/COMPLETED/2026/09/`. Includes the Event-scoped reader, public
+	Battle presentation, and Event result; no historical Rank or schema change.
 
 ---
 
