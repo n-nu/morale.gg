@@ -17,6 +17,28 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	completion of linked-unit creation, unit management, or roster functionality. The remaining
 	MVP stories require their domain models, authorization, workflows, and public views.
 
+## Post-Merge Closeout
+
+- **TKT-20260928-000032-001 — Unit Management Surface Modernization and
+	Access Presentation: COMPLETED.** PR #20 merged at
+	`987c4ada9d31b765561180320d62bf6268cfcbd9`. Archived under
+	`tickets/COMPLETED/2026/09/`.
+- **TKT-20260928-000037-001 — Stable Public Player Identity Across Routes and
+	Statistics Navigation: COMPLETED.** PR #21 merged at
+	`5da5902732186074a3a35f84ea8dc5d0c45c606c`. Public identity is
+	`Player.playerId`; internal relational identity remains `Player.id`.
+	Archived under `tickets/COMPLETED/2026/09/`.
+- **TKT-20260928-000038-001 — Ranker Integration Test Must Be Independent of
+	Demo Data: READY.** The canonical ticket was recovered from lost/unmerged
+	history and restored under `tickets/OPEN/`; implementation remains pending.
+- **TKT-20260928-000034-001: Event Battle Structure Domain and Manager
+	Editor: COMPLETED.** Implementation and review revision commits `53d44a3` and
+	`9b8575a` merged in PR #19 at
+	`490c5226de3b75968502fc02693cbb534d7d6e07`.
+- **TKT-20260928-000036-001: Development Demo Reset and Reseed:
+	COMPLETED.** Implementation `2949fcb` merged in PR #19 at
+	`490c5226de3b75968502fc02693cbb534d7d6e07`.
+
 ## Statistics Architecture Planning
 
 - **TKT-20260927-000024-001 — Statistics Architecture and Derived Performance Model:**
@@ -68,12 +90,12 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	Event-scoped Statistics reader, legacy migration behavior, and public/manager
 	layouts are documented. No production implementation was introduced.
 - **TKT-20260928-000034-001 — Event Battle Structure Domain and Manager
-	Editor:** **REVIEW.** Implements the approved schema, Events -> Audits
+	Editor:** **COMPLETED.** Implements the approved schema, Events -> Audits
 	mutation seam, side-safe hierarchy, participation-backed claims, manager
 	editor, and Event result workflow after the explicit correction-approver
 	decision is resolved.
 - **TKT-20260928-000035-001 — Event Battle Statistics Read and Public
-	Presentation:** **READY / blocked by Ticket 34.** Implements the approved
+	Presentation:** **READY / unblocked.** Implements the approved
 	Event-scoped Statistics reader, Battle DTO, progressive disclosure, pending
 	result states, and outcome styling. No historical Rank work is planned.
 
