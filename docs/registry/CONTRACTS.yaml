@@ -14,6 +14,13 @@ contracts:
     status: stable
     version: 0.1
     updated_by_ticket: TKT-20260921-000014-001
+  - contract_id: players-units-roster-read
+    path: docs/contracts/players-units-roster-read.md
+    producer: players
+    consumer: units
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260928-000037-001
   - contract_id: events-audits-event-participation-management
     path: docs/contracts/events-audits-event-participation-management.md
     producer: events

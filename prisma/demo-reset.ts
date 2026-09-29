@@ -107,7 +107,7 @@ export function requireSingleRootUnit(roots: RootUnitIdentity[]): RootUnitIdenti
 }
 
 type UnitSeed = { id: string; name: string; parentId: string | null };
-type MembershipSeed = { id: string; playerId: string; unitId: string; startedAt: Date; endedAt: Date | null };
+type MembershipSeed = { id: string; playerId: string; gamePlayerId: string; unitId: string; startedAt: Date; endedAt: Date | null };
 type ParticipationSeed = { unitId: string; status: EventParticipationStatus };
 type AuditState = "FINAL" | "DRAFT" | "NONE";
 type AtomicSeed = {
@@ -573,6 +573,18 @@ function playerId(index: number): string {
   return `demo-player-${String(index + 1).padStart(3, "0")}`;
 }
 
+export function demoPlayerIdentity(index: number): { id: string; playerId: string } {
+  return {
+    id: index === 0 ? "player-row-uuid-123" : `player-row-demo-${String(index + 1).padStart(3, "0")}`,
+    playerId: playerId(index),
+  };
+}
+
+export function demoMercenaryIdentity(index: number): { id: string; playerId: string } {
+  const suffix = String(index + 1).padStart(3, "0");
+  return { id: `player-row-merc-${suffix}`, playerId: `demo-player-merc-${suffix}` };
+}
+
 function groupPermissionGrants(membershipId: string, createdByUserId: string, permissions: Array<{ permission: Permission; scope: PermissionScope | null }>, prefix: string) {
   return permissions.map(({ permission, scope }) => ({
     id: `${prefix}-${permission.toLowerCase()}`,
@@ -788,24 +800,24 @@ function primaryUnitForPlayer(index: number): string {
 
 async function seedPlayers(tx: TxClient): Promise<MembershipSeed[]> {
   const playerRows = Array.from({ length: PLAYER_COUNT }, (_, index) => ({
-    id: playerId(index),
-    playerId: playerId(index),
+    ...demoPlayerIdentity(index),
     name: null,
   }));
-  const mercenaries = Array.from({ length: MERCENARY_COUNT }, (_, index) => {
-    const id = `demo-player-merc-${String(index + 1).padStart(3, "0")}`;
-    return { id, playerId: id, name: null };
-  });
+  const mercenaries = Array.from({ length: MERCENARY_COUNT }, (_, index) => ({
+    ...demoMercenaryIdentity(index),
+    name: null,
+  }));
   await tx.player.createMany({ data: [...playerRows, ...mercenaries] });
 
   const memberships: MembershipSeed[] = [];
   for (let index = 0; index < PLAYER_COUNT; index += 1) {
-    const player = playerId(index);
+    const { id: player, playerId: gamePlayerId } = demoPlayerIdentity(index);
     const unitId = primaryUnitForPlayer(index);
     if (index < 6) {
       memberships.push({
         id: `demo-membership-prior-${index + 1}`,
         playerId: player,
+        gamePlayerId,
         unitId,
         startedAt: daysFromNow(-120),
         endedAt: daysFromNow(-22),
@@ -814,6 +826,7 @@ async function seedPlayers(tx: TxClient): Promise<MembershipSeed[]> {
     memberships.push({
       id: `demo-membership-period-${index + 1}`,
       playerId: player,
+      gamePlayerId,
       unitId,
       startedAt: daysFromNow(index < 6 ? -8 : index >= 104 && index < 112 ? -6 : -180),
       endedAt: index >= 112 ? daysFromNow(-5) : null,
@@ -822,23 +835,25 @@ async function seedPlayers(tx: TxClient): Promise<MembershipSeed[]> {
       memberships.push({
         id: `demo-membership-moved-${index + 1}`,
         playerId: player,
+        gamePlayerId,
         unitId: leafUnitIds[(leafUnitIds.indexOf(unitId) + 1) % leafUnitIds.length],
         startedAt: daysFromNow(-300),
         endedAt: daysFromNow(-220),
       });
     }
   }
-  await tx.unitMembership.createMany({ data: memberships });
+  await tx.unitMembership.createMany({
+    data: memberships.map(({ id, playerId, unitId, startedAt, endedAt }) => ({ id, playerId, unitId, startedAt, endedAt })),
+  });
   return memberships;
 }
 
-function activePlayerIdsForUnit(memberships: MembershipSeed[], unitId: string, eventDate: Date): string[] {
+function activePlayersForUnit(memberships: MembershipSeed[], unitId: string, eventDate: Date): MembershipSeed[] {
   return memberships
     .filter((membership) => membership.unitId === unitId
       && membership.startedAt <= eventDate
       && (membership.endedAt === null || membership.endedAt > eventDate))
-    .map((membership) => membership.playerId)
-    .sort((left, right) => left.localeCompare(right));
+    .sort((left, right) => left.gamePlayerId.localeCompare(right.gamePlayerId));
 }
 
 async function seedEvents(tx: TxClient, rootCommanderUserId: string): Promise<Map<string, string>> {
@@ -904,7 +919,7 @@ async function seedBattleStructures(
           name: group.name,
           side: group.side,
           parentGroupId: group.parentId,
-          commanderPlayerId: playerId(group.commanderIndex),
+          commanderPlayerId: demoPlayerIdentity(group.commanderIndex).id,
         },
       });
     }
@@ -917,12 +932,12 @@ async function seedBattleStructures(
     for (const atomic of event.atomics) {
       if (atomic.audit === "NONE") continue;
       const scheduledAt = daysFromNow(event.scheduledOffsetDays);
-      const results = activePlayerIdsForUnit(memberships, atomic.unitId, scheduledAt)
-        .filter((id) => !atomic.omittedPlayerIndexes?.includes(Number(id.slice("demo-player-".length)) - 1))
-        .slice(0, 4);
+      const results = activePlayersForUnit(memberships, atomic.unitId, scheduledAt)
+        .filter(({ gamePlayerId }) => !atomic.omittedPlayerIndexes?.includes(Number(gamePlayerId.slice("demo-player-".length)) - 1))
+        .slice(0, 4)
+        .map(({ playerId }) => playerId);
       if (results.length === 0 || auditIndex % 3 === 1) {
-        const mercenaryId = `demo-player-merc-${String((auditIndex % MERCENARY_COUNT) + 1).padStart(3, "0")}`;
-        results.push(mercenaryId);
+        results.push(demoMercenaryIdentity(auditIndex % MERCENARY_COUNT).id);
       }
       const auditId = `demo-audit-${atomic.id.slice("demo-atomic-".length)}`;
       await tx.audit.create({
@@ -1057,9 +1072,19 @@ function assertRootUnchanged(before: { identity: string; designation: string }, 
 async function verifySeededData(tx: TxClient, rootUnitId: string): Promise<void> {
   const rootUnits = await tx.rootUnit.count();
   const units = await tx.unit.findMany({ select: { id: true, parentId: true, rootUnitId: true } });
-  const players = await tx.player.count();
+  const playerRows = await tx.player.findMany({ select: { id: true, playerId: true } });
+  const players = playerRows.length;
   const users = await tx.user.findMany({ select: { id: true } });
-  const memberships = await tx.unitMembership.count();
+  const membershipLinks = await tx.unitMembership.findMany({
+    select: { playerId: true, player: { select: { id: true, playerId: true } } },
+  });
+  const memberships = membershipLinks.length;
+  const auditPlayerLinks = await tx.auditPlayerResult.findMany({
+    select: { playerId: true, player: { select: { id: true, playerId: true } } },
+  });
+  const auditRoleLinks = await tx.auditRoleAssignment.findMany({
+    select: { playerId: true, player: { select: { id: true, playerId: true } } },
+  });
   const events = await tx.event.count();
   const participations = await tx.eventParticipation.findMany({ select: { id: true, status: true } });
   const atomics = await tx.atomicEventUnit.findMany({
@@ -1105,6 +1130,26 @@ async function verifySeededData(tx: TxClient, rootUnitId: string): Promise<void>
   }
   assert.ok(units.length >= 26 && units.length <= 41, `Unexpected Unit count ${units.length}.`);
   assert.ok(players >= 100 && players <= 150, `Unexpected Player count ${players}.`);
+  assert.equal(new Set(playerRows.map(({ playerId }) => playerId)).size, players, "Seed contains duplicate public PlayerIDs.");
+  assert.ok(playerRows.every(({ id, playerId }) => id !== playerId), "Seeded Players must not equate internal and public IDs.");
+  const identityFixture = playerRows.find(({ playerId: gamePlayerId }) => gamePlayerId === playerId(0));
+  assert.deepEqual(identityFixture, { id: "player-row-uuid-123", playerId: "demo-player-001" });
+  const internalPlayerIds = new Set(playerRows.map(({ id }) => id));
+  for (const membership of membershipLinks) {
+    assert.equal(membership.playerId, membership.player.id, "UnitMembership must reference Player.id.");
+    assert.ok(internalPlayerIds.has(membership.playerId));
+  }
+  for (const result of auditPlayerLinks) {
+    assert.equal(result.playerId, result.player.id, "AuditPlayerResult must reference Player.id.");
+    assert.ok(internalPlayerIds.has(result.playerId));
+  }
+  for (const role of auditRoleLinks) {
+    assert.equal(role.playerId, role.player.id, "AuditRoleAssignment must reference Player.id.");
+    assert.ok(internalPlayerIds.has(role.playerId));
+  }
+  assert.ok(membershipLinks.some(({ playerId }) => playerId === identityFixture.id));
+  assert.ok(auditPlayerLinks.some(({ playerId }) => playerId === identityFixture.id));
+  assert.ok(auditRoleLinks.some(({ playerId }) => playerId === identityFixture.id));
   assert.ok(users.filter((user) => user.id !== root.designatedUnit.commanderUserId).length >= 6);
   assert.equal(events, 10);
   assert.ok(memberships >= 120);

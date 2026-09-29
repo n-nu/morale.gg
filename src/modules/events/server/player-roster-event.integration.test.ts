@@ -107,7 +107,7 @@ test("Player roster and Event participation integrate through their real authori
       playerId: player.id,
       unitId: unit.id,
     });
-    assert.equal((await getCurrentRoster(unit.id)).some((entry) => entry.id === membership.id), true);
+    assert.equal((await getCurrentRoster(unit.id)).some((entry) => entry.membershipId === membership.id), true);
 
     const unauthorizedPlayerWorkflows = playerWorkflows({
       db: prisma,
@@ -118,7 +118,7 @@ test("Player roster and Event participation integrate through their real authori
       unauthorizedPlayerWorkflows.endMembership({ membershipId: membership.id, unitId: unit.id }),
       /permission/i,
     );
-    assert.equal((await getCurrentRoster(unit.id)).some((entry) => entry.id === membership.id), true);
+    assert.equal((await getCurrentRoster(unit.id)).some((entry) => entry.membershipId === membership.id), true);
 
     const firstEvent = await prisma.event.create({
       data: {
@@ -198,7 +198,7 @@ test("Player roster and Event participation integrate through their real authori
     await authorizedPlayerWorkflows.endMembership({ membershipId: membership.id, unitId: unit.id });
     assert.ok(await getPlayer(player.id));
     assert.ok((await getPlayerMemberships(player.id)).some((entry) => entry.id === membership.id && entry.endedAt));
-    assert.equal((await getCurrentRoster(unit.id)).some((entry) => entry.id === membership.id), false);
+    assert.equal((await getCurrentRoster(unit.id)).some((entry) => entry.membershipId === membership.id), false);
     assert.equal((await prisma.eventParticipation.findUnique({ where: { id: approved.id } }))?.status, "APPROVED");
     assert.deepEqual(await listApprovedEventUnits(firstEvent.id), [
       { unitId: unit.id, unitName: unit.name },

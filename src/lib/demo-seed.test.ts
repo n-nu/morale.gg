@@ -3,7 +3,21 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { assertSafeDatabaseTarget, requireSingleRootUnit } from "../../prisma/demo-reset";
+import {
+  assertSafeDatabaseTarget,
+  demoMercenaryIdentity,
+  demoPlayerIdentity,
+  requireSingleRootUnit,
+} from "../../prisma/demo-reset";
+
+test("demo Player identities are deterministic and distinct from internal row IDs", () => {
+  assert.deepEqual(demoPlayerIdentity(0), { id: "player-row-uuid-123", playerId: "demo-player-001" });
+  const players = Array.from({ length: 120 }, (_, index) => demoPlayerIdentity(index));
+  assert.equal(new Set(players.map(({ playerId }) => playerId)).size, players.length);
+  assert.ok(players.every(({ id, playerId }) => id !== playerId));
+  assert.deepEqual(demoMercenaryIdentity(0), { id: "player-row-merc-001", playerId: "demo-player-merc-001" });
+  assert.notEqual(demoMercenaryIdentity(0).id, demoMercenaryIdentity(0).playerId);
+});
 
 test("demo seeding commands are defined and the demo seed script exists", () => {
   const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"));
