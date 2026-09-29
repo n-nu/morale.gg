@@ -23,6 +23,8 @@ model User {
   eventAuthorizations EventAuthorizedUser[] @relation("EventAuthorizedUser")
   addedEventAuthorizations EventAuthorizedUser[] @relation("EventAuthorizationCreator")
   auditDrafts Audit[] @relation("AuditCreator")
+  proposedEventResults EventResult[] @relation("EventResultProposer")
+  reviewedEventResults EventResult[] @relation("EventResultReviewer")
 }
 
 model Account {
@@ -65,6 +67,8 @@ model Event {
   description String?
   opponent    String?
   map         String?
+  defenderFlagRef String?
+  attackerFlagRef String?
   ownerUserId String
   owner       User                  @relation("EventOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   createdAt   DateTime              @default(now())
@@ -72,6 +76,7 @@ model Event {
   participations EventParticipation[]
   authorizedUsers EventAuthorizedUser[]
   commandGroups EventCommandGroup[]
+  resultRecords EventResult[]
 
   @@index([ownerUserId])
 }
@@ -108,6 +113,7 @@ model EventParticipation {
   createdAt DateTime                   @default(now())
   updatedAt DateTime                   @updatedAt
   atomicUnits AtomicEventUnit[]
+  commandGroups EventCommandGroup[]
 
   @@unique([eventId, unitId])
   @@index([eventId])
@@ -115,9 +121,30 @@ model EventParticipation {
   @@index([status])
 }
 
+enum BattlefieldSide {
+  ATTACKER
+  DEFENDER
+}
+
+enum EventResultValue {
+  ATTACKER_WIN
+  DEFENDER_WIN
+  DRAW
+}
+
+enum EventResultStatus {
+  EFFECTIVE
+  PENDING
+  SUPERSEDED
+  REJECTED
+}
+
 model AtomicEventUnit {
   id                   String             @id @default(cuid())
   eventParticipationId String
+  name                 String?
+  side                 BattlefieldSide?
+  auditUnitType        AuditUnitType?
   isMandatory          Boolean
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
@@ -145,7 +172,6 @@ model Unit {
   commander       User      @relation("UnitCommander", fields: [commanderUserId], references: [id], onDelete: Restrict)
   memberships     AuthorizedUserMembership[]
   eventParticipations EventParticipation[]
-  representedEventGroups EventCommandGroup[] @relation("EventGroupRepresentedUnit")
   playerMemberships UnitMembership[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -239,24 +265,47 @@ model AuditRoleAssignment {
 }
 
 model EventCommandGroup {
-  id                String              @id @default(cuid())
-  eventId           String
-  name              String
-  representedUnitId String
-  commanderPlayerId String
-  parentGroupId     String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  event             Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  representedUnit   Unit                @relation("EventGroupRepresentedUnit", fields: [representedUnitId], references: [id], onDelete: Restrict)
+  id                   String             @id @default(cuid())
+  eventId              String
+  eventParticipationId String?
+  name                 String
+  side                 BattlefieldSide?
+  commanderPlayerId    String
+  parentGroupId        String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  event                Event              @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  eventParticipation   EventParticipation? @relation(fields: [eventParticipationId], references: [id], onDelete: Restrict)
   commanderPlayer   Player              @relation("EventGroupCommander", fields: [commanderPlayerId], references: [id], onDelete: Restrict)
   parentGroup       EventCommandGroup?  @relation("EventCommandGroupTree", fields: [parentGroupId], references: [id], onDelete: Restrict)
   childGroups       EventCommandGroup[] @relation("EventCommandGroupTree")
   atomicUnitMemberships EventCommandGroupAtomicUnit[]
 
   @@index([eventId, parentGroupId])
-  @@index([representedUnitId])
+  @@index([eventParticipationId])
   @@index([commanderPlayerId])
+}
+
+model EventResult {
+  id                String            @id @default(cuid())
+  eventId           String
+  value             EventResultValue
+  status            EventResultStatus
+  proposedByUserId  String
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  supersedesId      String?
+  createdAt         DateTime          @default(now())
+  event             Event             @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  proposedBy        User              @relation("EventResultProposer", fields: [proposedByUserId], references: [id], onDelete: Restrict)
+  reviewedBy        User?             @relation("EventResultReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
+  supersedes        EventResult?      @relation("EventResultSupersession", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy     EventResult[]      @relation("EventResultSupersession")
+
+  @@index([eventId, status])
+  @@index([proposedByUserId])
+  @@index([reviewedByUserId])
+  @@index([supersedesId])
 }
 
 model EventCommandGroupAtomicUnit {

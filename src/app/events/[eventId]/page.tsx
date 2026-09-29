@@ -7,12 +7,15 @@ import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { bannerArtFor } from "@/modules/events/map-art";
 import { eventTypeStyle } from "@/modules/events/presentation";
 import { canManageEvent } from "@/modules/events/server/authorization";
+import { getPublicEventCommandStructure } from "@/modules/audits/server/command-groups";
+import { getEventResultState } from "@/modules/events/server/results";
 import {
   getEventById,
   listApprovedEventUnits,
 } from "@/modules/events/server/queries";
 
 import { LocalDateTime, TimezoneNote } from "../local-time";
+import { PublicBattleStructure } from "./battle-structure";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +28,6 @@ export async function generateMetadata({
     title: event ? `${event.name} · morale.gg` : "Event · morale.gg",
   };
 }
-
-const STAT_TILES = ["Kills", "Deaths", "Assists", "Tickets", "Flag captures", "Stars"];
 
 function MetaCard({
   label,
@@ -58,8 +59,10 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  const [approvedUnits, viewerUserId] = await Promise.all([
+  const [approvedUnits, structure, resultState, viewerUserId] = await Promise.all([
     listApprovedEventUnits(event.id),
+    getPublicEventCommandStructure(event.id),
+    getEventResultState(event.id),
     getAuthenticatedUserId(),
   ]);
   const viewerCanManage =
@@ -134,41 +137,13 @@ export default async function EventDetailPage({
             </section>
           ) : null}
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-extrabold tracking-tight text-white">
-              Battle statistics
-            </h2>
-            <div className="flex flex-col gap-4 rounded-[10px] border-2 border-dashed border-[#3b3a33] bg-[#121210] px-6 py-5">
-              <div className="flex items-center gap-2.5">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6d7781" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                  <rect x="5" y="11" width="14" height="9" rx="2" />
-                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                </svg>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[15px] font-bold text-muted">
-                    Statistics unlock after the battle
-                  </div>
-                  <div className="text-[13px] text-faint">
-                    Once each participating unit submits its audit and it is
-                    locked, the recorded results appear here.
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
-                {STAT_TILES.map((label) => (
-                  <div
-                    key={label}
-                    className="flex flex-col gap-1 rounded-lg border border-edge bg-surface px-3 py-2.5"
-                  >
-                    <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-faint">
-                      {label}
-                    </span>
-                    <span className="text-xl font-bold text-faint">—</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+          <PublicBattleStructure
+            result={resultState.effective?.value ?? null}
+            defenderFlagRef={event.defenderFlagRef}
+            attackerFlagRef={event.attackerFlagRef}
+            groups={structure?.groups ?? []}
+            ungroupedAtomicUnits={structure?.ungroupedAtomicUnits ?? []}
+          />
         </div>
 
         <aside className="flex w-full flex-col gap-4 lg:w-[330px] lg:flex-shrink-0">
@@ -210,12 +185,6 @@ export default async function EventDetailPage({
               Manage event
             </Link>
           ) : null}
-          <Link
-            href={`/events/${event.id}/command-structure`}
-            className="text-sm font-bold text-gold hover:text-gold-bright"
-          >
-            Command structure
-          </Link>
           <Link
             href="/events"
             className="text-sm font-bold text-gold hover:text-gold-bright"

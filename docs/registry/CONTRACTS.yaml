@@ -63,3 +63,24 @@ contracts:
     status: stable
     version: 0.1
     updated_by_ticket: TKT-20260927-000024-001
+  - contract_id: events-audits-event-battlefield-management
+    path: docs/contracts/events-audits-event-battlefield-management.md
+    producer: events
+    consumer: audits
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260928-000033-001
+  - contract_id: audits-events-public-battlefield-structure
+    path: docs/contracts/audits-events-public-battlefield-structure.md
+    producer: audits
+    consumer: events
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260928-000033-001
+  - contract_id: statistics-events-event-battle-reader
+    path: docs/contracts/statistics-events-event-battle-reader.md
+    producer: statistics
+    consumer: events
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20260928-000033-001

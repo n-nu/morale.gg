@@ -153,38 +153,21 @@ npm run db:seed
 
 The local PostgreSQL service uses the official `postgres:16` image and a named Docker volume for persistence. `DATABASE_URL` remains the single application database configuration used by Prisma and Next.js.
 
-## Demo dataset for visual review
+## Reset and seed demo database
 
-A development-only mock dataset is available for browsing the app as if it were an active Napoleonic Wars community. The seed is intentionally scoped to demo-only IDs and records and is designed to run without touching unrelated local data.
+Run the development reset and reseed with:
 
 ```bash
-npm run seed:demo
-npm run seed:demo:reset
+npm run demo:reset
 ```
 
-The seed script:
+**Destructive:** this deletes local application/domain data before rebuilding the demo dataset. The command refuses `NODE_ENV=production`, non-loopback or non-Compose database targets, and databases without exactly one RootUnit. It preserves the existing RootUnit Unit/designation and its current Commander User, linked Auth.js Accounts, active Commander membership, and login sessions; it does not rename or recreate the RootUnit. Prisma migration history is untouched. The legacy `npm run seed:demo` and `npm run seed:demo:reset` names call the same destructive reset.
 
-- is disabled in production;
-- creates demo-only Users, Players, Units, Events, EventParticipation, AtomicEventUnit, Audits, and command groups;
-- uses the existing Prisma schema and workflow patterns instead of inventing new domain rules;
-- removes only records whose IDs or demo player IDs fall under the demo namespace.
+For browser review, open `/events/demo-event-main-review` first. The organizer fixture is `/events/demo-event-organizer-review`.
 
-Required environment:
+Sign in using the existing local Google OAuth setup as the preserved RootUnit Commander. Other seeded authorization identities have no Google Accounts or fixed demo credentials; the project has no local impersonation or password-login flow.
 
-- `DATABASE_URL` pointing to a local development database;
-- `ROOT_UNIT_NAME` optional, used for the root organization label;
-- `NODE_ENV` must not be `production` when seeding.
-
-Expected approximate counts after a successful seed are:
-
-- 6 nation roots under the main root Unit;
-- about 45–55 persistent Units;
-- 120–150 Players;
-- 12–14 Events;
-- 30–45 EventParticipation rows;
-- about 20–30 finalized Audits plus several draft or pending audit states.
-
-Use `npm run seed:demo:reset` before reseeding to remove only the demo-owned rows and then rerun `npm run seed:demo`.
+Demo Players use stable game PlayerIDs without manufactured global names or Unit-local aliases; neither semantic is supported by the current Players model/contracts.
 
 ## Shared Backend Setup
 

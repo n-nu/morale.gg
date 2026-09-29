@@ -40,6 +40,7 @@ type AuditTransaction = {
   audit: typeof prisma.audit;
   auditPlayerResult: typeof prisma.auditPlayerResult;
   auditRoleAssignment: typeof prisma.auditRoleAssignment;
+  atomicEventUnit?: typeof prisma.atomicEventUnit;
 };
 
 export type AuditFinalizationInput = {
@@ -248,6 +249,7 @@ export async function submitAudit(
     include: {
       atomicEventUnit: {
         select: {
+          auditUnitType: true,
           eventParticipation: {
             select: { unitId: true, status: true },
           },
@@ -277,6 +279,9 @@ export async function submitAudit(
 
   const rows = parseAuditRows(input.submission.rawData);
   const { roleAssignments } = validateFinalSubmission(input.submission, rows);
+  if (audit.atomicEventUnit.auditUnitType != null && audit.atomicEventUnit.auditUnitType !== input.submission.unitType.toUpperCase()) {
+    throw new AuditSubmissionError("Audit Unit type must match the Event battlefield configuration.");
+  }
 
   const resolvePlayerByGameId = input.resolvePlayerByGameId ?? resolveOrCreatePlayerByGameId;
   const resolvedPlayers = await Promise.all(
@@ -336,6 +341,12 @@ export async function submitAudit(
       },
       select: { id: true, lifecycle: true, unitType: true, tickets: true },
     });
+    if (tx.atomicEventUnit !== undefined) {
+      await tx.atomicEventUnit.update({
+        where: { id: audit.atomicEventUnitId },
+        data: { auditUnitType: finalAudit.unitType },
+      });
+    }
 
     return {
       id: finalAudit.id,

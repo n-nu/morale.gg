@@ -27,9 +27,9 @@ EventParticipation, command groups, Event dates, Auth.js identity, and all
 authoritative gameplay history. Statistics owns no mutable aggregate state.
 
 ## Public Interface
-Approved public read services for Ranker, Commander, General, Direct Unit
-Performance, Organizational Unit Performance, Average Unit Performance, and
-Player + Unit attendance. These services are implemented as public query-time
+Approved public read services for Ranker, Commander, General, Event Battle,
+Direct Unit Performance, Organizational Unit Performance, Average Unit
+Performance, and Player + Unit attendance. These services are implemented as public query-time
 reads and key Player results only to stable game identity. Exact routes and DTOs
 remain implementation choices.
 
@@ -48,6 +48,7 @@ obligation/status summaries. Auth.js submitter identity is not an output.
 - `events-statistics-event-time`
 - `players-statistics-membership-history`
 - `units-statistics-hierarchy-read`
+- `statistics-events-event-battle-reader`
 - server-side PostgreSQL aggregation through approved application boundaries
 
 ## Invariants
@@ -89,10 +90,12 @@ zero denominator and expose the approved `K` or `K+A` display form.
 - `events-statistics-event-time`
 - `players-statistics-membership-history`
 - `units-statistics-hierarchy-read`
+- `statistics-events-event-battle-reader`
 
 ## Related ADRs
 - ADR-20260927-007 (accepted)
 - ADR-20260927-006 (accepted Audit source architecture)
+- ADR-20260928-008 (accepted Event Battlefield sides, results, and reads)
 
 ## AI Working Rules
 This manifest establishes approved ownership but does not itself authorize
