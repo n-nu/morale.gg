@@ -73,9 +73,11 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
       ? canManageRootSettings(userId, rootUnitId)
       : Promise.resolve(false),
   ]);
+
   const canManageRootFromChild = rootUnitId !== null && unit.id !== rootUnitId
     ? await canManageRootSettings(userId, rootUnitId)
     : false;
+
   if (!canEditProfile && !canAdministerUsers && !canCreateChild && !canDelete && !canManageOrganization && !canManageRootFromChild) {
     notFound();
   }
@@ -86,20 +88,22 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
     canManageOrganization && rootUnitId ? listRootRanks(rootUnitId) : [],
     canManageOrganization && rootUnitId ? listRootMedals(rootUnitId) : [],
   ]);
+
   const notice = queryValue(query.notice);
   const error = queryValue(query.error);
-  // Row controls follow the existing server resolver; workflows re-check every mutation.
+
   const manageableMembershipIds = memberships
-    ? (await Promise.all(memberships
-      .filter((membership) => membership.endedAt === null)
-      .map(async (membership) => (await canManageAuthorizedUser(userId, membership.id, unitId)) ? membership.id : null)))
-      .filter((id): id is string => id !== null)
+    ? (await Promise.all(
+        memberships
+          .filter((membership) => membership.endedAt === null)
+          .map(async (membership) => (await canManageAuthorizedUser(userId, membership.id, unitId)) ? membership.id : null),
+      )).filter((id): id is string => id !== null)
     : [];
-  const showStructure = canManageOrganization && rootUnitId === unitId && unit.rootUnit !== null;
+
   const sections = [
     { id: "overview", label: "Overview" },
     { id: "organization", label: "Organization" },
-    ...(showStructure ? [{ id: "structure", label: "Structure" }] : []),
+    ...(canManageOrganization && rootUnitId === unitId ? [{ id: "structure", label: "Structure" }] : []),
     ...(canAdministerUsers && memberships ? [{ id: "access", label: "Access" }] : []),
     ...(canDelete ? [{ id: "lifecycle", label: "Lifecycle" }] : []),
   ];
@@ -113,6 +117,7 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
         <span aria-hidden="true"> / </span>
         <span>Manage</span>
       </nav>
+
       <header className="units-management-header">
         <div>
           <p className="units-eyebrow">Unit administration</p>
@@ -150,7 +155,7 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
         />
       </section>
 
-      {showStructure && rootUnitId ? (
+      {canManageOrganization && rootUnitId === unitId ? (
         <section id="structure" className="units-management-section" aria-labelledby="structure-heading">
           <div className="units-section-title">
             <h2 id="structure-heading">Structure</h2>

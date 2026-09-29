@@ -352,6 +352,277 @@
   border-bottom: 1px solid var(--line);
 }
 
+.units-management-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.units-management-inline-stack,
+.units-management-image-card,
+.units-management-access-panel,
+.units-management-member,
+.units-management-table-row,
+.units-management-catalog {
+  min-width: 0;
+}
+
+.units-management-image-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.01);
+  padding: 14px;
+}
+
+.units-management-image-preview {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 130px;
+  border: 1px solid var(--edge-strong);
+  background: #111111;
+  overflow: hidden;
+}
+
+.units-management-image-preview img {
+  max-width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+}
+
+.units-management-image-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  border: 1px dashed var(--edge-strong);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.units-management-image-placeholder.small {
+  min-height: 44px;
+  padding: 8px 10px;
+  font-size: 10px;
+}
+
+.units-management-inline-note {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.units-management-disclosure {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.01);
+  padding: 0;
+}
+
+.units-management-disclosure summary {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 38px;
+  padding: 8px 12px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.units-management-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.units-management-disclosure[open] > :not(summary) {
+  border-top: 1px solid var(--line);
+  padding: 12px;
+}
+
+.units-management-disclosure.compact-disclosure summary {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.units-management-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.units-management-section-header h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.units-management-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.units-management-table-header {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1.4fr) minmax(0, 2fr) auto;
+  gap: 12px;
+  padding: 0 10px 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.units-management-table-row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1.5fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  padding: 12px 10px;
+}
+
+.units-management-row-order {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.units-management-row-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.units-management-row-main strong {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.units-management-row-main small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.units-management-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
+}
+
+.units-management-medal-table .units-management-table-row {
+  grid-template-columns: 48px minmax(0, 1.4fr) auto;
+}
+
+.units-management-medal-preview {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--edge-strong);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.units-management-medal-preview img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.units-management-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.units-management-status.is-protected {
+  border-color: rgba(214, 186, 120, 0.6);
+  color: var(--gold);
+}
+
+.units-management-status.is-muted {
+  color: var(--muted);
+}
+
+.units-management-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.units-management-grant-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.units-management-grant-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.units-management-grant-pill span {
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.units-management-grant-pill small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.units-management-grant-pill form {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.units-management-access-editor {
+  margin-top: 6px;
+}
+
+.units-management-access-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.units-management-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.units-management-inline-form .units-management-label {
+  flex: 1 1 180px;
+}
+
 .units-management-form,
 .units-management-stack {
   display: flex;
