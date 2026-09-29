@@ -16,8 +16,9 @@
     "db:migrate": "dotenv -e .env -- prisma migrate dev",
     "db:migrate:deploy": "dotenv -e .env -- prisma migrate deploy",
     "db:seed": "dotenv -e .env -- prisma db seed",
-    "seed:demo": "dotenv -e .env -- tsx prisma/seed-demo.ts",
-    "seed:demo:reset": "dotenv -e .env -- tsx prisma/seed-demo.ts --reset"
+    "demo:reset": "dotenv -e .env -- tsx --conditions react-server prisma/seed-demo.ts",
+    "seed:demo": "npm run demo:reset",
+    "seed:demo:reset": "npm run demo:reset"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

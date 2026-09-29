@@ -6,7 +6,10 @@ import { getAuthenticatedUserId } from "@/lib/website-admin";
 
 import {
   createAtomicEventUnit,
+  createEventAtomicEventUnit,
   deleteAtomicEventUnit,
+  deleteEventAtomicEventUnit,
+  updateEventAtomicEventUnit,
 } from "./atomic-units";
 import {
   attachAtomicEventUnit,
@@ -14,6 +17,7 @@ import {
   createEventCommandGroup,
   deleteEventCommandGroup,
   detachAtomicEventUnit,
+  moveEventBattlefieldNode,
   reparentEventCommandGroup,
   updateEventCommandGroup,
 } from "./command-groups";
@@ -27,6 +31,7 @@ async function requireAuthenticatedUser(message: string) {
 
 function revalidateCommandStructure(eventId: string) {
   revalidatePath(`/events/${eventId}/command-structure`);
+  revalidatePath(`/events/${eventId}/manage`);
   revalidatePath(`/events/${eventId}`);
 }
 
@@ -45,6 +50,47 @@ export async function createAtomicEventUnitAction(data: FormData) {
     isMandatory: data.get("isMandatory") === "true",
   });
   revalidatePath("/audits");
+}
+
+export async function createEventAtomicEventUnitAction(data: FormData) {
+  const userId = await requireAuthenticatedUser("Sign in to manage this Event's battlefield structure.");
+  const eventId = String(data.get("eventId") ?? "");
+  await createEventAtomicEventUnit({
+    userId,
+    eventId,
+    participationId: String(data.get("participationId") ?? ""),
+    name: String(data.get("name") ?? ""),
+    side: String(data.get("side") ?? "").trim() === ""
+      ? null
+      : String(data.get("side")) as "ATTACKER" | "DEFENDER",
+    auditUnitType: String(data.get("auditUnitType") ?? "") as "REGULAR" | "RIFLES" | "CAVALRY" | "ARTILLERY",
+    isMandatory: data.get("isMandatory") === "true",
+  });
+  revalidateCommandStructure(eventId);
+}
+
+export async function updateEventAtomicEventUnitAction(data: FormData) {
+  const userId = await requireAuthenticatedUser("Sign in to manage this Event's battlefield structure.");
+  const eventId = String(data.get("eventId") ?? "");
+  await updateEventAtomicEventUnit(userId, {
+    eventId,
+    atomicEventUnitId: String(data.get("atomicEventUnitId") ?? ""),
+    participationId: String(data.get("participationId") ?? ""),
+    name: String(data.get("name") ?? ""),
+    side: String(data.get("side") ?? "").trim() === ""
+      ? null
+      : String(data.get("side")) as "ATTACKER" | "DEFENDER",
+    auditUnitType: String(data.get("auditUnitType") ?? "") as "REGULAR" | "RIFLES" | "CAVALRY" | "ARTILLERY",
+    isMandatory: data.get("isMandatory") === "true",
+  });
+  revalidateCommandStructure(eventId);
+}
+
+export async function deleteEventAtomicEventUnitAction(data: FormData) {
+  const userId = await requireAuthenticatedUser("Sign in to manage this Event's battlefield structure.");
+  const eventId = String(data.get("eventId") ?? "");
+  await deleteEventAtomicEventUnit(userId, eventId, String(data.get("atomicEventUnitId") ?? ""));
+  revalidateCommandStructure(eventId);
 }
 
 export async function deleteAtomicEventUnitAction(data: FormData) {
@@ -98,10 +144,39 @@ export async function createEventCommandGroupAction(data: FormData) {
   const eventId = String(data.get("eventId") ?? "");
   await createEventCommandGroup(userId, eventId, {
     name: String(data.get("name") ?? ""),
-    representedUnitId: String(data.get("representedUnitId") ?? ""),
+    participationId: String(data.get("participationId") ?? ""),
+    side: String(data.get("side") ?? "").trim() === ""
+      ? null
+      : String(data.get("side")) as "ATTACKER" | "DEFENDER",
     commanderPlayerId: String(data.get("commanderPlayerId") ?? ""),
     parentGroupId: String(data.get("parentGroupId") ?? ""),
   });
+  revalidateCommandStructure(eventId);
+}
+
+export async function moveEventBattlefieldNodeAction(data: FormData) {
+  const userId = await requireAuthenticatedUser("Sign in to manage this Event's battlefield structure.");
+  const eventId = String(data.get("eventId") ?? "");
+  const nodeType = String(data.get("nodeType") ?? "");
+  const nodeId = String(data.get("nodeId") ?? "");
+  const destination = String(data.get("destination") ?? "");
+  if (nodeType !== "group" && nodeType !== "atomic") {
+    throw new Error("Select a valid battlefield node.");
+  }
+  const target = destination.startsWith("group:")
+    ? { groupId: destination.slice("group:".length) }
+    : destination === "side:UNSORTED"
+      ? { side: null }
+      : destination === "side:ATTACKER" || destination === "side:DEFENDER"
+        ? { side: destination.slice("side:".length) as "ATTACKER" | "DEFENDER" }
+        : null;
+  if (target === null) throw new Error("Select a valid battlefield destination.");
+  await moveEventBattlefieldNode(
+    userId,
+    eventId,
+    { type: nodeType, id: nodeId },
+    target,
+  );
   revalidateCommandStructure(eventId);
 }
 
@@ -110,7 +185,10 @@ export async function updateEventCommandGroupAction(data: FormData) {
   const groupId = String(data.get("groupId") ?? "");
   await updateEventCommandGroup(userId, groupId, {
     name: String(data.get("name") ?? ""),
-    representedUnitId: String(data.get("representedUnitId") ?? ""),
+    participationId: String(data.get("participationId") ?? ""),
+    side: String(data.get("side") ?? "").trim() === ""
+      ? null
+      : String(data.get("side")) as "ATTACKER" | "DEFENDER",
     commanderPlayerId: String(data.get("commanderPlayerId") ?? ""),
   });
   revalidateCommandStructure(String(data.get("eventId") ?? ""));

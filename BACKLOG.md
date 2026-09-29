@@ -58,6 +58,25 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	Further Statistics tickets require a concrete defect or an explicitly
 	approved new product feature; MVP integration/polish is a separate phase.
 
+## Event Battle Architecture
+
+- **TKT-20260928-000033-001 — Event Command Structure and Battle Statistics
+	Architecture Review:** **COMPLETED / approved architecture.**
+	`ADR-20260928-008` is Accepted and `BCR-20260928-006` is Approved. The
+	fixed ATTACKER/DEFENDER model, EventParticipation claim semantics,
+	Event-manager/Audit authority split, history-preserving Event result,
+	Event-scoped Statistics reader, legacy migration behavior, and public/manager
+	layouts are documented. No production implementation was introduced.
+- **TKT-20260928-000034-001 — Event Battle Structure Domain and Manager
+	Editor:** **REVIEW.** Implements the approved schema, Events -> Audits
+	mutation seam, side-safe hierarchy, participation-backed claims, manager
+	editor, and Event result workflow after the explicit correction-approver
+	decision is resolved.
+- **TKT-20260928-000035-001 — Event Battle Statistics Read and Public
+	Presentation:** **READY / blocked by Ticket 34.** Implements the approved
+	Event-scoped Statistics reader, Battle DTO, progressive disclosure, pending
+	result states, and outcome styling. No historical Rank work is planned.
+
 ---
 
 # MVP Success Condition

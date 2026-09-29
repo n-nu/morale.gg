@@ -3,8 +3,8 @@ module_id: events
 path: src/modules/events
 status: active
 version: 0.2
-last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000020-001
+last_reviewed: 2026-09-28
+updated_by_ticket: TKT-20260928-000034-001
 ---
 
 # Events
@@ -33,6 +33,8 @@ Audit work builds on approved Event participation through the
   Event Time Rule);
 - Event-side EventParticipation review and the REQUESTED -> APPROVED/DENIED
   decision boundary;
+- optional validated attacker/defender image references and Event result
+  lifecycle authorization;
 - the authenticated Event-management workflow (`/events/manage`,
   `/events/[eventId]/manage`);
 - public Event presentation (`/events`, `/events/[eventId]`,
@@ -45,6 +47,8 @@ Audit work builds on approved Event participation through the
 - Unit authority and creation-eligibility evaluation;
 - Audit lifecycle, atomic Event units, command groups, and audit statistics
   (owned by Audits);
+- Audits-owned battlefield persistence and invariants; Events authorizes the
+  Event-manager mutation seam only;
 - leaderboards;
 - the shared site shell and theme (owned at the app level).
 
@@ -54,13 +58,18 @@ Audit work builds on approved Event participation through the
   past), with presentation-level event-type filtering via query parameters.
 - Route `/events/[eventId]`: public, unauthenticated Event detail. Approved
   participating Units are shown; statistics remain future functionality.
+  One Battle Structure tree shows assigned Defender/Attacker hierarchy only;
+  null-side manager configuration nodes are not returned to public readers.
 - Route `/events/calendar`: public, unauthenticated month-calendar view of
   the same Event data.
 - Route `/events/manage`: authenticated list of Events the User owns or
   explicitly manages.
 - Route `/events/[eventId]/manage`: authenticated Event-management workflow
   (event settings, owner-only manager administration, participation review
-  and approval/denial), gated server-side by `canManageEvent`.
+  and approval/denial plus the embedded Battle Structure organizer), gated
+  server-side by `canManageEvent`.
+- The former `/events/[eventId]/command-structure` URL is a compatibility
+  redirect and is not a separate advertised feature.
 - Public Event detail exposes APPROVED participating Units only; pending and
   denied participation stays management-only.
 - `getCanonicalEventTimes` provides Statistics with Events-owned canonical
@@ -68,6 +77,8 @@ Audit work builds on approved Event participation through the
 - Events consumes the server-only
   `events-units-event-creation-authorization` contract and exposes the
   `events-audits-event-participation-management` contract to Audits.
+- Events exposes the `events-audits-event-battlefield-management` contract for
+  Audits-owned battlefield mutations.
 
 ## Inputs
 
@@ -103,6 +114,8 @@ Audit work builds on approved Event participation through the
   `canCreateEvent` eligibility.
 - Existing Event management is allowed only for the owner or an explicitly
   authorized User. Only the owner administers explicit managers.
+- Event-manager battlefield structure authority remains separate from Audit
+  submission and finalization authority.
 - Participation decisions are authorized exclusively through
   `canManageEvent`; the only valid transitions are REQUESTED -> APPROVED and
   REQUESTED -> DENIED, terminal records are immutable (including under
@@ -152,6 +165,9 @@ Event.
   explicit contracts.
 - Post-MVP participation workflows (reversal, re-request) require a RED
   decision before any lifecycle change.
+- Event Battle reads consume Audits' public structure contract and Statistics'
+  Event Battle reader; Event presentation does not query Audit persistence or
+  aggregate Audit metrics.
 
 ## Limitations
 
@@ -167,6 +183,9 @@ Event.
 - `events-units-event-creation-authorization` (stable).
 - `events-audits-event-participation-management` (stable).
 - `events-statistics-event-time` (stable).
+- `events-audits-event-battlefield-management` (stable).
+- `audits-events-public-battlefield-structure` (stable consumer-facing read).
+- `statistics-events-event-battle-reader` (stable consumer-facing read).
 
 ## Related ADRs
 
@@ -174,6 +193,7 @@ Event.
   backend boundary).
 - ADR-20260921-004 (accepted; standalone User-owned Event authorization).
 - ADR-20260927-006 (accepted; Audit domain and Event-scoped structures).
+- ADR-20260928-008 (accepted; Event Battlefield sides, results, and reads).
 
 ## AI Working Rules
 

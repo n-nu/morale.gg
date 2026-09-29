@@ -2,16 +2,10 @@ import Link from "next/link";
 
 import { Breadcrumbs, PageHeader } from "@/app/presentation";
 import { getAuthenticatedUserId } from "@/lib/website-admin";
-import { listEvents } from "@/modules/events/server/queries";
 import {
-  getApprovedParticipationContext,
-} from "@/modules/events/server/audits";
-import { listEventParticipationsForEvent } from "@/modules/events/server/event-participation";
-import {
-  listAtomicEventUnits,
+  listAuthorizedAtomicEventUnits,
 } from "@/modules/audits/server/atomic-units";
 import {
-  createAtomicEventUnitAction,
   createAuditDraftAction,
   deleteAtomicEventUnitAction,
   submitAuditAction,
@@ -27,32 +21,22 @@ export default async function AuditsPage({
   searchParams: Promise<{ participation?: string }>;
 }) {
   const params = await searchParams;
-  const [events, viewerUserId] = await Promise.all([listEvents(), getAuthenticatedUserId()]);
-  const contexts = (
-    await Promise.all(
-      events.flatMap(async (event) => {
-        const participations = await listEventParticipationsForEvent(event.id);
-        return Promise.all(
-          participations
-            .filter((participation) => participation.status === "APPROVED")
-            .map((participation) => getApprovedParticipationContext(participation.id)),
-        );
-      }),
-    )
-  ).flatMap((eventContexts) => eventContexts.filter((context) => context !== null));
+  const viewerUserId = await getAuthenticatedUserId();
+  const discoveredAtomicUnits = viewerUserId === null ? [] : await listAuthorizedAtomicEventUnits(viewerUserId);
+  const contexts = [...new Map(discoveredAtomicUnits.map((atomicUnit) => [atomicUnit.eventParticipation.id, atomicUnit.eventParticipation])).values()];
 
   const requestedParticipationId =
     typeof params.participation === "string" ? params.participation : "";
   const selectedParticipationId = contexts.some(
-    (context) => context.participationId === requestedParticipationId,
+    (context) => context.id === requestedParticipationId,
   )
     ? requestedParticipationId
-    : contexts[0]?.participationId ?? null;
+    : contexts[0]?.id ?? null;
   const selectedContext = contexts.find(
-    (context) => context.participationId === selectedParticipationId,
+    (context) => context.id === selectedParticipationId,
   );
   const atomicUnits = selectedContext
-    ? await listAtomicEventUnits(selectedContext.participationId)
+    ? discoveredAtomicUnits.filter((atomicUnit) => atomicUnit.eventParticipation.id === selectedContext.id)
     : [];
   const auditViews = await Promise.all(
     atomicUnits.map(async (atomicUnit) => [
@@ -67,9 +51,11 @@ export default async function AuditsPage({
       <Breadcrumbs items={[{ label: "Community", href: "/events" }, { label: "Audits" }]} />
       <PageHeader category="Records and administration" title="Audits" description="Finalized event records and authorized submissions." />
 
-      {contexts.length === 0 ? (
+      {viewerUserId === null ? (
+        <p className="mt-8 border-y border-edge py-5 text-sm text-muted">Sign in to discover Atomic Event-units claimed through your authorized Units.</p>
+      ) : contexts.length === 0 ? (
           <p className="mt-8 border-y border-edge py-5 text-sm text-muted">
-            No approved Event participations are available.
+            No Atomic Event-units are available for your Unit Audit authority.
           </p>
       ) : (
         <section className="mt-8 space-y-6" aria-labelledby="participations-heading">
@@ -78,7 +64,7 @@ export default async function AuditsPage({
           </h2>
           <ul className="divide-y divide-edge border-y border-edge">
             {contexts.map((context) => (
-              <li key={context.participationId} className="p-4">
+              <li key={context.id} className="p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
                   <div>
                     <Link className="font-semibold underline" href={`/events/${context.eventId}`}>
@@ -88,12 +74,12 @@ export default async function AuditsPage({
                   </div>
                   <Link
                     className="text-xs font-semibold text-gold underline"
-                    href={`/audits?participation=${context.participationId}`}
+                    href={`/audits?participation=${context.id}`}
                   >
-                    {context.participationId === selectedParticipationId ? "Selected" : "Manage units"}
+                    {context.id === selectedParticipationId ? "Selected" : "Open atomic units"}
                   </Link>
                 </div>
-                {context.participationId === selectedParticipationId ? (
+                {context.id === selectedParticipationId ? (
                   <div className="mt-4 space-y-4">
                     <div>
                       <h3 className="font-semibold">Atomic Event-units</h3>
@@ -163,19 +149,6 @@ export default async function AuditsPage({
                         </ul>
                       )}
                     </div>
-                    <form action={createAtomicEventUnitAction} className="flex flex-wrap items-end gap-3">
-                      <input type="hidden" name="participationId" value={context.participationId} />
-                      <label className="flex flex-col gap-1 text-sm">
-                        Status
-                        <select name="isMandatory" defaultValue="true" className="rounded border border-edge bg-background p-2">
-                          <option value="true">Mandatory</option>
-                          <option value="false">Optional</option>
-                        </select>
-                      </label>
-                      <button className="rounded bg-gold px-4 py-2 font-semibold text-gold-ink" type="submit">
-                        Create atomic unit
-                      </button>
-                    </form>
                   </div>
                 ) : null}
               </li>
