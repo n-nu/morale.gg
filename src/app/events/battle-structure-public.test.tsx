@@ -4,9 +4,9 @@ import test from "node:test";
 
 import type { EventBattleGroup } from "@/modules/statistics/event-battle";
 
-import { PublicBattleStructure } from "./[eventId]/battle-structure.tsx";
+import { PublicBattleStructure } from "./[eventId]/battle-structure";
 
-const ratio = { numerator: 10, denominator: 0 as 0, state: "ZERO_DENOMINATOR" as const, value: null, display: "10 K" };
+const ratio = { numerator: 10, denominator: 0 as const, state: "ZERO_DENOMINATOR" as const, value: null, display: "10 K" };
 
 function renderBattle() {
   const group: EventBattleGroup = {

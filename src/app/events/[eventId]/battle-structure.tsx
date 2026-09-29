@@ -27,7 +27,7 @@ function PublicAtomicNode({ unit }: { unit: EventBattleAtomicUnit }) {
       </> : <div className="text-xs text-muted">Results pending</div>}
       <details className="mt-1">
         <summary className="w-fit cursor-pointer text-xs text-gold hover:text-gold-bright">Battle details</summary>
-        <div className="mt-2 grid gap-2 border-l border-edge pl-3 text-xs">
+        <div className="mt-2 grid grid-cols-1 gap-2 border-l border-edge pl-3 text-xs">
           {unit.summary ? <div>
             <div className="font-semibold text-foreground">Unit Statistics</div>
             <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted sm:grid-cols-4">
