@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { registerPlayer, addMembership, endMembership } from "./workflows";
-import { findPlayerByGameId } from "./queries";
+import { findPlayerByGameId, getPlayer } from "./queries";
 import { PlayerWorkflowError, requiredText } from "../validation";
 
 export type FormState = { message: string; ok: boolean; playerId?: string };
@@ -21,7 +21,7 @@ export async function registerPlayerAction(_previous: FormState, data: FormData)
   return result(async () => {
     const player = await registerPlayer({ playerId: data.get("playerId"), name: data.get("name") });
     revalidatePath("/players");
-    return { ok: true, message: `Registered ${player.name}. You can now add this Player using their game Player ID.`, playerId: player.id };
+    return { ok: true, message: `Registered ${player.name}. You can now add this Player using their game Player ID.`, playerId: player.playerId };
   });
 }
 
@@ -33,7 +33,7 @@ export async function addMembershipAction(_previous: FormState, data: FormData) 
     if (!player) throw new PlayerWorkflowError("Player not found. Register this game Player ID first.");
     await addMembership({ unitId, playerId: player.id });
     revalidatePath(`/units/${unitId}`);
-    revalidatePath(`/players/${player.id}`);
+    revalidatePath(`/players/${player.playerId}`);
     return { ok: true, message: `${player.name} added to the roster.` };
   });
 }
@@ -42,7 +42,8 @@ export async function endMembershipAction(_previous: FormState, data: FormData) 
   return result(async () => {
     const membership = await endMembership({ unitId: data.get("unitId"), membershipId: data.get("membershipId") });
     revalidatePath(`/units/${membership.unitId}`);
-    revalidatePath(`/players/${membership.playerId}`);
+    const player = await getPlayer(membership.playerId);
+    if (player) revalidatePath(`/players/${player.playerId}`);
     return { ok: true, message: "Membership ended. Player and membership history preserved." };
   });
 }

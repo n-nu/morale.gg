@@ -3,8 +3,8 @@ module_id: units
 path: src/modules/units
 status: active
 version: 0.1
-last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000027-001
+last_reviewed: 2026-09-28
+updated_by_ticket: TKT-20260928-000037-001
 ---
 
 # Units
@@ -140,6 +140,7 @@ demo Units have no persistent rosters. Commander bootstrap is server-only and
 has no public UI.
 
 ## Related Contracts
+- `docs/contracts/players-units-roster-read.md` (stable).
 - `docs/contracts/units-statistics-hierarchy-read.md` (stable).
 - `events-units-event-creation-authorization` (stable).
 - `units-audits-submission-authorization` (stable).

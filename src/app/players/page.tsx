@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { listPlayers, findPlayerByGameId } from "@/modules/players/server/queries";
 import { RegisterPlayerForm } from "@/modules/players/components/forms";
+import { PlayerDirectory } from "@/modules/players/components/directory";
 import { Breadcrumbs, PageEmptyState, PageHeader } from "@/app/presentation";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,9 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 128) : "";
   const [matches, exact, userId] = await Promise.all([listPlayers(query), query ? findPlayerByGameId(query) : null, getAuthenticatedUserId()]);
-  const players = exact ? [exact, ...matches.filter((player) => player.id !== exact.id)] : matches;
+  const players = exact
+    ? [{ playerId: exact.playerId, name: exact.name }, ...matches.filter((player) => player.playerId !== exact.playerId)]
+    : matches;
   return <>
     <Breadcrumbs items={[{ label: "Community", href: "/events" }, { label: "Players" }]} />
     <PageHeader category="Records" title="Players" count={players.length} description="Find a persistent game identity and public record." />
@@ -20,7 +22,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
     </form>
     <section aria-labelledby="players-heading">
       <div className="mb-2 flex items-baseline justify-between gap-4"><h2 id="players-heading" className="text-base font-extrabold text-white">Directory</h2><span className="text-xs text-muted">Up to 50 matches</span></div>
-      {players.length ? <ul className="divide-y divide-edge border-y border-edge">{players.map((player) => <li key={player.id} className="py-3"><Link className="font-semibold text-foreground underline decoration-edge-strong underline-offset-4 hover:text-gold" href={`/players/${player.id}`}>{player.name?.trim() || player.playerId}</Link><p className="mt-1 break-all text-sm text-muted">Game ID: {player.playerId}</p></li>)}</ul> : <PageEmptyState title="No Players found." />}
+      {players.length ? <PlayerDirectory players={players} /> : <PageEmptyState title="No Players found." />}
     </section>
     <section className="mt-10 max-w-2xl border-t border-edge pt-5" aria-labelledby="register-heading"><h2 id="register-heading" className="mb-2 text-base font-extrabold text-white">Register a Player</h2>
       <p className="mb-4 text-sm text-muted">Search first to avoid duplicates. Registration does not add a membership.</p>

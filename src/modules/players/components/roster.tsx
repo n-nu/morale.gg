@@ -9,9 +9,9 @@ const unitTypes = ["REGULAR", "RIFLES", "CAVALRY", "ARTILLERY"] as const;
 type UnitType = (typeof unitTypes)[number];
 
 export type RosterEntry = {
-  id: string;
+  membershipId: string;
   startedAt: Date;
-  player: { id: string; playerId: string; name: string | null };
+  player: { playerId: string; name: string | null };
   ranker?: {
     distinctEvents: number;
     unitTypes: Partial<Record<UnitType, {
@@ -100,9 +100,9 @@ export function Roster({
               {entries.map((entry) => {
                 const stats = entry.ranker?.unitTypes[selectedType];
                 return (
-                  <tr key={entry.id}>
+                  <tr key={entry.membershipId}>
                     <th scope="row">
-                      <Link href={`/players/${entry.player.id}`} className="roster-player-link">
+                      <Link href={`/players/${entry.player.playerId}`} className="roster-player-link">
                         {entry.player.name?.trim() || entry.player.playerId}
                       </Link>
                       <span className="roster-player-id">{entry.player.playerId}</span>
@@ -113,7 +113,7 @@ export function Roster({
                     <td className="numeric">{stats?.kdr ?? "—"}</td>
                     <td className="numeric">{entry.ranker?.distinctEvents ?? "—"}</td>
                     <td>{attendanceLabel(entry.attendance)}</td>
-                    {canManage ? <td><EndMembershipForm unitId={unitId} membershipId={entry.id} playerName={entry.player.name ?? entry.player.playerId} /></td> : null}
+                    {canManage ? <td><EndMembershipForm unitId={unitId} membershipId={entry.membershipId} playerName={entry.player.name ?? entry.player.playerId} /></td> : null}
                   </tr>
                 );
               })}
