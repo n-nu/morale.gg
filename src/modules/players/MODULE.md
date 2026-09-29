@@ -3,8 +3,8 @@ module_id: players
 path: src/modules/players
 status: active
 version: 0.1
-last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000027-001
+last_reviewed: 2026-09-28
+updated_by_ticket: TKT-20260928-000037-001
 ---
 
 # Players
@@ -72,6 +72,7 @@ game-ID lookup is available. History and individual rosters are unpaginated.
 Unit demo fixtures do not have persistent rosters and show no mutation controls.
 
 ## Related Contracts
+- `docs/contracts/players-units-roster-read.md`
 - `docs/contracts/players-statistics-membership-history.md`
 - `docs/contracts/players-units-roster-authorization.md`
 - `docs/contracts/players-audits-player-resolution.md`

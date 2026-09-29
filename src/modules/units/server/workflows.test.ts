@@ -126,6 +126,49 @@ test("Unit management workflows preserve authority and hierarchy invariants", as
       assert.equal(updated.groupLink, "https://example.test/group");
     });
 
+    await t.test("Unit image is set, changed, validated, and removed through MANAGE_UNIT", async () => {
+      const changed = await workflow.updateUnitImage({ unitId: "root-a", imageRef: "https://cdn.example.test/root-a.png" });
+      assert.equal(changed.imageRef, "https://cdn.example.test/root-a.png");
+
+      for (const imageRef of ["http://example.test/a.png", "//example.test/a.png", "/flags/../secret.png", "javascript:alert(1)"]) {
+        await assert.rejects(workflow.updateUnitImage({ unitId: "root-a", imageRef }), /Image reference/);
+      }
+      assert.equal((await db!.unit.findUnique({ where: { id: "root-a" }, select: { imageRef: true } }))?.imageRef, "https://cdn.example.test/root-a.png");
+
+      const profileOnly = await workflow.updateUnitProfile({
+        unitId: "root-a",
+        name: "Root A Updated",
+        description: "Community description",
+        discordInvite: "https://discord.gg/root-a",
+        groupLink: "https://example.test/group",
+      });
+      assert.equal(profileOnly.imageRef, "https://cdn.example.test/root-a.png");
+
+      const removed = await workflow.updateUnitImage({ unitId: "root-a", imageRef: "" });
+      assert.equal(removed.imageRef, null);
+      await workflow.updateUnitImage({ unitId: "root-a", imageRef: "/flags/root-a.png" });
+
+      const unauthorizedWorkflow = unitWorkflows({ db: db!, getUserId: async () => "other" });
+      await assert.rejects(
+        unauthorizedWorkflow.updateUnitImage({ unitId: "root-a", imageRef: "" }),
+        /permission to manage this Unit image/,
+      );
+      assert.equal((await db!.unit.findUnique({ where: { id: "root-a" }, select: { imageRef: true } }))?.imageRef, "/flags/root-a.png");
+    });
+
+    await t.test("roster membership alone grants no Unit management authority", async () => {
+      const player = await db!.player.create({ data: { playerId: `roster-${randomUUID()}`, name: "Other User" } });
+      await db!.unitMembership.create({ data: { playerId: player.id, unitId: "root-a", startedAt: new Date() } });
+      const rosterOnly = unitWorkflows({ db: db!, getUserId: async () => "other" });
+      await assert.rejects(rosterOnly.updateUnitImage({ unitId: "root-a", imageRef: "" }), /permission/);
+      await assert.rejects(
+        rosterOnly.addAuthorizedUser({ unitId: "root-a", email: "commander-b@example.test", authorityLevel: "9" }),
+        /do not have authority/,
+      );
+      await db!.unitMembership.deleteMany({ where: { playerId: player.id } });
+      await db!.player.delete({ where: { id: player.id } });
+    });
+
     await t.test("unauthorized User cannot update a profile or create a child", async () => {
       const unauthorizedWorkflow = unitWorkflows({ db: db!, getUserId: async () => "other" });
       await assert.rejects(
@@ -160,6 +203,31 @@ test("Unit management workflows preserve authority and hierarchy invariants", as
       membershipId = added.id;
       assert.equal(added.authorityLevel, 3);
       assert.equal((await db!.unit.findUnique({ where: { id: "root-a" }, select: { commanderUserId: true } }))?.commanderUserId, "owner");
+    });
+
+    await t.test("add rejects missing accounts, duplicates, and invalid levels without new rows", async () => {
+      const before = await db!.authorizedUserMembership.count({ where: { unitId: "root-a" } });
+      await assert.rejects(
+        workflow.addAuthorizedUser({ unitId: "root-a", email: "missing@example.test", authorityLevel: "3" }),
+        /No website account uses that email/,
+      );
+      await assert.rejects(
+        workflow.addAuthorizedUser({ unitId: "root-a", email: "staff@example.test", authorityLevel: "5" }),
+        /already authorized/,
+      );
+      await assert.rejects(
+        workflow.addAuthorizedUser({ unitId: "root-a", email: "other@example.test", authorityLevel: "0" }),
+        /Authority level must be/,
+      );
+      await assert.rejects(
+        workflow.grantPermission({ unitId: "root-a", membershipId, permission: "MANAGE_STRUCTURE", scope: "SELF" }),
+        /Structural permission does not use an ordinary scope/,
+      );
+      await assert.rejects(
+        workflow.grantPermission({ unitId: "root-a", membershipId, permission: "MANAGE_UNIT", scope: "" }),
+        /valid permission scope/,
+      );
+      assert.equal(await db!.authorizedUserMembership.count({ where: { unitId: "root-a" } }), before);
     });
 
     await t.test("change an authorized User's level without changing the Commander", async () => {

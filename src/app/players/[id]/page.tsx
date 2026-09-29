@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs, PageHeader, SectionHeading } from "@/app/presentation";
-import { getPlayer, getPlayerMemberships } from "@/modules/players/server/queries";
+import { findPlayerByGameId, getPlayerMemberships } from "@/modules/players/server/queries";
 import {
   getAttendanceSummaryForPlayerUnit,
   getCommanderStatistics,
@@ -32,14 +32,14 @@ export default async function PlayerPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ window?: string | string[] }>;
 }) {
-  const { id } = await params;
+  const { id: playerId } = await params;
   const { window } = await searchParams;
-  const player = await getPlayer(id);
+  const player = await findPlayerByGameId(playerId);
   if (!player) notFound();
 
   const selectedWindow = resolveStatisticsWindow(window);
   const [memberships, ranker, commander, general] = await Promise.all([
-    getPlayerMemberships(id),
+    getPlayerMemberships(player.id),
     getRankerStatistics(selectedWindow),
     getCommanderStatistics(selectedWindow),
     getGeneralStatistics(selectedWindow),

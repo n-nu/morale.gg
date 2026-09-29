@@ -42,7 +42,7 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
     await client.query(`SET search_path TO "${schema}"`);
     // Only Unit identity is needed by this consumer; authority belongs to the producer tests.
     await client.query('CREATE TABLE "Unit" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL)');
-    await client.query('INSERT INTO "Unit" VALUES ($1, $2), ($3, $4)', ["unit-a", "Unit A", "unit-b", "Unit B"]);
+    await client.query('INSERT INTO "Unit" VALUES ($1, $2), ($3, $4), ($5, $6)', ["unit-a", "Unit A", "unit-b", "Unit B", "unit-identity", "Identity Fixture Unit"]);
     await client.query(await readFile(new URL("../../../../prisma/migrations/20260925120000_players_memberships/migration.sql", import.meta.url), "utf8"));
 
     await t.test("register, locate and safely reject duplicate stable identity", async () => {
@@ -53,6 +53,31 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
       assert.equal((await listPlayers("One", db)).length, 1);
       await assert.rejects(workflow.registerPlayer({ playerId: "00123", name: "Duplicate" }), /already registered/);
       assert.equal(await db.player.count(), 1);
+    });
+
+    await t.test("public Player identity stays separate from roster foreign keys", async () => {
+      const fixture = await db.player.create({
+        data: { id: "player-row-uuid-123", playerId: "demo-player-001", name: "Identity Player" },
+      });
+      assert.notEqual(fixture.id, fixture.playerId);
+      assert.equal((await findPlayerByGameId("demo-player-001", db))?.id, "player-row-uuid-123");
+      assert.equal(await findPlayerByGameId("player-row-uuid-123", db), null);
+      assert.deepEqual(await listPlayers("demo-player-001", db), [{ playerId: "demo-player-001", name: "Identity Player" }]);
+
+      const membership = await workflow.addMembership({ playerId: fixture.id, unitId: "unit-identity" });
+      const persistedMembership = await db.unitMembership.findUnique({
+        where: { id: membership.id },
+        select: { playerId: true },
+      });
+      assert.equal(persistedMembership?.playerId, "player-row-uuid-123");
+
+      const roster = await getCurrentRoster("unit-identity", db);
+      assert.equal(roster.length, 1);
+      assert.equal(roster[0].membershipId, membership.id);
+      assert.deepEqual(roster[0].player, { playerId: "demo-player-001", name: "Identity Player" });
+      assert.equal("id" in roster[0].player, false);
+      await db.unitMembership.delete({ where: { id: membership.id } });
+      await db.player.delete({ where: { id: fixture.id } });
     });
 
     const player = (await findPlayerByGameId("00123", db))!;
@@ -68,7 +93,7 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
       await workflow.addMembership({ playerId: player.id, unitId: "unit-b" });
       const roster = await getCurrentRoster("unit-a", db);
       assert.equal(roster.length, 1);
-      firstMembershipId = roster[0].id;
+      firstMembershipId = roster[0].membershipId;
       assert.equal((await getCurrentRoster("unit-b", db)).length, 1);
       assert.deepEqual(decisions.at(-1), ["session-user", "unit-b"]);
       await assert.rejects(db.unitMembership.create({ data: { playerId: player.id, unitId: "unit-a" } }), { code: "P2002" });
@@ -110,7 +135,7 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
       assert.ok(history.find((entry) => entry.id === firstMembershipId)?.endedAt);
       const rejoined = await workflow.addMembership({ playerId: player.id, unitId: "unit-a" });
       assert.notEqual(rejoined.id, firstMembershipId);
-      assert.equal((await getCurrentRoster("unit-a", db))[0].id, rejoined.id);
+      assert.equal((await getCurrentRoster("unit-a", db))[0].membershipId, rejoined.id);
       assert.equal((await getPlayerMemberships(player.id, db)).length, 3);
     });
 

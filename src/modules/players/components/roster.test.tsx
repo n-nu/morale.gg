@@ -11,10 +11,11 @@ require.cache[require.resolve("server-only")] = { exports: {} } as NodeModule;
 test("public roster links Players and hides mutation controls", async () => {
   const { Roster } = await import("./roster");
   const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage={false} entries={[
-    { id: "membership", startedAt: new Date("2026-09-25T12:00:00Z"), player: { id: "internal", playerId: "123", name: "Player One" } },
+    { membershipId: "membership", startedAt: new Date("2026-09-25T12:00:00Z"), player: { playerId: "demo-player-001", name: "Player One" } },
   ]} />);
-  assert.match(html, /href="\/players\/internal"/);
-  assert.match(html, /123/);
+  assert.match(html, /href="\/players\/demo-player-001"/);
+  assert.doesNotMatch(html, /player-row-uuid-123/);
+  assert.match(html, /demo-player-001/);
   assert.match(html, /<table/);
   assert.match(html, /Attendance · Unit/);
   assert.doesNotMatch(html, /End membership|Add to roster/);
@@ -23,7 +24,7 @@ test("public roster links Players and hides mutation controls", async () => {
 test("manager sees add and end controls with membership and Unit targets", async () => {
   const { Roster } = await import("./roster");
   const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage entries={[
-    { id: "membership", startedAt: new Date(), player: { id: "internal", playerId: "123", name: "Player One" } },
+    { membershipId: "membership", startedAt: new Date(), player: { playerId: "demo-player-001", name: "Player One" } },
   ]} />);
   assert.match(html, /End membership for Player One/);
   assert.match(html, /name="membershipId" value="membership"/);
@@ -45,9 +46,9 @@ test("empty roster and registration form provide a usable starting point", async
 test("roster labels player-combat values as overall and preserves selected window and type", async () => {
   const { Roster } = await import("./roster");
   const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage={false} window="all-time" entries={[{
-    id: "membership",
+    membershipId: "membership",
     startedAt: new Date("2026-09-25T12:00:00Z"),
-    player: { id: "internal", playerId: "123", name: "Player One" },
+    player: { playerId: "demo-player-001", name: "Player One" },
     ranker: {
       distinctEvents: 3,
       unitTypes: {

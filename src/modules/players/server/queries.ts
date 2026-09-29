@@ -8,7 +8,8 @@ export function listPlayers(search = "", db = prisma) {
       { playerId: { contains: query, mode: "insensitive" } },
       { name: { contains: query, mode: "insensitive" } },
     ] } : undefined,
-    orderBy: [{ name: "asc" }, { id: "asc" }],
+    select: { playerId: true, name: true },
+    orderBy: [{ name: "asc" }, { playerId: "asc" }],
     take: 50,
   });
 }
@@ -32,8 +33,15 @@ export function getPlayerMemberships(playerId: string, db = prisma) {
 export function getCurrentRoster(unitId: string, db = prisma) {
   return db.unitMembership.findMany({
     where: { unitId, endedAt: null },
-    include: { player: true },
+    select: {
+      id: true,
+      startedAt: true,
+      player: { select: { playerId: true, name: true } },
+    },
     orderBy: [{ player: { name: "asc" } }, { id: "asc" }],
-  });
+  }).then((memberships) => memberships.map(({ id, ...membership }) => ({
+    membershipId: id,
+    ...membership,
+  })));
 }
 
