@@ -68,14 +68,6 @@ const scopeLabels: Record<PermissionScope, string> = {
   SELF_AND_DESCENDANTS: "This Unit and all descendants",
 };
 
-function permissionName(permission: Permission) {
-  return permission;
-}
-
-function scopeName(scope: PermissionScope | null) {
-  return scope === null ? "Structural anchor at this Unit" : scopeLabels[scope];
-}
-
 function day(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -115,19 +107,6 @@ function ConfirmAction({ label, confirmLabel, action, fields, help }: {
       </form>
     </details>
   );
-}
-
-function permissionLabel(permission: Permission) {
-  const name = permissionName(permission);
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
-
-function scopeLabel(scope: PermissionScope | null, permission: Permission) {
-  if (scope === null) {
-    return permission === "MANAGE_STRUCTURE" ? "Structural anchor" : "This unit";
-  }
-  const scopeText = scopeName(scope);
-  return scopeText.charAt(0).toUpperCase() + scopeText.slice(1);
 }
 
 export function ManagementNotice({ notice, error }: { notice?: string; error?: string }) {
