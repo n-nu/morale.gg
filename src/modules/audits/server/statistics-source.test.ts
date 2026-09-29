@@ -83,7 +83,7 @@ test("effective Audit source returns public raw facts and type-partitioned aggre
   assert.equal(source.observations[0].isMandatory, true);
   assert.equal(source.observations[0].unitResults.tickets, 20);
   assert.deepEqual(source.observations[0].playerResults, [
-    { gamePlayerId: "game-player-1", kills: 10, deaths: 0, assists: 4 },
+    { gamePlayerId: "game-player-1", publicName: null, kills: 10, deaths: 0, assists: 4 },
   ]);
   assert.equal(source.observations[0].commanderGamePlayerId, "game-player-1");
   assert.deepEqual(source.rankerAggregates, [{

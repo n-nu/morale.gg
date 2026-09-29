@@ -95,7 +95,8 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	editor, and Event result workflow after the explicit correction-approver
 	decision is resolved.
 - **TKT-20260928-000035-001 — Event Battle Statistics Read and Public
-	Presentation:** **READY / unblocked.** Implements the approved
+	Presentation:** **REVIEW.** Implementation `3e6462d` synchronized with
+	`main` on `feat/event-battle-statistics`. Implements the approved
 	Event-scoped Statistics reader, Battle DTO, progressive disclosure, pending
 	result states, and outcome styling. No historical Rank work is planned.
 

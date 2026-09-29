@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Prisma, type AuditUnitType } from "@prisma/client";
+import { Prisma, type AuditUnitType, type BattlefieldSide } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -10,6 +10,9 @@ export type EffectiveFinalizedAuditObservation = {
   eventId: string;
   eventParticipationId: string;
   representedUnitId: string;
+  atomicUnitName: string | null;
+  side: BattlefieldSide | null;
+  representedUnitName: string;
   isMandatory: boolean;
   unitType: AuditUnitType | null;
   unitResults: {
@@ -20,6 +23,7 @@ export type EffectiveFinalizedAuditObservation = {
   };
   playerResults: Array<{
     gamePlayerId: string;
+    publicName: string | null;
     kills: number;
     deaths: number;
     assists: number;
@@ -134,8 +138,10 @@ export async function getEffectiveFinalizedAuditObservations(
         atomicEventUnit: {
           select: {
             id: true,
+            name: true,
+            side: true,
             isMandatory: true,
-            eventParticipation: { select: { id: true, eventId: true, unitId: true } },
+            eventParticipation: { select: { id: true, eventId: true, unitId: true, unit: { select: { name: true } } } },
           },
         },
         playerResults: {
@@ -143,7 +149,7 @@ export async function getEffectiveFinalizedAuditObservations(
             kills: true,
             deaths: true,
             assists: true,
-            player: { select: { playerId: true } },
+            player: { select: { playerId: true, name: true } },
           },
         },
         roles: {
@@ -227,6 +233,9 @@ export async function getEffectiveFinalizedAuditObservations(
         eventId: audit.atomicEventUnit.eventParticipation.eventId,
         eventParticipationId: audit.atomicEventUnit.eventParticipation.id,
         representedUnitId: audit.atomicEventUnit.eventParticipation.unitId,
+        atomicUnitName: audit.atomicEventUnit.name,
+        side: audit.atomicEventUnit.side,
+        representedUnitName: audit.atomicEventUnit.eventParticipation.unit?.name ?? "",
         isMandatory: audit.atomicEventUnit.isMandatory,
         unitType: audit.unitType,
         unitResults: {
@@ -237,6 +246,7 @@ export async function getEffectiveFinalizedAuditObservations(
         },
         playerResults: audit.playerResults.map(({ player, kills, deaths, assists }) => ({
           gamePlayerId: player.playerId,
+          publicName: player.name ?? null,
           kills,
           deaths,
           assists,
