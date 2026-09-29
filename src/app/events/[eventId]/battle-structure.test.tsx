@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import test from "node:test";
 
-import type { PublicEventCommandGroup } from "@/modules/audits/server/command-groups";
+import type { EventBattleGroup } from "@/modules/statistics/event-battle";
 
 import { PublicBattleStructure } from "./battle-structure";
 
 test("public Battle Structure renders atomic placeholders without manager or Unsorted data", () => {
-  const group: PublicEventCommandGroup = {
+  const group: EventBattleGroup = {
     id: "private-group-database-id",
     name: "I Corps",
     side: "DEFENDER",
@@ -21,8 +21,15 @@ test("public Battle Structure renders atomic placeholders without manager or Uns
       auditUnitType: "REGULAR",
       isMandatory: true,
       createdAt: new Date("2026-09-28T00:00:00.000Z"),
+      persistentUnitId: "private-unit-id",
       persistentUnitName: "First Regiment",
       unitType: null,
+      representedUnitId: "private-unit-id",
+      representedUnitName: "First Regiment",
+      resultState: "PENDING",
+      commander: null,
+      summary: null,
+      players: [],
     }],
     children: [],
   };

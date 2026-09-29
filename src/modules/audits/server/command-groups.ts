@@ -395,6 +395,7 @@ export type CommandTreeAtomicUnit = {
   isMandatory: boolean;
   createdAt: Date;
   persistentUnitName: string;
+  persistentUnitId: string;
   unitType: string | null;
 };
 
@@ -435,7 +436,7 @@ async function readEventCommandStructure(eventId: string, includeUnsorted: boole
                 auditUnitType: true,
                 isMandatory: true,
                 createdAt: true,
-                eventParticipation: { select: { unit: { select: { name: true } } } },
+                eventParticipation: { select: { unit: { select: { id: true, name: true } } } },
                 audit: { select: { lifecycle: true, unitType: true } },
               },
             },
@@ -453,7 +454,7 @@ async function readEventCommandStructure(eventId: string, includeUnsorted: boole
         auditUnitType: true,
         isMandatory: true,
         createdAt: true,
-        eventParticipation: { select: { unit: { select: { name: true } } } },
+        eventParticipation: { select: { unit: { select: { id: true, name: true } } } },
         audit: { select: { lifecycle: true, unitType: true } },
       },
     }),
@@ -477,6 +478,7 @@ async function readEventCommandStructure(eventId: string, includeUnsorted: boole
         isMandatory: atomicEventUnit.isMandatory,
         createdAt: atomicEventUnit.createdAt,
         persistentUnitName: atomicEventUnit.eventParticipation.unit.name,
+        persistentUnitId: atomicEventUnit.eventParticipation.unit.id,
         unitType: atomicEventUnit.audit?.lifecycle === "FINAL" ? atomicEventUnit.audit.unitType : null,
       })),
       children: [],
@@ -511,6 +513,7 @@ async function readEventCommandStructure(eventId: string, includeUnsorted: boole
     isMandatory: atomicUnit.isMandatory,
     createdAt: atomicUnit.createdAt,
     persistentUnitName: atomicUnit.eventParticipation.unit.name,
+    persistentUnitId: atomicUnit.eventParticipation.unit.id,
     unitType: atomicUnit.audit?.lifecycle === "FINAL" ? atomicUnit.audit.unitType : null,
   });
 

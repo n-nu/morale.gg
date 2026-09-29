@@ -7,8 +7,8 @@ import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { bannerArtFor } from "@/modules/events/map-art";
 import { eventTypeStyle } from "@/modules/events/presentation";
 import { canManageEvent } from "@/modules/events/server/authorization";
-import { getPublicEventCommandStructure } from "@/modules/audits/server/command-groups";
 import { getEventResultState } from "@/modules/events/server/results";
+import { getEventBattleStatistics } from "@/modules/statistics/event-battle";
 import {
   getEventById,
   listApprovedEventUnits,
@@ -59,9 +59,9 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  const [approvedUnits, structure, resultState, viewerUserId] = await Promise.all([
+  const [approvedUnits, battleStatistics, resultState, viewerUserId] = await Promise.all([
     listApprovedEventUnits(event.id),
-    getPublicEventCommandStructure(event.id),
+    getEventBattleStatistics(event.id),
     getEventResultState(event.id),
     getAuthenticatedUserId(),
   ]);
@@ -141,8 +141,8 @@ export default async function EventDetailPage({
             result={resultState.effective?.value ?? null}
             defenderFlagRef={event.defenderFlagRef}
             attackerFlagRef={event.attackerFlagRef}
-            groups={structure?.groups ?? []}
-            ungroupedAtomicUnits={structure?.ungroupedAtomicUnits ?? []}
+            groups={battleStatistics?.groups ?? []}
+            ungroupedAtomicUnits={battleStatistics?.ungroupedAtomicUnits ?? []}
           />
         </div>
 

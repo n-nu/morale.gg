@@ -3,8 +3,8 @@ module_id: statistics
 path: src/modules/statistics
 status: active
 version: 0.1
-last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000027-001
+last_reviewed: 2026-09-28
+updated_by_ticket: TKT-20260928-000035-001
 ---
 
 # Statistics
@@ -30,8 +30,9 @@ authoritative gameplay history. Statistics owns no mutable aggregate state.
 Approved public read services for Ranker, Commander, General, Event Battle,
 Direct Unit Performance, Organizational Unit Performance, Average Unit
 Performance, and Player + Unit attendance. These services are implemented as public query-time
-reads and key Player results only to stable game identity. Exact routes and DTOs
-remain implementation choices.
+reads. Event Battle reads return presentation-safe atomic and Player result DTOs,
+use stable public game identity when no safe Unit-local alias exists, and never
+include historical Rank-at-Event.
 
 ## Inputs
 Read-only source contracts from Audits, Events, Players, and Units; a requested
@@ -69,7 +70,8 @@ membership records.
 
 ## Internal Structure
 `windows.ts` implements the shared Event-time window policy; `ratios.ts`
-preserves raw numerator/denominator and zero-death state. `ranker.ts`,
+preserves raw numerator/denominator and zero-death state. `event-battle.ts`,
+`ranker.ts`,
 `commander.ts`, `general.ts`, `unit.ts`, and `attendance.ts` consume the
 Audits/Events sources and relevant Players/Units semantic operations to derive
 public query-time results.

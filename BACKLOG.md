@@ -68,12 +68,13 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	Event-scoped Statistics reader, legacy migration behavior, and public/manager
 	layouts are documented. No production implementation was introduced.
 - **TKT-20260928-000034-001 — Event Battle Structure Domain and Manager
-	Editor:** **REVIEW.** Implements the approved schema, Events -> Audits
+	Editor:** **COMPLETED.** PR #19 merged at
+	`490c5226de3b75968502fc02693cbb534d7d6e07`. Implements the approved schema, Events -> Audits
 	mutation seam, side-safe hierarchy, participation-backed claims, manager
 	editor, and Event result workflow after the explicit correction-approver
 	decision is resolved.
 - **TKT-20260928-000035-001 — Event Battle Statistics Read and Public
-	Presentation:** **READY / blocked by Ticket 34.** Implements the approved
+	Presentation:** **REVIEW.** Implements the approved
 	Event-scoped Statistics reader, Battle DTO, progressive disclosure, pending
 	result states, and outcome styling. No historical Rank work is planned.
 
