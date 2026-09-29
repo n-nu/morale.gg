@@ -17,6 +17,21 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	completion of linked-unit creation, unit management, or roster functionality. The remaining
 	MVP stories require their domain models, authorization, workflows, and public views.
 
+## Post-Merge Closeout
+
+- **TKT-20260928-000032-001 — Unit Management Surface Modernization and
+	Access Presentation: COMPLETED.** PR #20 merged at
+	`987c4ada9d31b765561180320d62bf6268cfcbd9`. Archived under
+	`tickets/COMPLETED/2026/09/`.
+- **TKT-20260928-000037-001 — Stable Public Player Identity Across Routes and
+	Statistics Navigation: COMPLETED.** PR #21 merged at
+	`5da5902732186074a3a35f84ea8dc5d0c45c606c`. Public identity is
+	`Player.playerId`; internal relational identity remains `Player.id`.
+	Archived under `tickets/COMPLETED/2026/09/`.
+- **TKT-20260928-000038-001 — Ranker Integration Test Must Be Independent of
+	Demo Data: READY.** The canonical ticket was recovered from lost/unmerged
+	history and restored under `tickets/OPEN/`; implementation remains pending.
+
 ## Statistics Architecture Planning
 
 - **TKT-20260927-000024-001 — Statistics Architecture and Derived Performance Model:**
