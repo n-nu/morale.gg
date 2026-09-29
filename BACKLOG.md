@@ -29,9 +29,10 @@ complete; the remaining MVP stories are still planned or awaiting implementation
 	`Player.playerId`; internal relational identity remains `Player.id`.
 	Archived under `tickets/COMPLETED/2026/09/`.
 - **TKT-20260928-000038-001 — Ranker Integration Test Must Be Independent of
-	Demo Data: REVIEW.** Fixture-specific global-reader assertions and bounded
-	cleanup pass with seeded demo Players. Review record is under
-	`tickets/ACTIVE/`; production Ranker behavior is unchanged.
+	Demo Data: COMPLETED.** PR #24 merged at
+	`a8d7f35de9aa316aac197ae83895f97a09c45c34`. Fixture-specific global-reader
+	assertions and bounded cleanup pass with seeded demo Players. Archived under
+	`tickets/COMPLETED/2026/09/`; production Ranker behavior is unchanged.
 - **TKT-20260928-000034-001: Event Battle Structure Domain and Manager
 	Editor: COMPLETED.** Implementation and review revision commits `53d44a3` and
 	`9b8575a` merged in PR #19 at
