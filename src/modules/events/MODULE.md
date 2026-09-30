@@ -45,8 +45,8 @@ Audit work builds on approved Event participation through the
 - Unit-side participation request authorization (Units owns
   `canRequestEventParticipation`);
 - Unit authority and creation-eligibility evaluation;
-- Audit lifecycle, atomic Event units, command groups, and audit statistics
-  (owned by Audits);
+- Audit lifecycle, atomic Event units, and command groups (owned by Audits);
+- Statistics aggregation semantics (owned by Statistics);
 - Audits-owned battlefield persistence and invariants; Events authorizes the
   Event-manager mutation seam only;
 - leaderboards;
@@ -57,8 +57,8 @@ Audit work builds on approved Event participation through the
 - Route `/events`: public, unauthenticated list of all Events (upcoming and
   past), with presentation-level event-type filtering via query parameters.
 - Route `/events/[eventId]`: public, unauthenticated Event detail. Approved
-  participating Units are shown; statistics remain future functionality.
-  One Battle Structure tree shows assigned Defender/Attacker hierarchy only;
+  participating Units, Event Battle results/statistics, and one Battle
+  Structure tree with assigned Defender/Attacker hierarchy are shown;
   null-side manager configuration nodes are not returned to public readers.
 - Route `/events/calendar`: public, unauthenticated month-calendar view of
   the same Event data.
@@ -160,9 +160,9 @@ Event.
 
 ## Extension Points
 
-- Audits and audit statistics are expected to build on approved
-  participation through future tickets and, where cross-module needs arise,
-  explicit contracts.
+- Audits and Statistics consume approved participation through the existing
+  contracts. Events reads the Statistics-owned Event Battle DTO and does not
+  aggregate Audit data itself.
 - Post-MVP participation workflows (reversal, re-request) require a RED
   decision before any lifecycle change.
 - Event Battle reads consume Audits' public structure contract and Statistics'
