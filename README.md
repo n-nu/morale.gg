@@ -1,237 +1,96 @@
 # morale.gg
 
-morale.gg is a planned web-based platform for statistics, rosters, events, and organizational management for structured multiplayer-game communities. The initial use case is Napoleonic Wars, while the architecture is intended to remain useful for similar organized games.
+morale.gg is a working information and statistics system for organized multiplayer gaming communities, initially focused on Napoleonic Wars. It brings organization hierarchies, historical rosters, Events, battlefield structure, immutable Audits, and derived statistics into one web application.
 
-## Problem
+## Project Submission
 
-Organized multiplayer communities often maintain rosters, hierarchical units, event records, performance statistics, and audits across disconnected spreadsheets or manually maintained systems. morale.gg is intended to centralize those records in one consistent platform.
+- [Working Application / Run Instructions](#setup)
+- [GitHub Repository](https://github.com/n-nu/morale.gg)
+- [Requirements](docs/MVP_REQUIREMENTS.md)
+- [Design / Architecture](docs/architecture.md)
+- [Setup](#setup)
+- [Verification](docs/VERIFICATION.md)
+- [MVP Demonstration](docs/MVP_DEMO.md)
 
-## Target Users
+**Application availability:** No hosted deployment is configured or confirmed. Run the application locally at `http://localhost:3000`; the demonstration uses the repository's seeded local database.
 
-- **Regular users / players:** View units, rosters, events, and stored audit information.
-- **Unit managers:** Manage units and memberships, record event participation, and submit audits.
-- **Website administrators:** Maintain the platform and oversee its organizational data.
+## MVP
 
-## Core Concepts
+The MVP supports Google authentication, public Unit and Player records, hierarchical organization and roster management, Event creation and participation decisions, two-sided battlefield organization, atomic Event units and Event Command Groups, Audit drafting/finalization, Event Battle results, and Player/Unit/Ranker/Commander/General/attendance statistics. Public statistics are derived at query time from effective finalized Audits.
 
-- **Players:** People whose memberships and event performance are recorded.
-- **Units:** Organizations with optional parent-child subunit relationships.
-- **Events:** Organized game sessions in which units may participate.
-- **Audits:** Records of a unit's participation and performance in an event.
-- **Statistics:** Player-level and unit-level measures captured by audits, with basic historical browsing planned.
+The canonical [MVP requirements](docs/MVP_REQUIREMENTS.md) distinguish implemented behavior from deferred work. The design decisions and domain flow are in [docs/architecture.md](docs/architecture.md).
 
-## Planned MVP
+## Setup
 
-The Milestone 1 target MVP is planned to include:
+### Prerequisites
 
-- Google authentication
-- Creating and viewing units
-- Unit and subunit hierarchy
-- Creating and viewing players
-- Assigning players to units
-- Viewing rosters
-- Creating and viewing events
-- Associating units with events
-- Submitting one audit for a unit's event participation
-- Recording player audit data
-- Recording unit audit data
-- Recording audit role assignments
-- Viewing stored audits
+- Node.js `>=20.9.0` (Next.js requirement; verified here with `24.15.0`)
+- npm (not pinned separately in the manifest; lockfile v3, verified here with `11.12.1`)
+- Docker Desktop or Docker Compose, running the repository's PostgreSQL `16` service
+- A Google OAuth client for local sign-in
 
-Google authentication is implemented and verified. The remaining domain capabilities are planned
-and have not yet been implemented.
+On Windows PowerShell, use `npm.cmd` if the execution policy blocks `npm.ps1`.
 
-## Out of MVP Scope
-
-The following are explicitly outside the MVP:
-
-- Premium or payment systems
-- Advanced analytics
-- Predictive analytics
-- Advanced visualizations
-- Advanced leaderboards
-- Automated reporting
-- Data exports
-- Third-party game integrations
-
-## Planned Technology Stack
-
-This is the planned architecture and does not imply that these technologies are currently implemented:
-
-- **Frontend:** Next.js, React, TypeScript, and Tailwind CSS
-- **Application layer:** Node.js
-- **Database:** PostgreSQL
-- **ORM:** Prisma
-- **Authentication:** Google accounts
-- **Project management and version control:** GitHub and Git
-
-## Architecture
-
-The initial system-context and domain relationship models are documented in [docs/architecture.md](docs/architecture.md). They describe the intended architecture, not a final database schema.
-
-## Development Process
-
-The initial development process uses one-week sprints, GitHub Issues and the [prioritized backlog](BACKLOG.md), feature branches, pull requests, and peer review. The `main` branch should remain runnable as implementation begins in later milestones.
-
-## Current Project Status
-
-**Project Milestone 1 — Application Foundation**
-
-A minimum runnable Next.js/React/TypeScript/Tailwind CSS application shell and the shared
-PostgreSQL/Prisma/Auth.js foundation now exist. Google authentication, database-backed sessions,
-and the seeded root-unit foundation have been implemented and verified. Domain workflows for
-linked units, players, rosters, events, participation, audits, and statistics remain planned
-and will be added incrementally by future tickets.
-
-## Development
-
-Requirements: Node.js, npm, and Docker Desktop.
+### Install and configure
 
 ```bash
-npm install       # install dependencies
-npm run dev       # start the development server (http://localhost:3000)
-npm run lint      # run ESLint
-npm run type-check # run the TypeScript compiler (no emit)
-npm run build     # produce a production build
-npm run start     # run a built production server
+git clone https://github.com/n-nu/morale.gg.git
+cd morale.gg
+npm ci
 ```
 
-## Local PostgreSQL with Docker
+Copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell), then set the values below. Generate a local Auth.js secret with:
 
-Use the repository-controlled PostgreSQL service instead of installing PostgreSQL manually.
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+```
 
-1. Install Docker Desktop.
-2. Copy `.env.example` to `.env` and update the local-only values for `DATABASE_URL`, `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD`.
-3. Start PostgreSQL:
+Set the Google OAuth redirect URI to `http://localhost:3000/api/auth/callback/google`.
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Prisma and application PostgreSQL connection string; defaults to the local Compose database. |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` | Local Compose database name, user, disposable password, and host port. Keep these values local. |
+| `AUTH_SECRET` | Random Auth.js session/signing secret. |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Google OAuth client credentials. |
+| `ROOT_UNIT_COMMANDER_USER_ID` | Required only for the initial `db:seed`; set to the Auth.js `User.id` that will command the root Unit. |
+| `ROOT_UNIT_NAME` | Optional display name for the initial root Unit. |
+| `WEBSITE_ADMIN_USER_IDS` | Optional comma-separated Auth.js User IDs for bootstrap website administrators; server-side only. |
+
+### Create the database and root Unit
+
+Start PostgreSQL and prepare its schema:
 
 ```bash
 docker compose up -d
-```
-
-4. Check the database status:
-
-```bash
-docker compose ps
-docker compose logs --tail=50 morale-gg-postgres
-```
-
-5. Wait for the container health check to report `healthy`.
-6. Install dependencies if needed:
-
-```bash
-npm install
-```
-
-7. Apply the existing Prisma workflow:
-
-```bash
 npm run db:validate
 npm run db:generate
 npm run db:migrate:deploy
+```
+
+For a fresh database, start the app with `npm run dev`, sign in once with Google to create an Auth.js User, and stop the dev server. Run `npm exec -- dotenv -e .env -- prisma studio`, copy that User row's `id` into `ROOT_UNIT_COMMANDER_USER_ID` in `.env`, then initialize the root Unit:
+
+```bash
 npm run db:seed
 ```
 
-8. Start the app:
+The seed requires an existing User and creates or updates the stable root Unit `root-morale-gg`. It does not create Player records.
 
-```bash
-npm run dev
-```
-
-### Docker lifecycle
-
-- `docker compose stop` stops PostgreSQL without deleting the named Docker volume, so local data is preserved.
-- `docker compose down` stops and removes the Compose environment while preserving the local database volume.
-- `docker compose down -v` removes the database volume as well. This is a destructive reset and should only be used when you want to rebuild from a clean local state.
-- To rebuild after a destructive reset:
-
-```bash
-docker compose down -v
-docker compose up -d
-npm run db:migrate:deploy
-npm run db:seed
-```
-
-The local PostgreSQL service uses the official `postgres:16` image and a named Docker volume for persistence. `DATABASE_URL` remains the single application database configuration used by Prisma and Next.js.
-
-## Reset and seed demo database
-
-Run the development reset and reseed with:
+### Reset and reseed demo data
 
 ```bash
 npm run demo:reset
 ```
 
-**Destructive:** this deletes local application/domain data before rebuilding the demo dataset. The command refuses `NODE_ENV=production`, non-loopback or non-Compose database targets, and databases without exactly one RootUnit. It preserves the existing RootUnit Unit/designation and its current Commander User, linked Auth.js Accounts, active Commander membership, and login sessions; it does not rename or recreate the RootUnit. Prisma migration history is untouched. The legacy `npm run seed:demo` and `npm run seed:demo:reset` names call the same destructive reset.
+**Destructive to development data:** this removes application data other than the canonical RootUnit and designated Unit identity, its Commander User and linked Auth.js Accounts, the active Commander membership, and that User's existing login sessions. Other Users (and their accounts/sessions) are deleted. It recreates the demo organization, roster history, Events, participation, battlefield structure, Audits, and results; it leaves Prisma migration history unchanged. The command refuses production, non-loopback/non-Compose targets, or a database without exactly one RootUnit. It does not create the initial RootUnit.
 
-For browser review, open `/events/demo-event-main-review` first. The organizer fixture is `/events/demo-event-organizer-review`.
+Seeded manager identities are fixture data, not login credentials. Authentication is Google-only; there is no password login or impersonation flow. The reset does not create Google Accounts for those fixture identities.
 
-Sign in using the existing local Google OAuth setup as the preserved RootUnit Commander. Other seeded authorization identities have no Google Accounts or fixed demo credentials; the project has no local impersonation or password-login flow.
-
-Demo Players use stable game PlayerIDs without manufactured global names or Unit-local aliases; neither semantic is supported by the current Players model/contracts.
-
-## Shared Backend Setup
-
-The MVP backend runs inside the Next.js server-side application layer. Browser/client code
-must not access Prisma, PostgreSQL, authentication credentials, secrets, or privileged business
-logic directly.
-
-Requirements:
-
-- PostgreSQL database available locally or through a development connection string;
-- Google OAuth client credentials;
-- Node.js and npm.
-
-Create a local `.env` file from `.env.example` and set:
-
-- `DATABASE_URL`: PostgreSQL connection string;
-- `AUTH_SECRET`: random secret used by Auth.js;
-- `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`: Google OAuth credentials;
-- `ROOT_UNIT_NAME`: optional name for the development root unit.
-- `WEBSITE_ADMIN_USER_IDS`: optional comma-separated stable Auth.js `User.id`
-	values for bootstrap website administrators. Configure this only through
-	server deployment environment, never client-visible configuration. A trusted
-	deployer can obtain a stable ID after the administrator completes the normal
-	Google sign-in flow; the application does not expose that ID solely for
-	authorization.
-
-For local Google OAuth, configure this redirect URI in the Google Cloud OAuth client:
-`http://localhost:3000/api/auth/callback/google`.
-
-After PostgreSQL is available, initialize the database and development root unit:
+### Run
 
 ```bash
-npm run db:validate
-npm run db:generate
-npm run db:migrate -- --name init
-npm run db:seed
+npm run dev
 ```
 
-For an environment where migrations already exist, use `npm run db:migrate:deploy` instead of
-`db:migrate`. The seed performs an idempotent upsert of the root Unit with the stable ID
-`root-morale-gg` and does not create a Player.
-
-Authentication is provided by Auth.js/NextAuth with Google OAuth, the Prisma adapter, and
-database-backed sessions. Auth.js `User` is the persistent website identity corresponding to
-the conceptual `UserAccount`; it remains distinct from the game-domain `Player`. The current
-foundation's bounded bootstrap website-administrator capability resolves the authenticated
-server-side Auth.js `User.id` against `WEBSITE_ADMIN_USER_IDS`; missing, malformed, or non-matching
-configuration is denied. It does not trust client-provided identity state. The current foundation
-does not implement authorization beyond that capability, unit ownership, memberships, invites,
-events, participation, audits, or product UI.
-
-Application source lives under `src/app` (Next.js App Router). Future feature modules should be added as new route/module directories under `src/app` (and any accompanying non-route code under `src/`), following the module process described in `AGENT_WORKFLOW.md` and `docs/DEVELOPMENT_STANDARD.md`.
-
-## Repository Structure
-
-- [BACKLOG.md](BACKLOG.md): Prioritized user stories and acceptance criteria.
-- [docs/architecture.md](docs/architecture.md): Initial system-context and domain relationship models.
-- `src/app`: Next.js application (App Router). Current contents are a minimal application shell only.
-- `public/`: static assets served by Next.js.
-- Repository governance: [AGENT_WORKFLOW.md](AGENT_WORKFLOW.md), [docs/DEVELOPMENT_STANDARD.md](docs/DEVELOPMENT_STANDARD.md), [docs/SYSTEM.md](docs/SYSTEM.md).
-
-## Team
-
-- Emil Estrada (Lead)
-- Aiden Slabiak
-- Chandler Lovely
+Open [http://localhost:3000](http://localhost:3000). For the guided 5-10 minute walkthrough, see [MVP Demonstration](docs/MVP_DEMO.md). Setup and verification commands are listed in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 

@@ -4,7 +4,7 @@
 **Scope:** Current high-level architecture for the morale.gg MVP  
 **Initial game scope:** Napoleonic Wars only
 
-This document describes the current accepted high-level architecture and domain relationships for morale.gg.
+This document describes the implemented MVP architecture and its approved domain relationships. The application is a Next.js server-rendered web app with a server-side application layer; the production schema is defined in `prisma/schema.prisma` and its migrations.
 
 It is **not** a final database schema or detailed implementation specification. Exact classes, tables, fields, cardinalities, APIs, and module contracts must be established through tickets, module documentation, contracts, BCRs, and ADRs as development proceeds.
 
@@ -14,7 +14,7 @@ Where this document conflicts with `docs/SYSTEM.md` or a later approved ADR, the
 
 ## 1. Product Architecture Goal
 
-morale.gg is a web application for structured Napoleonic Wars communities to:
+morale.gg is a working web application for structured Napoleonic Wars communities to:
 
  - represent linked hierarchical units;
  - maintain unit rosters;
@@ -23,8 +23,8 @@ morale.gg is a web application for structured Napoleonic Wars communities to:
  - request and approve unit participation;
  - submit structured post-event audits;
  - preserve historical organizational and performance data;
- - expose public read-only units, rosters, events, audits, basic statistics,
-     and leaderboards.
+ - expose public Units, rosters, Events, finalized battle results, and
+   query-derived Player and Unit statistics.
 
 The primary MVP management workflow is desktop-oriented. Public viewing should
 remain reasonably usable on smaller screens.
@@ -50,7 +50,7 @@ flowchart TB
         orm --> db
 ```
 
-### Planned Responsibilities
+### Current Responsibilities
 
 **Web Client**
 
@@ -85,8 +85,25 @@ flowchart TB
 
 - external authentication provider for website accounts.
 
-Frontend visibility is not sufficient authorization. Permission-sensitive
-behavior must be enforced by the application layer.
+The current application layer runs in the Next.js server environment. Browser
+code does not access Prisma or PostgreSQL directly. Frontend visibility is not
+sufficient authorization; protected operations are enforced server-side.
+
+### Implemented MVP Data Flow
+
+```mermaid
+flowchart LR
+  user[Website User] --> auth[Auth.js authentication]
+  auth --> authority[Unit / Event authorization]
+  authority --> participation[Event participation]
+  participation --> battlefield[Battlefield structure]
+  battlefield --> audit[Atomic Event Unit and Audit]
+  audit --> statistics[Query-derived statistics]
+  statistics --> presentation[Public Event / Player / Unit pages]
+```
+
+Event result history is a separate manager-recorded fact. Statistics are not
+used to infer an Event winner.
 
 ---
 
@@ -97,16 +114,19 @@ necessarily one-to-one with final database tables.
 
 ### UserAccount
 
-Represents an authenticated website identity. `UserAccount` and `Player` are
-separate identities; account existence grants no management authority.
+Represents an authenticated Auth.js website identity. A `User` and a game
+`Player` are separate identities; account existence alone grants no Unit
+authority.
 
 ---
 
 ### Player
 
-Represents a persistent Napoleonic Wars player identified by a game-specific
-PlayerID. Player records survive roster removal and may belong to multiple
-Units. Richer public historical profiles remain future work.
+Represents a persistent Napoleonic Wars player. `Player.id` is the internal
+database key; `Player.playerId` is the stable public/game identity. Player
+records survive roster removal and may belong to multiple Units. The public
+profile and core statistics exist; richer historical analytics remain future
+work.
 
 ---
 
@@ -307,9 +327,10 @@ red are presentation fallbacks only.
 An Event result is an authoritative manager fact with values
 `ATTACKER_WIN`, `DEFENDER_WIN`, or `DRAW`. It is eligible after the existing
 Event scheduled time has passed, is not derived from Statistics, and retains
-history through immutable effective/revision records. Correction approval is
-pending the explicit product-owner decision recorded in ADR-20260928-008 and
-BCR-20260928-006.
+history through immutable effective/revision records. A different currently
+authorized Event manager must review a correction; the proposer cannot review
+their own proposal, and a single-manager Event's correction remains pending
+until another manager is available. See ADR-20260928-008 and BCR-20260928-006.
 
 ---
 
@@ -486,91 +507,44 @@ This flow represents the principal MVP value chain and should guide use-case ana
 
 ---
 
-## 7. Candidate Module Boundaries
-
-Units, Players, and Events are established modules whose current ownership is
-defined by their module manifests. The remaining candidate areas below are
-provisional, not final modules.
-
-The purpose of this section is to provide architectural orientation without preempting module-creation tickets.
-
-### Identity / Accounts
-
-Potential ownership:
-
-- Google-authenticated account identity;
-- session/user representation;
-- account-level preferences.
-
-Does not automatically own Player identity.
-
-### Players
-
-Potential ownership:
-
-- persistent PlayerID-based player identity;
-- player lookup;
-- player-level domain information.
-
-### Units
-
-Approved ownership:
-
-- Unit profile identity and metadata;
-- hierarchy, RootUnit identity/isolation, and Commander persistence;
-- authorized-user membership periods and delegated permissions;
-- effective authority and operation-specific structural workflows;
-- RootUnit Rank/Medal catalogs and their narrow owner-only settings capability;
-- Unit management UI and public Unit read-side.
-
-Player roster persistence/mutations remain Players-owned. Event identity and
-management remain Events-owned. A separate authorization module is not part of
 the approved MVP boundary.
+## 7. Implemented Domain Boundaries
 
-### Events
+The active modules and their detailed ownership rules are documented in
+`src/modules/*/MODULE.md`.
 
-Potential ownership:
-
-- event identity and information;
-- User ownership and explicit Event-authorized Users;
-- creation/editing/deletion eligibility;
-- participation requests;
-- participation approvals.
-
-### Audits
-
-Potential ownership:
-
-- audit draft/submission lifecycle;
-- player audit data;
-- unit audit data;
-- role assignments;
-- unit type;
-- submitted-audit immutability.
-
-### Statistics / Query Layer
-
-Basic statistics may initially remain a derived/query responsibility rather than becoming an independent module.
-
-A separate statistics module should be created only if actual implementation pressure justifies one.
+- **Units:** Unit profiles and hierarchy, RootUnit boundaries, authorized-user
+  memberships, delegated permissions, structural management, and RootUnit
+  Rank/Medal catalogs. It exposes public Unit pages and the authorization
+  decisions consumed by other modules.
+- **Players:** Persistent public PlayerID identity, history-preserving roster
+  membership, Player lookup/profile, and roster workflows. It does not own
+  website identity or Unit identity.
+- **Events:** Event identity and management, Event-authorized users,
+  participation request/approval, Event result history, and public Event
+  presentation. Participation is approved organizational acceptance, not
+  battlefield placement.
+- **Audits:** Atomic Event Units, Event Command Groups, Audit draft/final
+  lifecycle, player/unit result values, role assignments, and immutable
+  finalized source records.
+- **Statistics:** Public query-time Ranker, Commander, General, Event Battle,
+  Unit performance, and attendance results. It owns calculation semantics,
+  not source records or persisted aggregate state.
+- **Application shell / shared libraries:** Next.js routes, shared presentation,
+  Auth.js configuration, and server-only Prisma access.
 
 ---
 
-## 8. Expected Contract Pressure
+## 8. Module Integration
 
-Contracts should be created incrementally when real module integration requires them.
-
-Likely future boundary needs include, but are not yet final contracts:
-
-```text
-Unit summary / reference
-Player summary / reference
-Event summary / reference
-Approved participation reference
-Submitted audit summary
-```
-
-Do not treat these names or shapes as established contracts until created through the normal ticket/module process.
+Current cross-module reads and authorization seams are documented in
+`docs/registry/CONTRACTS.yaml` and the linked files under `docs/contracts/`.
+They cover Event creation authorization, roster reads and authorization,
+participation, Audit submission, finalized-Audit statistics sources, canonical
+Event time, Unit hierarchy, public battlefield structure, Event battlefield
+management, and Event Battle statistics. New seams require an actual consumer
+and an approved contract; the registry is the discovery index, not a substitute
+for each contract's semantics.
 
 ---
 
@@ -630,22 +604,18 @@ Native mobile applications are outside the MVP.
 
 ---
 
-## 11. Current Technology Direction
+## 11. Implemented Technology
 
-The current planned stack remains:
+- Next.js `16.3.5` with the App Router and React `19.2.8`;
+- TypeScript 5 and Tailwind CSS 4;
+- Auth.js / NextAuth with Google OAuth, the Prisma adapter, and database-backed
+  sessions;
+- Prisma `7.10.x` and PostgreSQL `16`;
+- Node.js `>=20.9.0`, required by the installed Next.js version.
 
-- Next.js;
-- React;
-- TypeScript;
-- Tailwind CSS;
-- Node.js application/backend behavior;
-- Prisma ORM;
-- PostgreSQL;
-- Google authentication.
-
-These are planned technology choices, not permission to infer implementation details that have not been established.
-
-Technology changes with architectural impact should be handled through the appropriate ADR process.
+The repository package manifest, lockfile, Prisma schema, and migrations are
+the exact implementation sources. Technology changes with architectural
+impact continue to use the appropriate ADR process.
 
 ---
 

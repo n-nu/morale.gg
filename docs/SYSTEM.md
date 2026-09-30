@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-morale.gg is a planned web platform for statistics, rosters, events, audits, and organizational management for structured multiplayer-game communities.
+morale.gg is a web application for statistics, rosters, events, audits, and organizational management for structured multiplayer-game communities.
 
 The initial supported use case is **Napoleonic Wars**.
 
@@ -58,9 +58,9 @@ The system currently recognizes the following major conceptual areas:
 - statistics and analytics;
 - administrative and unit-scoped authority.
 
-These are **conceptual domains**, not final database tables or implementation structures.
-
-Exact persistence models, relationships, cardinalities, and schemas must be established through the normal architecture and ticketing process.
+These are domain concepts implemented in the Prisma schema and application
+modules. Detailed model ownership and relationships are documented in
+`docs/architecture.md`, the schema, module manifests, and approved decisions.
 
 ---
 
@@ -163,21 +163,16 @@ The implementation method for historical preservation is not yet established.
 
 Authentication identity and game-domain identity are separate concepts unless explicitly unified by an approved design.
 
-Google authentication is planned for website access.
-
-A Google-authenticated account represents a website user/account.
-
-A player record represents a participant within the application domain.
-
-Any relationship between a website account and one or more player records must be modeled explicitly rather than assumed.
+Auth.js Google OAuth with database-backed sessions authenticates website
+Users. A game Player is a separate domain identity: `Player.id` is the internal
+database key and `Player.playerId` is the stable public/game identity. No
+automatic User-to-Player relationship is assumed.
 
 ---
 
 ## 7. Security and Authority
 
-Google authentication is planned.
-
-Authorization is expected to affect areas including:
+Google authentication is implemented. Server-side authorization governs:
 
 - unit management;
 - memberships;
@@ -185,13 +180,16 @@ Authorization is expected to affect areas including:
 - administrative actions;
 - system-wide configuration.
 
-The system currently anticipates at least three broad authority contexts:
+Current authority contexts include:
 
 - ordinary users/members;
 - unit-scoped management authority;
 - system-wide administrative authority.
 
-Exact roles, permission combinations, authentication flows, threat models, privacy rules, audit-security rules, and authorization structures remain **undecided**.
+The current Unit and Event permission semantics are established in their
+module manifests, contracts, and approved ADRs. A complete privacy policy and
+threat model remain future work; new authority semantics still require the
+appropriate approval.
 
 ### 7.1 Authorization Enforcement
 
@@ -321,7 +319,7 @@ Where useful, module, contract, architecture, and planning documents should iden
 
 ## 10. Current Architecture
 
-The high-level planned architecture and domain concepts are documented in:
+The implemented high-level architecture and domain concepts are documented in:
 
 - `docs/architecture.md`
 - `README.md`
@@ -395,9 +393,12 @@ Module-specific or contract-specific evolution should normally be documented in 
 
 ## 13. Current Project State
 
-The repository is currently in an early planning and architecture stage.
-
-Some documented concepts describe intended direction rather than implemented behavior.
+The repository contains a working MVP across Auth.js authentication, Units,
+Players and roster history, Events and participation, battlefield structure,
+Audits, and query-derived statistics. Detailed current behavior is recorded in
+`docs/MVP_REQUIREMENTS.md`, `docs/architecture.md`, module manifests, and the
+Prisma schema. Deployment is not configured or confirmed; local setup is
+documented in `README.md`.
 
 Project phase information is informational and may change without altering the constitutional principles above.
 
@@ -407,19 +408,11 @@ Project phase information is informational and may change without altering the c
 
 The following areas are intentionally unresolved and must be established deliberately through future tickets and architecture decisions:
 
-- final module decomposition;
-- final contract set;
-- detailed database schema;
-- final relationship cardinalities;
-- detailed authorization model;
-- authentication implementation details;
-- account-to-player identity relationships;
+- future modules and contracts for capabilities outside the current MVP;
 - historical snapshot strategy;
-- deployment model;
+- hosted deployment model;
 - validation tooling;
-- implementation directory layout;
-- caching and derived-data strategy;
-- API/application-layer design;
+- caching/materialization strategy for derived data;
 - detailed privacy and threat model.
 
 These areas must not be treated as decided merely because an implementation task encounters them.
@@ -445,7 +438,8 @@ These areas must not be treated as decided merely because an implementation task
 - Public application data is viewable without authentication unless explicitly restricted.
 - Authentication is required for write operations.
 - Units have one owner and may have additional users with delegated permissions.
-- New non-root units are created through an invite issued by an existing parent unit.
+- Authorized Unit structural workflows create and move child Units within the
+	existing RootUnit hierarchy; no invite-code workflow is part of the MVP.
 - Unit hierarchy may have arbitrary depth.
 - Player identity is based on a persistent game-specific PlayerID.
 - Players may belong to multiple units simultaneously.

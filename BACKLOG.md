@@ -3,19 +3,15 @@
 **Status:** Revised MVP baseline  
 **Initial game scope:** Napoleonic Wars only
 
-This backlog defines the current MVP boundary for morale.gg. The MVP centers on the unit-manager and event-manager workflow: building a linked unit hierarchy, maintaining rosters, organizing event participation, submitting immutable audits, and deriving basic public statistics from recorded data.
+This file preserves the original MVP user-story baseline and acceptance-criteria history. Its per-story `Planned` labels are historical planning metadata, not current implementation status. The canonical current scope is [docs/MVP_REQUIREMENTS.md](docs/MVP_REQUIREMENTS.md); implementation outcomes are recorded in completed tickets.
 
-Unless stated otherwise, MVP items are **Planned** and have not been implemented. US-01 is
-complete; the remaining MVP stories are still planned or awaiting implementation.
+## Current Implementation Status
 
-## Implementation Status Notes
-
-- **US-01 — Google Authentication: Complete.** Auth.js/NextAuth with Google OAuth, Prisma
-	persistence, database-backed sessions, sign-in/sign-out, session resolution, and reuse of an
-	existing Google identity were verified in `TKT-20260914-000003-001`.
-- The Prisma/PostgreSQL setup and seeded root `Unit` are shared backend foundations, not
-	completion of linked-unit creation, unit management, or roster functionality. The remaining
-	MVP stories require their domain models, authorization, workflows, and public views.
+The MVP now includes Google authentication; persistent Player identity and
+history-preserving rosters; hierarchical Unit management and access; Events
+and participation; battlefield structure; immutable Audits; and public,
+query-derived Event, Player, and Unit statistics. See the canonical
+requirements for exact implemented behavior and deferred functionality.
 
 ## Post-Merge Closeout
 

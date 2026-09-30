@@ -119,16 +119,15 @@ contract.
 
 ## Extension Points
 
-Future rejection/replacement workflows, attendance derivation, Ranker,
-Commander, General, and other statistics may consume the immutable source
-records. Future stricter command-tree finalization may be added without
-changing persistent Unit hierarchy semantics.
+The Statistics module consumes immutable effective-finalized Audit facts for
+Ranker, Commander, General, Event Battle, Unit performance, and attendance
+reads. Future stricter command-tree finalization may be added without changing
+persistent Unit hierarchy semantics.
 
 ## Limitations
 
-Statistics calculation, leaderboards, attendance calculation, Player profile
-alias derivation, Audit correction/replacement, and Event-manager Audit
-approval are out of scope for Ticket 20.
+Audits does not calculate or persist derived Statistics. Audit correction or
+replacement workflows and Event-manager Audit approval are not MVP behavior.
 
 ## Related Contracts
 
