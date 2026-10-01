@@ -1,6 +1,6 @@
 # Setup and Verification
 
-Use the [README setup](../README.md#setup) for prerequisites, Google OAuth configuration, fresh-database root setup, and the local development URL. The commands below are the repository's actual package scripts or installed Prisma/tsx commands. No aggregate test script is currently defined.
+Use the [README setup](../README.md#setup) for prerequisites, the no-credential quick start, optional Google OAuth configuration, and the local development URL. The commands below are the repository's actual package scripts or installed Prisma/tsx commands. No aggregate test script is currently defined.
 
 ## Database
 
@@ -21,6 +21,7 @@ There is no aggregate test script. Run the existing focused checks:
 
 ```bash
 npm run test:website-admin
+npm run test:dev-sign-in
 npm run test:auth-nav
 npm run test:demo-seed
 ```
@@ -56,7 +57,7 @@ git diff --check
 
 ## Demo Database and Browser Smoke Check
 
-`npm run demo:reset` destructively replaces local application data except for the preserved RootUnit and its Commander identity/session. Review its safeguards and preservation behavior in the [README](../README.md#reset-and-reseed-demo-data) before running it. Then start `npm run dev`, open `http://localhost:3000`, and follow [MVP_DEMO.md](MVP_DEMO.md). Google OAuth requires a configured client and cannot be replaced by fixture credentials.
+`npm run demo:reset` destructively replaces local application data except for the preserved RootUnit and its Commander identity/session. Review its safeguards and preservation behavior in the [README](../README.md#reset-and-reseed-demo-data) before running it. Then start `npm run dev`, open `http://localhost:3000/dev/sign-in`, sign in as a demo identity, and follow [MVP_DEMO.md](MVP_DEMO.md). Development sign-in requires `npm run dev` and `DEV_SIGN_IN_ENABLED="true"`; it is unavailable in production builds.
 
 ## Submission Verification Results (2026-09-30)
 
@@ -78,3 +79,10 @@ git diff --check
 - Browser smoke: authenticated local session; `/units`, `/units/demo-unit-french-line-1`, `/units/demo-unit-french-line-1/manage`, `/units/demo-unit-british-line-1`, `/players/demo-player-001`, `/events`, `/events/demo-event-main-review`, `/events/demo-event-main-review/manage`, `/audits`, and `/statistics` returned HTTP 200 with expected page headings. The dev-server log showed no 500 responses or runtime errors.
 
 No hosted deployment was found or claimed. Google OAuth works for the existing local session; seeded manager fixture Users do not have credentials or Google Accounts of their own.
+
+## Grading-Access Verification (2026-09-30, TKT-20260930-000040-001)
+
+- Fresh scratch database (`morale_gg_fresh_check`, dropped afterward): `npm run db:migrate:deploy` then `npm run demo:reset` with no RootUnit, no `ROOT_UNIT_COMMANDER_USER_ID`, and no Google credentials passed; it bootstrapped `root-morale-gg` with `demo-user-root-commander`, reseeded the full demo world, and its reader smoke passed.
+- `npm run dev` + `/dev/sign-in`: signing in as Demo Root Commander reached `/units/demo-unit-french-army/manage`, `/events/demo-event-main-review/manage`, `/events/create`, and `/audits`; sign-out cleared the session; the Limited Roster Manager was denied French Unit management.
+- `next start` with `DEV_SIGN_IN_ENABLED="true"`: `/dev/sign-in` returned 404, the header showed no demo link, and invoking the server action directly failed with "Development sign-in is disabled." without setting a cookie.
+- `npm run test:dev-sign-in` 2/2, `npm run test:auth-nav` 5/5, `npm run test:demo-seed` 4/4, `npm run lint`, `npm run type-check`, and `npm run build` passed.

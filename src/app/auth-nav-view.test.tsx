@@ -48,6 +48,17 @@ test("signed-in navigation shows Sign out and not Sign in", () => {
   assert.equal(findByType(tree, "a"), null);
 });
 
+test("signed-out navigation offers demo sign-in only when a dev link is supplied", () => {
+  const withoutDev = AuthNavView({ signedIn: false, signOutAction: neverCalled });
+  const withDev = AuthNavView({ signedIn: false, signOutAction: neverCalled, devSignInHref: "/dev/sign-in" });
+  const signedInWithDev = AuthNavView({ signedIn: true, signOutAction: neverCalled, devSignInHref: "/dev/sign-in" });
+
+  assert.doesNotMatch(textOf(withoutDev), /Demo sign-in/);
+  assert.match(textOf(withDev), /Demo sign-in/);
+  assert.match(textOf(withDev), /Sign in/);
+  assert.doesNotMatch(textOf(signedInWithDev), /Demo sign-in/);
+});
+
 test("the sign-out control submits the supplied session-ending action", () => {
   const tree = AuthNavView({ signedIn: true, signOutAction: neverCalled });
   const form = findByType(tree, "form");

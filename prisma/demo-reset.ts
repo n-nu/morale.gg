@@ -10,6 +10,12 @@ import {
 import assert from "node:assert/strict";
 import { isIP } from "node:net";
 
+import {
+  DEMO_ROOT_COMMANDER_USER_ID,
+  DEMO_ROOT_UNIT_ID,
+  DEMO_USER_IDS,
+} from "../src/lib/demo-identities";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PLAYER_COUNT = 120;
 const MERCENARY_COUNT = 12;
@@ -25,14 +31,6 @@ const ROOT_UNIT_SELECT = {
   commanderUserId: true,
   createdAt: true,
   updatedAt: true,
-} as const;
-const DEMO_USER_IDS = {
-  managerFrench: "demo-user-manager-french",
-  managerCoalition: "demo-user-manager-coalition",
-  auditFrench: "demo-user-audit-french",
-  auditCoalition: "demo-user-audit-coalition",
-  limited: "demo-user-limited",
-  eventManager: "demo-user-event-manager",
 } as const;
 
 export type SafeDatabaseTarget = {
@@ -1300,7 +1298,7 @@ async function printSummary(prisma: PrismaClient, rootUnitId: string, rootName: 
   console.log(`Audits FINAL ${countFor(audits, "lifecycle", "FINAL")}, DRAFT ${countFor(audits, "lifecycle", "DRAFT")}; EventResults EFFECTIVE ${countFor(results, "status", "EFFECTIVE")}, SUPERSEDED ${countFor(results, "status", "SUPERSEDED")}, PENDING ${countFor(results, "status", "PENDING")}, REJECTED ${countFor(results, "status", "REJECTED")}.`);
   console.log(`PermissionGrants ${permissionGrants}; AuthorizedUserMemberships ${authorizedMemberships}; EventAuthorizedUsers ${eventAuthorizedUsers}; Ranks ${ranks}; Medals ${medals}.`);
   console.log(`Preserved RootUnit: ${rootUnitId} (${rootName}); Commander User: ${rootCommanderUserId}.`);
-  console.log("Demo identities (Google-only auth; no seeded credentials):");
+  console.log("Demo identities (no passwords; with DEV_SIGN_IN_ENABLED=\"true\" under `npm run dev`, sign in at http://localhost:3000/dev/sign-in):");
   console.log(`- Root Commander / Event owner: ${rootCommanderUserId}`);
   console.log(`- French branch manager: ${DEMO_USER_IDS.managerFrench}; Audit submitter: ${DEMO_USER_IDS.auditFrench}`);
   console.log(`- Coalition branch manager: ${DEMO_USER_IDS.managerCoalition}; Audit submitter: ${DEMO_USER_IDS.auditCoalition}`);
@@ -1309,12 +1307,45 @@ async function printSummary(prisma: PrismaClient, rootUnitId: string, rootName: 
   console.log("Organizer-review Event: demo-event-organizer-review (/events/demo-event-organizer-review).");
 }
 
+async function bootstrapDevelopmentRootUnit(prisma: PrismaClient): Promise<void> {
+  const name = process.env.ROOT_UNIT_NAME?.trim() || "morale.gg Root Unit";
+  await prisma.$transaction(async (tx) => {
+    if ((await tx.rootUnit.count()) !== 0) return;
+    await tx.user.upsert({
+      where: { id: DEMO_ROOT_COMMANDER_USER_ID },
+      update: {},
+      create: { id: DEMO_ROOT_COMMANDER_USER_ID, name: "Demo Root Commander", email: "root-commander@demo.invalid" },
+    });
+    // Unit.rootUnitId and RootUnit.unitId reference each other with immediate FKs; one statement satisfies both.
+    await tx.$executeRaw`
+      WITH root_unit AS (
+        INSERT INTO "Unit" ("id", "name", "rootUnitId", "commanderUserId", "updatedAt")
+        VALUES (${DEMO_ROOT_UNIT_ID}, ${name}, ${DEMO_ROOT_UNIT_ID}, ${DEMO_ROOT_COMMANDER_USER_ID}, CURRENT_TIMESTAMP)
+        RETURNING "id"
+      )
+      INSERT INTO "RootUnit" ("unitId") SELECT "id" FROM root_unit`;
+    await tx.authorizedUserMembership.create({
+      data: {
+        id: "demo-root-owner-membership",
+        unitId: DEMO_ROOT_UNIT_ID,
+        userId: DEMO_ROOT_COMMANDER_USER_ID,
+        authorityLevel: 0,
+        createdByUserId: DEMO_ROOT_COMMANDER_USER_ID,
+      },
+    });
+  });
+  console.log(`No RootUnit found; bootstrapped development RootUnit ${DEMO_ROOT_UNIT_ID} with Commander ${DEMO_ROOT_COMMANDER_USER_ID}.`);
+}
+
 export async function runDemoReset(): Promise<void> {
   const target = assertSafeDatabaseTarget(process.env);
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
   });
   try {
+    if ((await prisma.rootUnit.count()) === 0) {
+      await bootstrapDevelopmentRootUnit(prisma);
+    }
     const rootRows = await prisma.rootUnit.findMany({
       include: { designatedUnit: { select: ROOT_UNIT_SELECT } },
     });

@@ -164,7 +164,10 @@ The implementation method for historical preservation is not yet established.
 Authentication identity and game-domain identity are separate concepts unless explicitly unified by an approved design.
 
 Auth.js Google OAuth with database-backed sessions authenticates website
-Users. A game Player is a separate domain identity: `Player.id` is the internal
+Users. For local development only (`next dev` with `DEV_SIGN_IN_ENABLED="true"`),
+`/dev/sign-in` creates an ordinary database session for a fixed seeded demo
+identity; it grants no authority and is unavailable in production builds
+(ADR-20260930-009). A game Player is a separate domain identity: `Player.id` is the internal
 database key and `Player.playerId` is the stable public/game identity. No
 automatic User-to-Player relationship is assumed.
 
