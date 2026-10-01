@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { auth, signOut } from "@/auth";
+import { isDevSignInEnabled } from "@/lib/dev-sign-in";
 
 import { AuthNavView, hasAuthenticatedUser } from "./auth-nav-view";
 
@@ -19,6 +20,7 @@ export async function AuthNav() {
     <AuthNavView
       signedIn={hasAuthenticatedUser(session)}
       signOutAction={signOutAction}
+      devSignInHref={isDevSignInEnabled() ? "/dev/sign-in" : undefined}
     />
   );
 }

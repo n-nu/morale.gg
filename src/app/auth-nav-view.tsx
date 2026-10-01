@@ -10,17 +10,26 @@ export function hasAuthenticatedUser(
 export function AuthNavView({
   signedIn,
   signOutAction,
+  devSignInHref,
 }: {
   signedIn: boolean;
   signOutAction: () => Promise<void>;
+  devSignInHref?: string;
 }) {
   if (!signedIn) {
     return (
-      // Auth.js route handler, not a page — plain anchor is intentional.
-      // eslint-disable-next-line @next/next/no-html-link-for-pages
-      <a href="/api/auth/signin" className={controlClass}>
-        Sign in
-      </a>
+      <>
+        {devSignInHref && (
+          <a href={devSignInHref} className={controlClass}>
+            Demo sign-in
+          </a>
+        )}
+        {/* Auth.js route handler, not a page — plain anchor is intentional. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a href="/api/auth/signin" className={controlClass}>
+          Sign in
+        </a>
+      </>
     );
   }
 

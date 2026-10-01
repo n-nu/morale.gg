@@ -18,7 +18,7 @@ morale.gg is a structured information and statistics system for multiplayer gami
 
 ## Implemented MVP
 
-- Authenticate with Google OAuth and maintain database-backed sessions.
+- Authenticate with Google OAuth and maintain database-backed sessions. For local development and grading only, `/dev/sign-in` signs in as a seeded demo identity (disabled in production builds; see [ADR-20260930-009](decisions/ADR-20260930-009.md)).
 - Browse RootUnit/Unit hierarchy and public Unit profiles; manage authorized Unit access and supported Unit settings when permitted.
 - Register/find Players by stable game PlayerID; manage active rosters while retaining membership history.
 - Create/manage Events and administer Event managers; request, review, approve, or deny Unit participation.
@@ -32,7 +32,7 @@ Protected writes require the applicable server-side authorization. Public reads 
 ## Deferred and Out of Scope
 
 - Hosted deployment; the supported submission environment is local.
-- Non-Google authentication, local password login, or demo-user impersonation.
+- Non-Google production authentication, password login, or production demo-user impersonation.
 - Audit correction/replacement after finalization, and Event-manager Audit submission authority.
 - Player account claiming/linking, arbitrary in-Unit positions, and historical Rank-at-Event.
 - Advanced analytics, trends, predictive/rating systems, advanced visualizations, premium/payment features, exports/reporting, and third-party game integration.
