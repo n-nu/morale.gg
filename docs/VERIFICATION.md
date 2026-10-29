@@ -1,6 +1,9 @@
 # Setup and Verification
 
-Use the [README setup](../README.md#setup) for prerequisites, the no-credential quick start, optional Google OAuth configuration, and the local development URL. The commands below are the repository's actual package scripts or installed Prisma/tsx commands. No aggregate test script is currently defined.
+Use the [README setup](../README.md#setup) for application setup. The canonical
+[QA plan](QA_PLAN.md) defines test layers and completion criteria. For Ticket 42
+evidence, use the disposable database procedure below rather than resetting a
+developer database. Historical submission results below remain dated evidence.
 
 ## Database
 
@@ -17,7 +20,9 @@ Expected migration status: the database schema is up to date.
 
 ## Tests
 
-There is no aggregate test script. Run the existing focused checks:
+`npm test` discovers and serializes all existing Node/tsx tests. It requires a
+migrated, seeded disposable database. `npm run test:coverage` runs the same suite
+with the [documented coverage scope](COVERAGE.md). Focused checks remain available:
 
 ```bash
 npm run test:website-admin
@@ -86,3 +91,90 @@ No hosted deployment was found or claimed. Google OAuth works for the existing l
 - `npm run dev` + `/dev/sign-in`: signing in as Demo Root Commander reached `/units/demo-unit-french-army/manage`, `/events/demo-event-main-review/manage`, `/events/create`, and `/audits`; sign-out cleared the session; the Limited Roster Manager was denied French Unit management.
 - `next start` with `DEV_SIGN_IN_ENABLED="true"`: `/dev/sign-in` returned 404, the header showed no demo link, and invoking the server action directly failed with "Development sign-in is disabled." without setting a cookie.
 - `npm run test:dev-sign-in` 2/2, `npm run test:auth-nav` 5/5, `npm run test:demo-seed` 4/4, `npm run lint`, `npm run type-check`, and `npm run build` passed.
+
+## Ticket 42 isolated reproduction (PowerShell)
+
+Do not run these suites against an existing developer database. The separate
+Compose project below uses PostgreSQL 16, loopback port 5542, and temporary
+in-memory storage; stopping/removing that QA container discards only its data.
+It does not use the application's named volume or container. Keep the database
+up until all tests and screenshots are collected. Environment variables below
+are process-local and override `.env`/`.env.local`; no local file is overwritten.
+
+```powershell
+npm ci
+docker compose -p morale-qa -f tests/compose.qa.yaml up -d --wait
+$env:DATABASE_URL='postgresql://morale_gg:qa-local-only@127.0.0.1:5542/morale_gg_qa'
+$env:POSTGRES_DB='morale_gg_qa'
+$env:POSTGRES_PORT='5542'
+$env:DEV_SIGN_IN_ENABLED='true'
+$env:UNITS_DEMO_MODE='false'
+$env:AUTH_SECRET = node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+npm run db:validate
+npm run db:generate
+npm run db:migrate:deploy
+npx prisma migrate status
+npm run demo:reset
+npm test
+npm run test:coverage
+npx next typegen
+npm run lint
+npm run type-check
+git diff --check
+npx playwright install chromium
+npm run dev -- --webpack --hostname 127.0.0.1 --port 3100
+```
+
+In a second terminal set the same QA `DATABASE_URL`, then run
+`npm run test:browser`. The server must have `DEV_SIGN_IN_ENABLED=true`, seeded
+QA data, and no conflicting `NODE_ENV`. Tests never seed/reset a database.
+Wait for all database integration tests to finish before browser mutation tests.
+The dev server uses webpack here to permit a comparison if the local Turbopack
+worker fails; it is not a change to the application's default bundler.
+
+After stopping the dev server, in the configured terminal:
+
+```powershell
+npm run build
+# If the local Turbopack worker crashes, record the failure and separately try:
+npm run build -- --webpack
+npm start -- --hostname 127.0.0.1 --port 3100
+```
+
+In the second terminal set `$env:QA_PRODUCTION='true'`, then run
+`npm run test:browser`. The production server must still have the explicit demo
+enablement flag: the check proves NODE_ENV isolation, not merely a disabled flag.
+The development and production tests intentionally skip the opposite environment;
+both runs are required. `npm run test:dev-sign-in` separately exercises direct
+action rejection in production/test/disabled development and unknown identities.
+
+Raw coverage, browser JSON, screenshots and optional logs belong under ignored
+`coverage/`; selected reviewed screenshots and concise durable results belong in
+`docs/security-evidence/`. Do not commit traces/cookies/session tokens or `.env`.
+After stopping the test servers, remove only the QA container/network with:
+
+```powershell
+docker compose -p morale-qa -f tests/compose.qa.yaml down
+```
+
+### Branch/review/release audit — 2026-10-29
+
+- Work branch: `qa/m2-foundation`, tracking `origin/qa/m2-foundation`; starting
+  commit `86ac18400c59565a0090d2167ea27974afd888c2`. M1 application baseline and
+  fetched `origin/main`: `e67ecb78f7e982172b789d8243de71bc5723ebd6`.
+- `git ls-remote --tags origin` confirms two meaningful releases: annotated
+  `milestone-0` peels to `89875adba3a8b04e679685adf04a6801a134c0d0`
+  (Milestone 0 artifacts); lightweight `milestone-1` points to `e67ecb7`
+  (M1 merge PR #26). Local tags agree. No M2 tag was created.
+- No project-level CHANGELOG or `.github` workflow/review template was found;
+  module changelogs, completed tickets and Git preserve history. Recommend a
+  concise M2 release note assembled by Emil from reviewed tickets, rather than
+  treating a template as release evidence.
+- Follow AGENT_WORKFLOW's ticket scope, ACTIVE → REVIEW → COMPLETED lifecycle,
+  validation and explicit authorization for commit/push/merge/tag. Use a focused
+  PR referencing Ticket 42, exact checks and limitations; obtain substantive peer
+  review before merge. Git history proves prior PR merges, not approval quality
+  or enforced branch protection. GitHub branch-protection settings and Ticket 42
+  PR/reviewer state were not independently verified. No peer review is claimed.
+- Ticket 41 is neither consumed nor awaited. Ticket 43 is the post-merge gate;
+  Emil retains final release authority.

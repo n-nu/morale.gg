@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: morale_gg_qa
+      POSTGRES_USER: morale_gg
+      POSTGRES_PASSWORD: qa-local-only
+    ports:
+      - "127.0.0.1:5542:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U morale_gg -d morale_gg_qa"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

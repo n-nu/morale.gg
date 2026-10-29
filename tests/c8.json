@@ -1,0 +1,7 @@
+{
+  "all": true,
+  "include": ["src/lib/**/*.ts", "src/modules/**/*.ts", "src/app/dev/sign-in/actions.ts"],
+  "exclude": ["**/*.test.*", "**/*.d.ts"],
+  "reporter": ["text", "html", "json-summary"],
+  "reports-dir": "coverage"
+}

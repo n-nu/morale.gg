@@ -23,7 +23,7 @@ merged into `main`.
 | Ticket | Owner | Priority | State | Dependencies |
 |---|---|---:|---|---|
 | [TKT-20261027-000041-001 — Leaderboard Page and Statistics Presentation Expansion](tickets/OPEN/TKT-20261027-000041-001.md) | Developer 1 | high | READY | none |
-| [TKT-20261027-000042-001 — Parallel QA, Coverage, and Security Foundation](tickets/OPEN/TKT-20261027-000042-001.md) | Developer 2-A | high | READY | none; independent of Developer 1 |
+| [TKT-20261027-000042-001 — Parallel QA, Coverage, and Security Foundation](tickets/OPEN/TKT-20261027-000042-001.md) | Developer 2-A | high | REVIEW | none; independent of Developer 1 |
 | [TKT-20261027-000043-001 — Post-Merge Integration, Leaderboard Verification, and Final QA Evidence](tickets/OPEN/TKT-20261027-000043-001.md) | Developer 2-B | high | DRAFT | blocked by 000041 and 000042 until both are completed and merged to `main` |
 
 **Scheduling guidance:** keep the full sequence within one week where practical.
