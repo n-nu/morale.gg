@@ -37,6 +37,14 @@ The main Event contains seeded finalized Audits, so the public Battle details ar
 
 These statistics are derived at query time from effective finalized Audits and related Event, Player membership, and Unit hierarchy facts. The Event winner is a separately recorded Event result, not a statistic.
 
+## F. Leaderboard (Milestone 2)
+
+1. Open [`/leaderboard`](http://localhost:3000/leaderboard) from the header. The summary line states the ranking, branch, window, and population (for example “Ranked by K (highest first) · Regular · last 14 days · 22 players”; counts depend on how recently the demo was reset).
+2. Switch branches (Regular, Rifles, Cavalry, Artillery — counts shown on each) and windows (14 Days, 30 Days, All Time); the board and branch persist in the URL.
+3. Click any column heading to sort; click it again to reverse. Sort Players by K/D to show a zero-death row (“24 K”) ranked above finite ratios, and hover a ratio to see its raw totals.
+4. Open the Commanders, Generals, and Units boards. On Units (All Time), the 42nd Highland Regiment links to its Unit page; with All Time selected there, its Direct Performance matches the leaderboard row.
+5. Open **How rankings work** for the pooling, branch, and tie rules. `/statistics` links to each board.
+
 ## MVP Completion
 
 The MVP demonstrates structured organizations and historical rosters, Event participation, battlefield organization, Audit capture/finalization, and derived Event, Player, and Unit statistics. The public seeded scenario is runnable locally; authenticated management surfaces are reachable through the development-only demo sign-in, and Google OAuth remains the production sign-in.

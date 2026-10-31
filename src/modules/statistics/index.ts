@@ -6,6 +6,8 @@ export { getGeneralStatistics } from "./general";
 export {
 	getAverageUnitPerformance,
 	getDirectUnitPerformance,
+	getDirectUnitPerformanceForAllUnits,
 	getOrganizationalUnitPerformance,
 } from "./unit";
+export { getLeaderboard } from "./leaderboard";
 export { getAttendanceSummaryForPlayerUnit } from "./attendance";

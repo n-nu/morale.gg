@@ -3,8 +3,8 @@ module_id: statistics
 path: src/modules/statistics
 status: active
 version: 0.1
-last_reviewed: 2026-09-28
-updated_by_ticket: TKT-20260928-000035-001
+last_reviewed: 2026-10-31
+updated_by_ticket: TKT-20261027-000041-001
 ---
 
 # Statistics
@@ -30,7 +30,13 @@ authoritative gameplay history. Statistics owns no mutable aggregate state.
 Approved public read services for Ranker, Commander, General, Event Battle,
 Direct Unit Performance, Organizational Unit Performance, Average Unit
 Performance, and Player + Unit attendance. These services are implemented as public query-time
-reads. Event Battle reads return presentation-safe atomic and Player result DTOs,
+reads. `getDirectUnitPerformanceForAllUnits` returns Direct Unit Performance for
+every represented Unit in one source read, identical per Unit to
+`getDirectUnitPerformance`. `getLeaderboard` assembles the public Leaderboard
+(`/leaderboard`) from the Ranker, Commander, General, and all-Units Direct
+readers; Player rows carry only the stable game Player ID and the public-name
+fallback used by Event Battle, and Unit rows only the identifier of the public
+`/units/[unitId]` route. Event Battle reads return presentation-safe atomic and Player result DTOs,
 use stable public game identity when no safe Unit-local alias exists, and never
 include historical Rank-at-Event.
 
@@ -74,7 +80,10 @@ preserves raw numerator/denominator and zero-death state. `event-battle.ts`,
 `ranker.ts`,
 `commander.ts`, `general.ts`, `unit.ts`, and `attendance.ts` consume the
 Audits/Events sources and relevant Players/Units semantic operations to derive
-public query-time results.
+public query-time results. `leaderboard.ts` (server) builds Leaderboard rows from
+those readers; `leaderboard-model.ts` (client-safe) holds board/column
+definitions, query parsing, ranking, and display formatting, including the
+shared two-decimal ratio display that keeps the zero-denominator form.
 
 ## Extension Points
 Future Audit supersession remains Audits-owned and may change the producer's
@@ -85,7 +94,10 @@ semantics. Correction workflows and richer analytics require separate approval.
 ## Limitations
 No charts, trends, percentile/ELO/rating, predictive, premium, scheduled,
 materialized, or cached analytics are in MVP. Ratios explicitly represent a
-zero denominator and expose the approved `K` or `K+A` display form.
+zero denominator and expose the approved `K` or `K+A` display form. Leaderboard
+rankings are per Unit-type branch (no cross-branch totals), rank zero-death
+ratios with a positive numerator above finite ratios, and do not rank
+Organizational or Average Unit performance.
 
 ## Related Contracts
 - `audits-statistics-effective-finalized-audit`

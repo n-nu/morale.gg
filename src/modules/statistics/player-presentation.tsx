@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { CommanderPlayerStatistics } from "./commander";
 import type { GeneralPlayerStatistics } from "./general";
+import { formatRatio } from "./leaderboard-model";
 import {
   StatisticsDisclosure,
   StatisticsEmptyState,
@@ -135,7 +136,7 @@ function CommanderSection({ player }: { player: CommanderPlayerStatistics }) {
   return (
     <StatisticsDisclosure
       title="Commander"
-      summary={`${primary.battlesCommanded} ${UnitTypeLabel[primary.unitType]} battles · KDR ${primary.killDeathRatio.display} · ${formatMetric(primary.averagesPerBattle.playerCount)} avg players · ${typeCount} types`}
+      summary={`${primary.battlesCommanded} ${UnitTypeLabel[primary.unitType]} battles · KDR ${formatRatio(primary.killDeathRatio)} · ${formatMetric(primary.averagesPerBattle.playerCount)} avg players · ${typeCount} types`}
     >
       <CommanderTypeDetails player={player} />
     </StatisticsDisclosure>

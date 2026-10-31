@@ -27,6 +27,10 @@ morale.gg is a structured information and statistics system for multiplayer gami
 - Record and present Event results separately from computed statistics.
 - Browse Event Battle results; view query-derived Ranker, Commander, General, Player, Unit performance, and attendance statistics.
 
+## Milestone 2 Additions
+
+- **Public Leaderboard** (`/leaderboard`, TKT-20261027-000041-001): ranks Players (Ranker), Commanders, Generals, and Units (Direct performance) over the shared 14-day, 30-day, and all-time windows. Players, Commanders, and Units are ranked separately within Regular, Rifles, Cavalry, and Artillery; Generals are ranked on command scope. Every metric column sorts in either direction, tied values share a rank, and rows link to the public Player and Unit routes. Values come from the existing query-time readers: ratios are pooled totals, zero-death ratios keep the `N K` / `N K+A` form, and nothing is persisted. Finite ratios across Statistics presentation display rounded to two decimals with the raw totals on hover.
+
 Protected writes require the applicable server-side authorization. Public reads do not require authentication unless the route is explicitly a management surface. See [Design / Architecture](architecture.md) for ownership and data-flow details.
 
 ## Deferred and Out of Scope
