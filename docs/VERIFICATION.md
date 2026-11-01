@@ -217,6 +217,99 @@ docker compose -p morale-qa -f tests/compose.qa.yaml down
   (`n-nu`) authored the PR; Emil submitted a substantive COMMENT review and,
   at his explicit direction, proceeded with merge without waiting for
   `ChanMan64`. The comment is not represented as an approval.
-- Both blockers are now complete and merged. Ticket 43 is READY for its
-  post-merge integration handoff; its implementation and final combined QA
-  remain unstarted.
+- Both blockers were complete and merged when Ticket 43 became READY for its
+  post-merge integration handoff. Execution began on
+  `qa/m2-final-integration` at `1a34fda7357f384cd438bda4149d54ec64241589`;
+  current results follow.
+
+## Ticket 43 post-merge integration — 2026-11-01
+
+### Starting state and independent Leaderboard review
+
+- Fetched `origin --prune --tags`; branch `qa/m2-final-integration` started
+  clean at `1a34fda7357f384cd438bda4149d54ec64241589`, equal to `main` and
+  `origin/main`. The Ticket 41 and 42 merge commits are ancestors.
+- Ticket 41 and 42 completion records and the Ticket 44 dependency-remediation
+  child are present. PR #27 merged as `758bb5d3e0392633a14d70e87cc7c103d3c6fbf5`;
+  PR #28 merged as `0a310e88463f8037c418bb1cffbbd3500d166e46`.
+- GitHub records a substantive APPROVED review on PR #27 by Emil, with no
+  requested changes. PR #28 has Emil's substantive COMMENT review because GitHub
+  rejected author self-approval; this is not an independent approval.
+- Source review confirmed `getLeaderboard` composes approved Ranker,
+  Commander, General, and all-Units Direct readers. Windows use canonical Event
+  times and the Audits-owned effective-finalized source. Player K/D and
+  (K+A)/D are pooled from raw totals, per-Audit averages remain arithmetic
+  averages of raw counts, and zero-denominator states are preserved. Supported
+  boards partition by Regular/Rifles/Cavalry/Artillery; Generals are not
+  type-partitioned. Query values are allowlisted, Player links use the stable
+  public game ID with safe name fallback, and Unit rows use the existing public
+  Unit route. No Leaderboard defect was substantiated or fixed.
+
+### Tests and checks run on the combined checkout
+
+The following database-independent checks passed, **68/68 tests total**:
+
+| Area | Result |
+|---|---:|
+| Leaderboard model and reader (`leaderboard-model.test.ts`, `leaderboard.test.ts`) | 14/14 |
+| Leaderboard presentation | 9/9 |
+| Existing Statistics unit/reader tests (attendance, Commander, General, ratios, Unit, windows) | 8/8 |
+| Existing Statistics presentation tests | 11/11 |
+| Audits, Events, Units, and Players Statistics source-contract tests | 7/7 |
+| Development sign-in guard | 3/3 |
+| Auth.js navigation | 5/5 |
+| Website-admin authorization | 7/7 |
+| Demo-seed safety | 4/4 |
+
+Static checks all passed: `npm.cmd run lint`, `npm.cmd run type-check`,
+`npm.cmd run build`, `npm.cmd run db:validate`, `npm.cmd run db:generate`, and
+`git diff --check`. The production build included `/leaderboard`. One
+type-check invocation run concurrently with `next build` raced generated
+`.next/types` files and failed to resolve `routes.js`; the sequential
+type-check after the build passed.
+
+The production dependency audit reported 0 findings. The full audit reported
+19 moderate development-tool findings and no high/critical findings; it exits
+nonzero because of those documented advisories. No dependency changes were
+made.
+
+Ticket 43 extended `src/modules/statistics/ranker.integration.test.ts` with
+assertions that query live finalized Audit fixtures through Ranker into
+Leaderboard values, verify 14-day/all-time type behavior, and assert stable
+public Player identity. **That database-backed test was added but not executed.**
+
+### Environment limitations and unverified checks
+
+- `docker info --format '{{.ServerVersion}}'` failed because the Docker Desktop
+  engine pipe is unavailable.
+- `.env` configures `localhost:5432/morale_gg` (credentials omitted). A
+  read-only `prisma migrate status` attempt failed with P1001 because PostgreSQL
+  is unreachable. The configured target was not treated as disposable.
+- `npm test`, `npm run test:coverage`, the database-backed integration files,
+  `npm run demo:reset`, browser regression/viewport tests, and clean
+  `npm ci`/database reproduction were not run. No current combined coverage
+  percentages or migration status are claimed. The last reproducible coverage
+  result remains the historical 164/164 tests and 79.71% statements documented
+  in [COVERAGE.md](COVERAGE.md).
+- The full 390/768/1440px route matrix is NOT RUN in this ticket. Ticket 41's
+  Leaderboard viewport results remain prior evidence only; see
+  [viewport evidence](security-evidence/viewports.md#ticket-43-combined-m2-viewport-rerun--2026-11-01).
+- Fresh-environment setup, demo-auth production-browser behavior, and
+  authenticated management workflows were not re-exercised. The current direct
+  sign-in guard tests passed 3/3, and the previous Ticket 42 browser
+  before/control/after evidence remains the latest end-to-end demonstration.
+
+### Security, limitations, and release state
+
+- The M2 Leaderboard threat and OWASP reassessments are recorded in
+  [THREAT_MODEL.md](THREAT_MODEL.md) and [OWASP_BASELINE.md](OWASP_BASELINE.md).
+  They document public-data/query boundaries and all-time/unpaginated load risk;
+  no new vulnerability was substantiated.
+- Existing release tags are `milestone-0` at
+  `c0420382ba63403983ca4a2d781cfdf9ccb6fbcc` and `milestone-1` at
+  `e67ecb78f7e982172b789d8243de71bc5723ebd6`; the two-tag minimum is met.
+  There is no `milestone-2` tag.
+- Emil's handoff index is [M2_EVIDENCE.md](M2_EVIDENCE.md). Known limitations
+  include the unrerun database/browser evidence, 19 moderate development-tool
+  advisories, and the historical narrow Event-manager layout limitation at
+  390px (QA42-UI1), which this ticket did not recheck.

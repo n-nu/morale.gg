@@ -33,3 +33,23 @@ deferred. Reproduce with `npm ci`, `npm audit --json`, and
 `npm audit --omit=dev --json`; the reports are ignored under `coverage/`.
 Findings, impact and follow-up priorities are in [THREAT_MODEL.md](THREAT_MODEL.md); reproducible evidence is in
 [security-evidence/demo-auth.md](security-evidence/demo-auth.md).
+
+## M2 combined-surface reassessment — 2026-11-01
+
+The following is a focused update for the merged Leaderboard and current
+dependency tree; it does not replace the prior M1 control evidence or claim a
+fresh production/browser assessment.
+
+| Category | M2 relevance, mitigation, and evidence | Remaining concern |
+|---|---|---|
+| A01 Broken Access Control | Leaderboard and Statistics are intentionally public read surfaces. They expose no protected mutation. Draft exclusion remains delegated to the Audits effective-finalized-Audit contract; source tests passed, and a database-backed integration fixture was added but not executed. Existing authorization policy was not changed. | Full authorization/browser regression requires the isolated database and was not rerun. |
+| A02 Security Misconfiguration | No Leaderboard-specific secret or deployment configuration is added. `npm run build` succeeds; the development sign-in control test passes 3/3 on the combined checkout. | Production `/dev/sign-in` browser behavior was not rerun after merge; do not expose `next dev`. |
+| A04 Cryptographic Failures | Not materially expanded by the public Leaderboard; no credentials, session tokens, or cryptographic data are part of its DTOs. | Existing hosted TLS, OAuth-secret, backup, and key-rotation limitations remain. |
+| A05 Injection | Board/window/type/sort/direction parsing is allowlisted before selecting a reader or presentation column; the URL parameters are not interpolated into SQL. Tests cover invalid values and encoded public links. | No dynamic injection scan or request-volume test was performed. |
+| A06 Insecure Design | Existing raw aggregation semantics are preserved: ratios use pooled numerator/denominator values, zero-death states remain explicit, and the boards partition supported combat types. The Leaderboard service reuses the Ranker, Commander, General, and Direct Unit readers. | No pagination or minimum sample threshold exists; cross-type branches and different populations are not directly comparable. All-time workload grows with source history. |
+| A07 Authentication Failures | Authentication is not required for intentionally public Statistics. Public subjects use stable game Player identity and safe name fallback, not Auth.js User identity. Auth navigation tests pass 5/5. | The full production session and logout browser cases remain the historical Ticket 42 evidence, not a Ticket 43 rerun. |
+
+Current audit evidence on the combined checkout: `npm.cmd audit --omit=dev`
+reported zero findings; `npm.cmd audit` reported 19 moderate development-tool
+findings and no high/critical findings. Details and the environment limitation
+are recorded in [VERIFICATION.md](VERIFICATION.md#ticket-43-post-merge-integration--2026-11-01).

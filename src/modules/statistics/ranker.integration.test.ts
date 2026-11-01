@@ -4,9 +4,10 @@ import test from "node:test";
 
 import { prisma } from "@/lib/prisma";
 
+import { getLeaderboard } from "./leaderboard";
 import { getRankerStatistics } from "./ranker";
 
-test("public Ranker reads aggregate effective Audits by Event time and historical type", async () => {
+test("finalized Audit data flows through Ranker into public Leaderboard rows by Event time and type", async () => {
   assert.ok(process.env.DATABASE_URL, "DATABASE_URL is required for this integration test");
 
   const suffix = randomUUID();
@@ -173,6 +174,8 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
     const defaultResult = await getRankerStatistics(undefined, now);
     const thirtyDayResult = await getRankerStatistics("30d", now);
     const allTimeResult = await getRankerStatistics("all-time", now);
+    const recentLeaderboard = await getLeaderboard("players", "14d", now);
+    const allTimeLeaderboard = await getLeaderboard("players", "all-time", now);
     const sourceAfterRead = {
       players: await prisma.player.findMany({ where: { id: { in: players.map(({ id }) => id) } }, orderBy: { id: "asc" } }),
       memberships: await prisma.unitMembership.findMany({ where: { playerId: { in: players.map(({ id }) => id) } }, orderBy: { id: "asc" } }),
@@ -201,6 +204,51 @@ test("public Ranker reads aggregate effective Audits by Event time and historica
     assert.deepEqual(regular.averagesPerAuditAppearance, { kills: 7, deaths: 2, assists: 3 });
     assert.equal(regular.killDeathRatio.value, 3.5);
     assert.equal(regular.killAssistDeathRatio.value, 5);
+
+    const recentRegularLeaderboardRow = recentLeaderboard.partitions
+      .find(({ unitType }) => unitType === "REGULAR")
+      ?.rows.find((row) => row.subject.kind === "player" && row.subject.gamePlayerId === rosteredPlayer.playerId);
+    assert.ok(recentRegularLeaderboardRow);
+    assert.deepEqual(recentRegularLeaderboardRow.subject, {
+      kind: "player",
+      gamePlayerId: rosteredPlayer.playerId,
+      displayName: rosteredPlayer.playerId,
+    });
+    assert.deepEqual(recentRegularLeaderboardRow.metrics.kills, { kind: "count", value: 14 });
+    assert.deepEqual(recentRegularLeaderboardRow.metrics.deaths, { kind: "count", value: 4 });
+    assert.deepEqual(recentRegularLeaderboardRow.metrics.assists, { kind: "count", value: 6 });
+    assert.deepEqual(recentRegularLeaderboardRow.metrics.audits, { kind: "count", value: 2 });
+    assert.equal(
+      recentRegularLeaderboardRow.metrics.kd.kind === "ratio" && recentRegularLeaderboardRow.metrics.kd.ratio.value,
+      3.5,
+    );
+    assert.equal(
+      recentRegularLeaderboardRow.metrics.kad.kind === "ratio" && recentRegularLeaderboardRow.metrics.kad.ratio.value,
+      5,
+    );
+    assert.deepEqual(recentRegularLeaderboardRow.metrics.killsPerAudit, { kind: "average", value: 7 });
+
+    const recentArtilleryLeaderboardRow = recentLeaderboard.partitions
+      .find(({ unitType }) => unitType === "ARTILLERY")
+      ?.rows.find((row) => row.subject.kind === "player" && row.subject.gamePlayerId === rosteredPlayer.playerId);
+    assert.ok(recentArtilleryLeaderboardRow);
+    assert.deepEqual(recentArtilleryLeaderboardRow.metrics.kills, { kind: "count", value: 3 });
+    assert.deepEqual(recentArtilleryLeaderboardRow.metrics.audits, { kind: "count", value: 1 });
+
+    const recentCavalryRows = recentLeaderboard.partitions.find(({ unitType }) => unitType === "CAVALRY")?.rows ?? [];
+    assert.equal(
+      recentCavalryRows.some((row) => row.subject.kind === "player" && row.subject.gamePlayerId === rosteredPlayer.playerId),
+      false,
+      "the older Event's Cavalry Audit is outside the 14-day window",
+    );
+
+    const allTimeCavalryLeaderboardRow = allTimeLeaderboard.partitions
+      .find(({ unitType }) => unitType === "CAVALRY")
+      ?.rows.find((row) => row.subject.kind === "player" && row.subject.gamePlayerId === rosteredPlayer.playerId);
+    assert.ok(allTimeCavalryLeaderboardRow);
+    assert.deepEqual(allTimeCavalryLeaderboardRow.metrics.kills, { kind: "count", value: 2 });
+    assert.deepEqual(Object.keys(recentRegularLeaderboardRow.subject).sort(), ["displayName", "gamePlayerId", "kind"]);
+    assert.notEqual(recentRegularLeaderboardRow.subject.gamePlayerId, rosteredPlayer.id);
 
     const rifles = rosteredDefault.unitTypes.find(({ unitType }) => unitType === "RIFLES");
     assert.ok(rifles);

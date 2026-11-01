@@ -66,3 +66,18 @@ The direct-action denial test substitutes only Next navigation to run outside
 Next's bundler; it does not simulate session success. Real cookie/session success
 is tested in the browser. Existing unit tests mock persistence; integration tests
 exercise real PostgreSQL and production capability functions separately.
+
+## Ticket 43 combined M2 status — 2026-11-01
+
+The 164-test / 79.71% result above is a historical M1 baseline, not a combined
+M2 rerun. Docker was unavailable and the configured `.env` database target was
+`localhost:5432/morale_gg`; the server was unreachable, and that target was not
+treated as disposable. Therefore `npm run test:coverage` was not run and current
+statement, branch, function, and line percentages are **not measured**. The
+70% statement target is consequently not reassessed for the combined codebase.
+
+The Ticket 43 integration fixture was extended to assert real finalized-Audit
+values in the public Leaderboard, but it requires PostgreSQL and was not
+executed here. Database-independent Leaderboard, Statistics, source-contract,
+auth, and seed-safety tests ran separately; results and exact limitations are
+recorded in [VERIFICATION.md](VERIFICATION.md#ticket-43-post-merge-integration--2026-11-01).

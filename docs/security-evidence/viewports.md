@@ -46,3 +46,32 @@ second browser are not claimed. Other route screenshots were generated but not
 individually given a manual visual-quality verdict. The reproducible full set
 and JSON results are under ignored `coverage/browser/` and
 `coverage/browser-results.json`. A rerun replaces that local output.
+
+## Ticket 43 combined M2 viewport rerun — 2026-11-01
+
+The post-merge browser matrix was **not run**. Docker Desktop's engine was
+unavailable and the configured PostgreSQL endpoint at `localhost:5432` was
+unreachable. No browser server was started against the existing non-disposable
+`morale_gg` target. This table records the current result honestly; `NOT RUN`
+is not a pass or a reproduced failure.
+
+| Route | 390px | 768px | 1440px | Reason |
+|---|---|---|---|---|
+| `/dev/sign-in` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/units` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/units/demo-unit-french-line-1` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/units/demo-unit-french-line-1/manage` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/events` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/events/demo-event-main-review` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/events/demo-event-main-review/manage` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/audits` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/statistics` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+| `/leaderboard` | NOT RUN | NOT RUN | NOT RUN | No isolated database/server |
+
+Ticket 41 previously inspected all four Leaderboard boards at these widths and
+reported no page-level overflow or sticky-column overlap after two fixes
+(documented in [VERIFICATION.md](../VERIFICATION.md#leaderboard-verification-2026-10-31-tkt-20261027-000041-001)).
+That is useful prior evidence, but it is not an independent Ticket 43 rerun.
+Ticket 43's static Leaderboard presentation regression passed 9/9, including
+the locally scrolling table, sticky columns, and horizontally scrollable board
+tabs; it does not establish live-browser geometry.
