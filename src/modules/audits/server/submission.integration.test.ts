@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 
 import { prisma } from "@/lib/prisma";
+import { getRankerStatistics } from "@/modules/statistics/ranker";
+import { createEventAtomicEventUnit } from "./atomic-units";
 
 import { getAuditForAtomicUnit } from "./reads";
 import { createAuditDraftForAtomicUnit, submitAudit } from "./submission";
@@ -32,9 +34,14 @@ test("Audit submission persists identity-only Players, results, roles, and immut
     data: { eventId: event.id, unitId: unit.id, status: "APPROVED" },
     select: { id: true },
   });
-  const atomicUnit = await prisma.atomicEventUnit.create({
-    data: { eventParticipationId: participation.id, isMandatory: true },
-    select: { id: true },
+  const atomicUnit = await createEventAtomicEventUnit({
+    userId: unit.commanderUserId,
+    eventId: event.id,
+    participationId: participation.id,
+    name: "QA submission unit",
+    side: "ATTACKER",
+    auditUnitType: "REGULAR",
+    isMandatory: true,
   });
   const existingPlayer = await prisma.player.create({
     data: { playerId: existingGamePlayerId, name: "Preserve this name" },
@@ -42,12 +49,20 @@ test("Audit submission persists identity-only Players, results, roles, and immut
   });
 
   try {
+    await assert.rejects(createAuditDraftForAtomicUnit({
+      userId: "unrelated-user",
+      atomicEventUnitId: atomicUnit.id,
+    }), /Unauthorized/i);
+    assert.equal(await prisma.audit.count({ where: { atomicEventUnitId: atomicUnit.id } }), 0);
     const draft = await createAuditDraftForAtomicUnit({
       userId: unit.commanderUserId,
       atomicEventUnitId: atomicUnit.id,
-      canSubmitAudit: async () => true,
     });
     assert.equal(draft.lifecycle, "DRAFT");
+    const statisticsTime = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    assert.equal((await getRankerStatistics("all-time", statisticsTime)).players.some(
+      (player) => player.gamePlayerId === existingGamePlayerId,
+    ), false);
     assert.equal(await getAuditForAtomicUnit(atomicUnit.id, null), null);
     await assert.rejects(
       () => createAuditDraftForAtomicUnit({
@@ -90,9 +105,15 @@ test("Audit submission persists identity-only Players, results, roles, and immut
           { playerId: existingGamePlayerId, role: "FLAG_BEARER" },
         ],
       },
-      canSubmitAudit: async () => true,
     });
     assert.equal(result.lifecycle, "FINAL");
+    const statistics = (await getRankerStatistics("all-time", statisticsTime)).players.find(
+      (player) => player.gamePlayerId === existingGamePlayerId,
+    );
+    assert.ok(statistics);
+    assert.equal(statistics.distinctEvents, 1);
+    assert.deepEqual(statistics.unitTypes[0].totals, { kills: 10, deaths: 1, assists: 2 });
+    assert.equal(statistics.unitTypes[0].auditAppearances, 1);
 
     const persisted = await prisma.audit.findUnique({
       where: { id: draft.id },

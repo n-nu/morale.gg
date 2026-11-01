@@ -1,6 +1,9 @@
 # Setup and Verification
 
-Use the [README setup](../README.md#setup) for prerequisites, the no-credential quick start, optional Google OAuth configuration, and the local development URL. The commands below are the repository's actual package scripts or installed Prisma/tsx commands. No aggregate test script is currently defined.
+Use the [README setup](../README.md#setup) for application setup. The canonical
+[QA plan](QA_PLAN.md) defines test layers and completion criteria. For Ticket 42
+evidence, use the disposable database procedure below rather than resetting a
+developer database. Historical submission results below remain dated evidence.
 
 ## Database
 
@@ -17,7 +20,9 @@ Expected migration status: the database schema is up to date.
 
 ## Tests
 
-There is no aggregate test script. Run the existing focused checks:
+`npm test` discovers and serializes all existing Node/tsx tests. It requires a
+migrated, seeded disposable database. `npm run test:coverage` runs the same suite
+with the [documented coverage scope](COVERAGE.md). Focused checks remain available:
 
 ```bash
 npm run test:website-admin
@@ -94,6 +99,90 @@ No hosted deployment was found or claimed. Google OAuth works for the existing l
 - `next start` with `DEV_SIGN_IN_ENABLED="true"`: `/dev/sign-in` returned 404, the header showed no demo link, and invoking the server action directly failed with "Development sign-in is disabled." without setting a cookie.
 - `npm run test:dev-sign-in` 2/2, `npm run test:auth-nav` 5/5, `npm run test:demo-seed` 4/4, `npm run lint`, `npm run type-check`, and `npm run build` passed.
 
+## Ticket 42 isolated reproduction (PowerShell)
+
+Do not run these suites against an existing developer database. The separate
+Compose project below uses PostgreSQL 16, loopback port 5542, and temporary
+in-memory storage; stopping/removing that QA container discards only its data.
+It does not use the application's named volume or container. Keep the database
+up until all tests and screenshots are collected. Environment variables below
+are process-local and override `.env`/`.env.local`; no local file is overwritten.
+
+```powershell
+npm ci
+docker compose -p morale-qa -f tests/compose.qa.yaml up -d --wait
+$env:DATABASE_URL='postgresql://morale_gg:qa-local-only@127.0.0.1:5542/morale_gg_qa'
+$env:POSTGRES_DB='morale_gg_qa'
+$env:POSTGRES_PORT='5542'
+$env:DEV_SIGN_IN_ENABLED='true'
+$env:UNITS_DEMO_MODE='false'
+$env:AUTH_SECRET = node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+npm run db:validate
+npm run db:generate
+npm run db:migrate:deploy
+npx prisma migrate status
+npm run demo:reset
+npm test
+npm run test:coverage
+npx next typegen
+npm run lint
+npm run type-check
+git diff --check
+npx playwright install chromium
+npm run dev -- --webpack --hostname 127.0.0.1 --port 3100
+```
+
+In a second terminal set the same QA `DATABASE_URL`, then run
+`npm run test:browser`. The server must have `DEV_SIGN_IN_ENABLED=true`, seeded
+QA data, and no conflicting `NODE_ENV`. Tests never seed/reset a database.
+Wait for all database integration tests to finish before browser mutation tests.
+The dev server uses webpack here to permit a comparison if the local Turbopack
+worker fails; it is not a change to the application's default bundler.
+
+After stopping the dev server, in the configured terminal:
+
+```powershell
+npm run build
+# If the local Turbopack worker crashes, record the failure and separately try:
+npm run build -- --webpack
+npm start -- --hostname 127.0.0.1 --port 3100
+```
+
+In the second terminal set `$env:QA_PRODUCTION='true'`, then run
+`npm run test:browser`. The production server must still have the explicit demo
+enablement flag: the check proves NODE_ENV isolation, not merely a disabled flag.
+The development and production tests intentionally skip the opposite environment;
+both runs are required. `npm run test:dev-sign-in` separately exercises direct
+action rejection in production/test/disabled development and unknown identities.
+
+Raw coverage, browser JSON, screenshots and optional logs belong under ignored
+`coverage/`; selected reviewed screenshots and concise durable results belong in
+`docs/security-evidence/`. Do not commit traces/cookies/session tokens or `.env`.
+After stopping the test servers, remove only the QA container/network with:
+
+```powershell
+docker compose -p morale-qa -f tests/compose.qa.yaml down
+```
+
+### Branch/review/release audit — 2026-10-29
+
+- Work branch: `qa/m2-foundation`, tracking `origin/qa/m2-foundation`; starting
+  commit `86ac18400c59565a0090d2167ea27974afd888c2`. M1 application baseline and
+  fetched `origin/main`: `e67ecb78f7e982172b789d8243de71bc5723ebd6`.
+- `git ls-remote --tags origin` confirms two meaningful releases: annotated
+  `milestone-0` peels to `89875adba3a8b04e679685adf04a6801a134c0d0`
+  (Milestone 0 artifacts); lightweight `milestone-1` points to `e67ecb7`
+  (M1 merge PR #26). Local tags agree. No M2 tag was created.
+- No project-level CHANGELOG or `.github` workflow/review template was found;
+  module changelogs, completed tickets and Git preserve history. Recommend a
+  concise M2 release note assembled by Emil from reviewed tickets, rather than
+  treating a template as release evidence.
+- Follow AGENT_WORKFLOW's ticket scope, ACTIVE → REVIEW → COMPLETED lifecycle,
+  validation and explicit authorization for commit/push/merge/tag. Use a focused
+  PR referencing Ticket 42, exact checks and limitations; obtain substantive peer
+  review before merge. Git history proves prior PR merges, not approval quality
+  or enforced branch protection. GitHub branch-protection settings and Ticket 42
+  PR/reviewer state were not independently verified. No peer review is claimed.
 ## Leaderboard Verification (2026-10-31, TKT-20261027-000041-001)
 
 - Database: fresh local schema, `npm run db:migrate:deploy`, then `npm run demo:reset` (29 FINAL Audits, 132 Players, 10 Events); reader smoke passed.
@@ -102,3 +191,31 @@ No hosted deployment was found or claimed. Google OAuth works for the existing l
 - Responsive (all four boards, all-time data): 390px, 768px, and 1440px have no page-level horizontal overflow and no sticky-column overlap; tables scroll locally at 390px (and at 768px for the wider boards) and fit at 1440px. Two defects found and fixed during the check: the rank column rendered narrower than the sticky name column's offset (overlapping the first metric), and the added header link compressed the development-only sign-in button at 768px.
 - Browser: window switching keeps board and branch; header highlights Leaderboard; `/statistics` links to each board; Player pages show `KDR 2.07` instead of the raw float. No server errors or browser console errors.
 - `npm run lint`, `npm run type-check`, `npm run build` (route `/leaderboard` generated), and `git diff --check` passed. Prisma schema unchanged.
+
+### Milestone 2 reconciliation — 2026-11-01
+
+- Ticket 41 PR #27 merged to `main` as `758bb5d3e0392633a14d70e87cc7c103d3c6fbf5`;
+  final source branch HEAD was `7fa52a357f89549865e83ff0338fa0a19952b477`.
+  GitHub recorded an APPROVED substantive review by Emil (`n-nu`) on
+  implementation commit `e1e8973809a68c6084801c71e252d53e95544ac0`; no checks
+  were configured on the PR. Its completion record is archived separately.
+- Ticket 42 dependency remediation upgraded Next.js / eslint-config-next to
+  16.4.3 and Prisma / client / PostgreSQL adapter to 7.10.1. On the remediated
+  branch, `npm ci`, lint, type-check, build, Prisma validate/generate, focused
+  auth/security tests, and `git diff --check` passed. Production audit is 0;
+  full audit retains 19 moderate development-tool findings. Docker was
+  unavailable, so database-backed coverage was not rerun; the documented
+  164-test / 79.71% M1 baseline remains historical evidence.
+- After merging PR #27 into `qa/m2-foundation`, the combined production build
+  passed and included `/leaderboard`; Leaderboard reader/model tests passed
+  14/14 and presentation tests passed 9/9. Combined lint, type-check, and
+  `git diff --check` also passed.
+- Ticket 42 PR #28 is open against `main` from `qa/m2-foundation`; the combined
+  verification point is `5a137dbc6e65e76ec9e9e3a29ca9e03276d3ff4f`. It has a
+  clean merge state and no configured checks. Independent review was requested
+  from `ChanMan64`. The
+  GitHub branch-protection endpoint returned 404 (no protection configured);
+  repository review convention is still followed, and no review/approval is
+  claimed while the request is pending.
+- Ticket 43 remains blocked until Ticket 42 and its child remediation have
+  completed and both parent tickets are merged to `main`.
