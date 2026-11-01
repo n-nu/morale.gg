@@ -217,6 +217,93 @@ docker compose -p morale-qa -f tests/compose.qa.yaml down
   (`n-nu`) authored the PR; Emil submitted a substantive COMMENT review and,
   at his explicit direction, proceeded with merge without waiting for
   `ChanMan64`. The comment is not represented as an approval.
-- Both blockers are now complete and merged. Ticket 43 is READY for its
-  post-merge integration handoff; its implementation and final combined QA
-  remain unstarted.
+- Both blockers were complete and merged when Ticket 43 became READY for its
+  post-merge integration handoff. Execution began on
+  `qa/m2-final-integration` at `1a34fda7357f384cd438bda4149d54ec64241589`;
+  current results follow.
+
+## Ticket 43 final review — 2026-11-01
+
+### Refreshed state and implementation review
+
+- The refreshed PR #29 head before final-review evidence corrections was
+  `cd8a02b100e86970ef2fc496e6730513bf38a35b`, branch
+  `qa/m2-final-integration`, base `main`; PR was OPEN with merge state CLEAN.
+  Ticket 43 remained in REVIEW. Ticket 41 and 42 merge commits remain ancestors.
+- Source review confirmed `getLeaderboard` composes approved Ranker,
+  Commander, General, and all-Units Direct readers. Windows use canonical Event
+  times and the Audits-owned effective-finalized source. Player K/D and
+  (K+A)/D are pooled from raw totals, per-Audit averages remain arithmetic
+  averages of raw counts, and zero-denominator states are preserved. Supported
+  boards partition by Regular/Rifles/Cavalry/Artillery; Generals are not
+  type-partitioned. Query values are allowlisted, Player links use the stable
+  public game ID with safe name fallback, and Unit rows use the existing public
+  Unit route. The PR contains no production-code changes, and no material
+  Leaderboard implementation defect was substantiated.
+
+### Isolated database and integration results
+
+- `npm ci` succeeded. Docker Desktop 29.8.0 ran project
+  `morale-m2-ticket43` from `tests/compose.qa.yaml`: PostgreSQL 16, loopback-only
+  `127.0.0.1:5542`, tmpfs-backed disposable storage. The existing `.env`
+  database at `localhost:5432/morale_gg` was not used.
+- Applied the 20 project migrations and ran Prisma migration status:
+  **Database schema is up to date**. `npm run demo:reset` completed with 41
+  Units, 132 Players, 10 Events, and 29 FINAL / 7 DRAFT Audits; the seeded
+  Statistics reader smoke succeeded.
+- The Ticket 43 finalized Audit → Ranker → Leaderboard integration case passed,
+  including pooled values, window/type behavior, and stable public Player
+  identity. The full `npm run test:coverage` suite passed **187/187 tests**
+  (145 server/domain; 42 presentation/calendar), zero failed/skipped. Broader
+  database-backed Statistics/Audit integration tests were included in that
+  suite and passed.
+- Measured combined coverage: statements **81.08%** (5,749/7,090), branches
+  **79.18%** (1,430/1,806), functions **84.70%** (576/680), lines **81.08%**
+  (5,749/7,090). The 70% statement target is met. Statements are 1.37 points
+  above the historical M1 79.71% baseline; see [COVERAGE.md](COVERAGE.md).
+
+### Browser, fresh setup, and security evidence
+
+- The focused Ticket 43 Playwright matrix passed **3/3** viewport tests and the
+  complete `npm run test:browser` passed **7**, with **2 production-only tests
+  skipped** because the tested server was `next dev`. At 390/768/1440px, the
+  required public routes (`/dev/sign-in`, `/statistics`, `/leaderboard`,
+  `/events`, and the public Event/Battle Structure) and root-manager routes
+  (Unit management, Event management/Battle Structure, `/audits`) returned
+  HTTP 200, rendered H1s and had no page-level horizontal overflow or browser
+  runtime errors. Leaderboard sort, board, window, and branch interactions
+  passed at all three widths; the wide table was locally scrollable at mobile
+  and tablet widths. Details and QA42-UI1 assessment are in
+  [viewport evidence](security-evidence/viewports.md#ticket-43-combined-m2-viewport-verification--2026-11-01).
+- Fresh setup used `npm ci`, the isolated database, Prisma validate/generate,
+  migrations/status, and `npm run demo:reset`. Development `/dev/sign-in`,
+  session creation/rotation/sign-out, root management routes, and limited-user
+  Unit-management denial were exercised in Chromium. Production `next start`
+  demo-auth cases were not rerun; the earlier Ticket 42 production-mode
+  evidence remains the latest.
+- Final `npm run lint`, `npm run type-check`, `npm run build`,
+  `npm run db:validate`, `npm run db:generate`, and `git diff --check` all
+  passed, run sequentially. The production build includes `/leaderboard`.
+- Current dependency audit: production **0** findings; complete dependency
+  tree **19 moderate**, **0 high/critical**, all documented development-tool
+  advisories. No dependency changes were made during this final review.
+
+### Security, limitations, and release state
+
+- The M2 Leaderboard threat and OWASP reassessments are recorded in
+  [THREAT_MODEL.md](THREAT_MODEL.md) and [OWASP_BASELINE.md](OWASP_BASELINE.md).
+  They document public-data/query boundaries and all-time/unpaginated load risk;
+  no Critical/High production security issue or other new vulnerability was
+  substantiated.
+- Existing release tags are `milestone-0` at
+  `c0420382ba63403983ca4a2d781cfdf9ccb6fbcc` and `milestone-1` at
+  `e67ecb78f7e982172b789d8243de71bc5723ebd6`; the two-tag minimum is met.
+  There is no `milestone-2` tag.
+- Before final review submission, PR #29 remained open from
+  `qa/m2-final-integration` to `main`; the final review and merge decision are
+  recorded in the Ticket 43 record and [M2_EVIDENCE.md](M2_EVIDENCE.md).
+- Remaining limitations are the 19 moderate development-tool advisories, no
+  fresh production-mode demo-auth browser run, and the rechecked QA42-UI1
+  narrow Event-manager layout issue. QA42-UI1 remains a known, non-blocking
+  mobile usability limitation; its current evidence is in
+  [viewport evidence](security-evidence/viewports.md).

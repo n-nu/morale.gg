@@ -63,3 +63,15 @@ or credentials belong in committed evidence. A second browser is optional.
 - Reconcile Ticket 42, its backlog row, scope and evidence. Follow
   [AGENT_WORKFLOW.md](../AGENT_WORKFLOW.md) for REVIEW and completion. Emil owns
   final M2 tagging; Ticket 43 owns post-merge M2 verification.
+
+## Ticket 43 combined M2 follow-up — 2026-11-01
+
+The combined regression plan adds the Leaderboard service/model/presentation
+and finalized-Audit-to-Leaderboard integration fixture to the M1 checks above.
+The Ticket 43 final review used a loopback-only PostgreSQL 16 Compose service
+with tmpfs storage, then ran the database-backed integration/coverage suite,
+fresh demo reset, and Chromium viewport checks. The disposable setup and exact
+results are recorded in
+[VERIFICATION.md](VERIFICATION.md#ticket-43-final-review--2026-11-01). Never
+redirect these tests or destructive demo-reset/fixture cleanup to a developer
+database.

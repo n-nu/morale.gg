@@ -66,3 +66,25 @@ The direct-action denial test substitutes only Next navigation to run outside
 Next's bundler; it does not simulate session success. Real cookie/session success
 is tested in the browser. Existing unit tests mock persistence; integration tests
 exercise real PostgreSQL and production capability functions separately.
+
+## Ticket 43 combined M2 result — 2026-11-01
+
+The complete `npm run test:coverage` run used the isolated PostgreSQL 16
+container from [VERIFICATION.md](VERIFICATION.md#ticket-43-final-review--2026-11-01),
+not the configured developer database. All **187/187 tests passed** (145
+server/domain and 42 presentation/calendar); none failed or were skipped.
+
+| Metric | Covered / total | Percent |
+|---|---:|---:|
+| Statements | 5,749 / 7,090 | 81.08% |
+| Lines | 5,749 / 7,090 | 81.08% |
+| Functions | 576 / 680 | 84.70% |
+| Branches | 1,430 / 1,806 | 79.18% |
+
+The meaningful statement-coverage target is at least 70%; it is **met**.
+Compared with the historical M1 result of 79.71% statements, the combined
+result is higher by **1.37 percentage points**. The denominator changed with
+the combined code and the additional tests; the historical M1 figures above
+remain dated baseline evidence, not the current result. The new finalized
+Audit → Ranker → Leaderboard PostgreSQL integration assertions were executed
+in this run and passed.

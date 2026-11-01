@@ -67,3 +67,28 @@ success uses real sessions and persistence; the direct denial unit test substitu
 only Next navigation so it can run outside Next's bundler. No real user tokens,
 cookies, secrets or traces are committed. Dependency advisories and follow-up
 priorities remain in [OWASP_BASELINE](../OWASP_BASELINE.md).
+
+## Ticket 43 combined-code reassessment — 2026-11-01
+
+On the combined Ticket 43 starting commit, the following database-independent
+checks passed:
+
+```powershell
+npm.cmd run test:dev-sign-in
+npm.cmd run test:auth-nav
+```
+
+Results: 3/3 direct demo-sign-in guard tests and 5/5 Auth.js navigation tests.
+The direct-action tests confirm that disabled environments and arbitrary
+identities are rejected before database access; navigation continues to derive
+identity from the server-resolved session. The combined production build also
+passed.
+
+Ticket 43 repeated the development-browser path against the loopback-only
+PostgreSQL 16 QA database. Playwright verified root demo sign-in, ordinary
+Auth.js session creation and rotation, limited-user denial of Unit management,
+and sign-out; the entire dev viewport suite also passed. The two
+production-only browser cases were skipped because the server under test was
+`next dev`. The earlier Ticket 42 production `next start` / direct-action
+demonstration remains the latest production-browser evidence; no fresh
+production-mode browser result is claimed here.
