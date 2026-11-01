@@ -22,8 +22,6 @@ export const metadata: Metadata = {
     "morale.gg: statistics, rosters, and event management for organized multiplayer-game communities.",
 };
 
-const plannedNav = ["Leaderboards"];
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -39,12 +37,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             >
               morale.gg
             </Link>
-            <div className="flex items-center gap-2 md:gap-7">
-              {plannedNav.map((item) => (
-                <span key={item} title="Coming soon" className="hidden cursor-default text-xs font-bold uppercase tracking-[0.1em] text-muted/50 lg:inline">
-                  {item}
-                </span>
-              ))}
+            <div className="flex shrink-0 items-center gap-2 md:gap-7">
+              <NavLink href="/leaderboard">Leaderboard</NavLink>
               <NavLink href="/players">Players</NavLink>
               <NavLink href="/statistics">Statistics</NavLink>
               <NavLink href="/events">Events</NavLink>

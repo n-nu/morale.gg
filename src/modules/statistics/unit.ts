@@ -46,6 +46,17 @@ export type OrganizationalUnitPerformance = {
   unitTypes: UnitPerformanceByType[];
 };
 
+export type DirectUnitPerformanceForUnit = {
+  unitId: string;
+  unitName: string;
+  unitTypes: UnitPerformanceByType[];
+};
+
+export type DirectUnitPerformanceByUnit = {
+  window: StatisticsWindow;
+  units: DirectUnitPerformanceForUnit[];
+};
+
 export type AverageUnitPerformance = {
   window: StatisticsWindow;
   unitId: string;
@@ -143,6 +154,46 @@ export async function getDirectUnitPerformance(
     window,
     unitId,
     unitTypes: toPerformanceByType(summarizeByType(directObservations)),
+  };
+}
+
+/**
+ * Direct Unit Performance for every represented Unit in one source read.
+ * Each entry equals what `getDirectUnitPerformance` returns for that Unit.
+ */
+export async function getDirectUnitPerformanceForAllUnits(
+  window: StatisticsWindow = DEFAULT_STATISTICS_WINDOW,
+  now: Date = new Date(),
+): Promise<DirectUnitPerformanceByUnit> {
+  const range = getStatisticsWindowRange(window, now);
+  const eventTimeRows = await getCanonicalEventTimes();
+  const selectedEventIds = new Set(
+    eventTimeRows.filter(({ occurredAt }) => isEventTimeInStatisticsWindow(occurredAt, range)).map(({ eventId }) => eventId),
+  );
+  if (selectedEventIds.size === 0) {
+    return { window, units: [] };
+  }
+
+  const source = await getEffectiveFinalizedAuditObservations([...selectedEventIds]);
+  const byUnit = new Map<string, { unitName: string; observations: RawObservation[] }>();
+  for (const observation of source.observations) {
+    const entry = byUnit.get(observation.representedUnitId) ?? { unitName: "", observations: [] };
+    if (entry.unitName === "" && observation.representedUnitName.trim() !== "") {
+      entry.unitName = observation.representedUnitName.trim();
+    }
+    entry.observations.push(observation);
+    byUnit.set(observation.representedUnitId, entry);
+  }
+
+  return {
+    window,
+    units: [...byUnit.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([unitId, entry]) => ({
+        unitId,
+        unitName: entry.unitName,
+        unitTypes: toPerformanceByType(summarizeByType(entry.observations)),
+      })),
   };
 }
 

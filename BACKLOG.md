@@ -22,8 +22,8 @@ merged into `main`.
 
 | Ticket | Owner | Priority | State | Dependencies |
 |---|---|---:|---|---|
-| [TKT-20261027-000041-001 — Leaderboard Page and Statistics Presentation Expansion](tickets/OPEN/TKT-20261027-000041-001.md) | Developer 1 | high | READY | none |
-| [TKT-20261027-000042-001 — Parallel QA, Coverage, and Security Foundation](tickets/ACTIVE/TKT-20261027-000042-001.md) | Emil | high | ACTIVE | none; independent of Developer 1 |
+| [TKT-20261027-000041-001 — Leaderboard Page and Statistics Presentation Expansion](tickets/COMPLETED/2026/11/TKT-20261027-000041-001.md) | Developer 1 | high | COMPLETED | merged via PR #27 (`758bb5d`) |
+| [TKT-20261027-000042-001 — Parallel QA, Coverage, and Security Foundation](tickets/REVIEW/TKT-20261027-000042-001.md) | Emil | high | REVIEW | none; independent of Developer 1 |
 | [TKT-20261101-000044-001 — Patch Reachable Dependency Security Advisories](tickets/REVIEW/TKT-20261101-000044-001.md) | Emil | high | REVIEW | child of 000042 |
 | [TKT-20261027-000043-001 — Post-Merge Integration, Leaderboard Verification, and Final QA Evidence](tickets/OPEN/TKT-20261027-000043-001.md) | Developer 2-B | high | DRAFT | blocked by 000041 and 000042 until both are completed and merged to `main` |
 

@@ -49,6 +49,13 @@ MVP presentation tests can be run together:
 npm exec -- tsx --test src/modules/units/components/management.test.tsx src/modules/players/components/roster.test.tsx src/modules/players/components/directory.test.tsx "src/app/events/[eventId]/battle-structure.test.tsx" src/app/events/battle-structure-public.test.tsx src/modules/statistics/player-presentation.test.tsx src/modules/statistics/unit-presentation.test.tsx src/modules/statistics/presentation.test.tsx
 ```
 
+Leaderboard tests (Milestone 2). The reader test mocks Prisma and needs no database:
+
+```bash
+npm exec -- tsx --conditions react-server --test src/modules/statistics/leaderboard-model.test.ts src/modules/statistics/leaderboard.test.ts
+npm exec -- tsx --test src/modules/statistics/leaderboard-presentation.test.tsx
+```
+
 On Windows PowerShell, replace `npm` with `npm.cmd` if script execution policy blocks `npm.ps1`.
 
 ## Static Checks and Build
@@ -176,5 +183,32 @@ docker compose -p morale-qa -f tests/compose.qa.yaml down
   review before merge. Git history proves prior PR merges, not approval quality
   or enforced branch protection. GitHub branch-protection settings and Ticket 42
   PR/reviewer state were not independently verified. No peer review is claimed.
-- Ticket 41 is neither consumed nor awaited. Ticket 43 is the post-merge gate;
-  Emil retains final release authority.
+## Leaderboard Verification (2026-10-31, TKT-20261027-000041-001)
+
+- Database: fresh local schema, `npm run db:migrate:deploy`, then `npm run demo:reset` (29 FINAL Audits, 132 Players, 10 Events); reader smoke passed.
+- Leaderboard tests: model 9/9, readers 5/5 (mocked Prisma), presentation 9/9. Existing presentation suite plus Leaderboard presentation: 38/38. Existing Statistics unit tests (Commander, General, Unit, windows, ratios, attendance): 8/8.
+- Live reader equivalence against the demo database (14-day, 30-day, all-time): 286 checks passed — every Players, Commanders, and Generals row equals its Ranker, Commander, or General reader entry; `getDirectUnitPerformanceForAllUnits` equals `getDirectUnitPerformance` for every Unit; no internal `Player.id` appears in any board payload.
+- Responsive (all four boards, all-time data): 390px, 768px, and 1440px have no page-level horizontal overflow and no sticky-column overlap; tables scroll locally at 390px (and at 768px for the wider boards) and fit at 1440px. Two defects found and fixed during the check: the rank column rendered narrower than the sticky name column's offset (overlapping the first metric), and the added header link compressed the development-only sign-in button at 768px.
+- Browser: window switching keeps board and branch; header highlights Leaderboard; `/statistics` links to each board; Player pages show `KDR 2.07` instead of the raw float. No server errors or browser console errors.
+- `npm run lint`, `npm run type-check`, `npm run build` (route `/leaderboard` generated), and `git diff --check` passed. Prisma schema unchanged.
+
+### Milestone 2 reconciliation — 2026-11-01
+
+- Ticket 41 PR #27 merged to `main` as `758bb5d3e0392633a14d70e87cc7c103d3c6fbf5`;
+  final source branch HEAD was `7fa52a357f89549865e83ff0338fa0a19952b477`.
+  GitHub recorded an APPROVED substantive review by Emil (`n-nu`) on
+  implementation commit `e1e8973809a68c6084801c71e252d53e95544ac0`; no checks
+  were configured on the PR. Its completion record is archived separately.
+- Ticket 42 dependency remediation upgraded Next.js / eslint-config-next to
+  16.4.3 and Prisma / client / PostgreSQL adapter to 7.10.1. On the remediated
+  branch, `npm ci`, lint, type-check, build, Prisma validate/generate, focused
+  auth/security tests, and `git diff --check` passed. Production audit is 0;
+  full audit retains 19 moderate development-tool findings. Docker was
+  unavailable, so database-backed coverage was not rerun; the documented
+  164-test / 79.71% M1 baseline remains historical evidence.
+- After merging PR #27 into `qa/m2-foundation`, the combined production build
+  passed and included `/leaderboard`; Leaderboard reader/model tests passed
+  14/14 and presentation tests passed 9/9. Combined lint, type-check, and
+  `git diff --check` also passed.
+- Ticket 43 remains blocked until Ticket 42 and its child remediation have
+  completed and both parent tickets are merged to `main`.
