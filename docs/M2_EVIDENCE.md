@@ -7,8 +7,12 @@ submission report or a release record.
 
 - Ticket 43 started on `qa/m2-final-integration` at
   `1a34fda7357f384cd438bda4149d54ec64241589`, equal to `main` and `origin/main`.
-- Ticket 43 PR [#29](https://github.com/n-nu/morale.gg/pull/29) is OPEN from
-  `qa/m2-final-integration` to `main`; it has not been merged.
+- Ticket 43 PR [#29](https://github.com/n-nu/morale.gg/pull/29) merged from
+  `qa/m2-final-integration` at final head
+  `ce8403f6266452b524727367f5b564e6ab8511c8`, as merge commit
+  `522b8485bf685db67c47ad83ea04bf8809cb51c5`.
+- Emil submitted a substantive COMMENT review on the final PR head. As PR
+  author, the comment is not an independent peer review.
 - [Ticket 41 completion record](../tickets/COMPLETED/2026/11/TKT-20261027-000041-001.md)
   documents PR #27, merged as `758bb5d3e0392633a14d70e87cc7c103d3c6fbf5`.
   GitHub records Emil's substantive APPROVED review; no requested changes.
@@ -67,6 +71,7 @@ submission report or a release record.
   and `milestone-1` at `e67ecb78f7e982172b789d8243de71bc5723ebd6`. The two-tag
   minimum is met. No `milestone-2` or final release tag exists.
 - Changelog entry: [CHANGELOG.md](../CHANGELOG.md).
-- PR #29 final review and merge decision remain pending. Milestone tagging,
-  the final report/PDF, and submission remain Emil's next phase; no
-  `milestone-2` tag or final submission report/PDF was created.
+- PR #29 final review and merge are complete; Ticket 43 is archived as
+  COMPLETED. Milestone tagging, the final report/PDF, and submission remain
+  Emil's next phase; no `milestone-2` tag or final submission report/PDF was
+  created.

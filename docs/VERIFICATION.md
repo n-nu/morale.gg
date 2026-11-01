@@ -299,9 +299,11 @@ docker compose -p morale-qa -f tests/compose.qa.yaml down
   `c0420382ba63403983ca4a2d781cfdf9ccb6fbcc` and `milestone-1` at
   `e67ecb78f7e982172b789d8243de71bc5723ebd6`; the two-tag minimum is met.
   There is no `milestone-2` tag.
-- Before final review submission, PR #29 remained open from
-  `qa/m2-final-integration` to `main`; the final review and merge decision are
-  recorded in the Ticket 43 record and [M2_EVIDENCE.md](M2_EVIDENCE.md).
+- PR #29's final head was `ce8403f6266452b524727367f5b564e6ab8511c8`;
+  Emil submitted a substantive COMMENT review (not independent peer review,
+  because he is the author), and the PR merged as
+  `522b8485bf685db67c47ad83ea04bf8809cb51c5`. The completion record and
+  [M2_EVIDENCE.md](M2_EVIDENCE.md) record the lifecycle.
 - Remaining limitations are the 19 moderate development-tool advisories, no
   fresh production-mode demo-auth browser run, and the rechecked QA42-UI1
   narrow Event-manager layout issue. QA42-UI1 remains a known, non-blocking

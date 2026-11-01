@@ -25,7 +25,7 @@ merged into `main`.
 | [TKT-20261027-000041-001 — Leaderboard Page and Statistics Presentation Expansion](tickets/COMPLETED/2026/11/TKT-20261027-000041-001.md) | Developer 1 | high | COMPLETED | merged via PR #27 (`758bb5d`) |
 | [TKT-20261027-000042-001 — Parallel QA, Coverage, and Security Foundation](tickets/COMPLETED/2026/11/TKT-20261027-000042-001.md) | Emil | high | COMPLETED | merged via PR #28 (`0a310e8`) |
 | [TKT-20261101-000044-001 — Patch Reachable Dependency Security Advisories](tickets/COMPLETED/2026/11/TKT-20261101-000044-001.md) | Emil | high | COMPLETED | child of 000042; merged via PR #28 |
-| [TKT-20261027-000043-001 — Post-Merge Integration, Leaderboard Verification, and Final QA Evidence](tickets/REVIEW/TKT-20261027-000043-001.md) | Emil | high | REVIEW | blockers 000041 and 000042 completed and merged to `main` |
+| [TKT-20261027-000043-001 — Post-Merge Integration, Leaderboard Verification, and Final QA Evidence](tickets/COMPLETED/2026/11/TKT-20261027-000043-001.md) | Emil | high | COMPLETED | merged via PR #29 (`522b848`) |
 
 **Scheduling guidance:** keep the full sequence within one week where practical.
 Developer 1 targets 1–2 days; Developer 2-A targets 2–3 days while D1 works;
