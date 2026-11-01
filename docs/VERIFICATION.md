@@ -44,6 +44,13 @@ MVP presentation tests can be run together:
 npm exec -- tsx --test src/modules/units/components/management.test.tsx src/modules/players/components/roster.test.tsx src/modules/players/components/directory.test.tsx "src/app/events/[eventId]/battle-structure.test.tsx" src/app/events/battle-structure-public.test.tsx src/modules/statistics/player-presentation.test.tsx src/modules/statistics/unit-presentation.test.tsx src/modules/statistics/presentation.test.tsx
 ```
 
+Leaderboard tests (Milestone 2). The reader test mocks Prisma and needs no database:
+
+```bash
+npm exec -- tsx --conditions react-server --test src/modules/statistics/leaderboard-model.test.ts src/modules/statistics/leaderboard.test.ts
+npm exec -- tsx --test src/modules/statistics/leaderboard-presentation.test.tsx
+```
+
 On Windows PowerShell, replace `npm` with `npm.cmd` if script execution policy blocks `npm.ps1`.
 
 ## Static Checks and Build
@@ -86,3 +93,12 @@ No hosted deployment was found or claimed. Google OAuth works for the existing l
 - `npm run dev` + `/dev/sign-in`: signing in as Demo Root Commander reached `/units/demo-unit-french-army/manage`, `/events/demo-event-main-review/manage`, `/events/create`, and `/audits`; sign-out cleared the session; the Limited Roster Manager was denied French Unit management.
 - `next start` with `DEV_SIGN_IN_ENABLED="true"`: `/dev/sign-in` returned 404, the header showed no demo link, and invoking the server action directly failed with "Development sign-in is disabled." without setting a cookie.
 - `npm run test:dev-sign-in` 2/2, `npm run test:auth-nav` 5/5, `npm run test:demo-seed` 4/4, `npm run lint`, `npm run type-check`, and `npm run build` passed.
+
+## Leaderboard Verification (2026-10-31, TKT-20261027-000041-001)
+
+- Database: fresh local schema, `npm run db:migrate:deploy`, then `npm run demo:reset` (29 FINAL Audits, 132 Players, 10 Events); reader smoke passed.
+- Leaderboard tests: model 9/9, readers 5/5 (mocked Prisma), presentation 9/9. Existing presentation suite plus Leaderboard presentation: 38/38. Existing Statistics unit tests (Commander, General, Unit, windows, ratios, attendance): 8/8.
+- Live reader equivalence against the demo database (14-day, 30-day, all-time): 286 checks passed — every Players, Commanders, and Generals row equals its Ranker, Commander, or General reader entry; `getDirectUnitPerformanceForAllUnits` equals `getDirectUnitPerformance` for every Unit; no internal `Player.id` appears in any board payload.
+- Responsive (all four boards, all-time data): 390px, 768px, and 1440px have no page-level horizontal overflow and no sticky-column overlap; tables scroll locally at 390px (and at 768px for the wider boards) and fit at 1440px. Two defects found and fixed during the check: the rank column rendered narrower than the sticky name column's offset (overlapping the first metric), and the added header link compressed the development-only sign-in button at 768px.
+- Browser: window switching keeps board and branch; header highlights Leaderboard; `/statistics` links to each board; Player pages show `KDR 2.07` instead of the raw float. No server errors or browser console errors.
+- `npm run lint`, `npm run type-check`, `npm run build` (route `/leaderboard` generated), and `git diff --check` passed. Prisma schema unchanged.

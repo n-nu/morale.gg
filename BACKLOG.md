@@ -13,6 +13,31 @@ and participation; battlefield structure; immutable Audits; and public,
 query-derived Event, Player, and Unit statistics. See the canonical
 requirements for exact implemented behavior and deferred functionality.
 
+## Milestone 2
+
+The Milestone 2 handoff is organized as three parent tickets. Developer 1 and
+Developer 2-A are independent and may proceed in parallel. Developer 2-B is
+deliberately held in `DRAFT` until both preceding tickets are completed and
+merged into `main`.
+
+| Ticket | Owner | Priority | State | Dependencies |
+|---|---|---:|---|---|
+| [TKT-20261027-000041-001 — Leaderboard Page and Statistics Presentation Expansion](tickets/REVIEW/TKT-20261027-000041-001.md) | Developer 1 | high | REVIEW | none |
+| [TKT-20261027-000042-001 — Parallel QA, Coverage, and Security Foundation](tickets/OPEN/TKT-20261027-000042-001.md) | Developer 2-A | high | READY | none; independent of Developer 1 |
+| [TKT-20261027-000043-001 — Post-Merge Integration, Leaderboard Verification, and Final QA Evidence](tickets/OPEN/TKT-20261027-000043-001.md) | Developer 2-B | high | DRAFT | blocked by 000041 and 000042 until both are completed and merged to `main` |
+
+**Scheduling guidance:** keep the full sequence within one week where practical.
+Developer 1 targets 1–2 days; Developer 2-A targets 2–3 days while D1 works;
+Developer 2-B targets 1–2 days after both merges, leaving Emil a final review
+and submission buffer. Trim optional presentation/filter breadth before
+mandatory QA, security, and Milestone 2 evidence.
+
+These are new parent tickets; no existing open or active ticket was reused.
+Historical MVP leaderboard references and completed Statistics tickets remain
+historical context and do not duplicate this Milestone 2 scope. Parent tickets
+authorize and encourage bounded child tickets; see each ticket for the exact
+scope and governance conditions.
+
 ## Post-Merge Closeout
 
 - **TKT-20260928-000032-001 — Unit Management Surface Modernization and

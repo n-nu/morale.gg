@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { describeRatio, formatRatio } from "./leaderboard-model";
 import type { RatioMetric } from "./ratios";
 import {
   DEFAULT_STATISTICS_WINDOW,
@@ -45,7 +46,7 @@ export function resolveStatisticsWindow(
 }
 
 export function StatisticsRatio({ ratio }: { ratio: RatioMetric }) {
-  return <>{ratio.display}</>;
+  return <span title={describeRatio(ratio)}>{formatRatio(ratio)}</span>;
 }
 
 export function StatisticsLoadingState({ message = "Loading statistics…" }: { message?: string }) {

@@ -8,6 +8,7 @@ import {
   type StatisticsWindow,
 } from "@/modules/statistics";
 import type { AttendanceSummary } from "@/modules/statistics/attendance";
+import { formatRatio } from "@/modules/statistics/leaderboard-model";
 
 export async function UnitRoster({
   unitId,
@@ -36,7 +37,7 @@ export async function UnitRoster({
               kills: stats.totals.kills,
               deaths: stats.totals.deaths,
               assists: stats.totals.assists,
-              kdr: stats.killDeathRatio.display,
+              kdr: formatRatio(stats.killDeathRatio),
             },
           ])) as NonNullable<RosterEntry["ranker"]>["unitTypes"],
         });
