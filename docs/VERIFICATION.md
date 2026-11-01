@@ -210,12 +210,13 @@ docker compose -p morale-qa -f tests/compose.qa.yaml down
   passed and included `/leaderboard`; Leaderboard reader/model tests passed
   14/14 and presentation tests passed 9/9. Combined lint, type-check, and
   `git diff --check` also passed.
-- Ticket 42 PR #28 is open against `main` from `qa/m2-foundation`; the combined
-  verification point is `5a137dbc6e65e76ec9e9e3a29ca9e03276d3ff4f`. It has a
-  clean merge state and no configured checks. Independent review was requested
-  from `ChanMan64`. The
-  GitHub branch-protection endpoint returned 404 (no protection configured);
-  repository review convention is still followed, and no review/approval is
-  claimed while the request is pending.
-- Ticket 43 remains blocked until Ticket 42 and its child remediation have
-  completed and both parent tickets are merged to `main`.
+- Ticket 42 PR #28 merged from `qa/m2-foundation` at source HEAD
+  `b80b901043ff6b7807d79c481b9b6ac0f06352dd`; merge commit is
+  `0a310e88463f8037c418bb1cffbbd3500d166e46`. No CI checks or branch
+  protection were configured. GitHub rejected an APPROVE review because Emil
+  (`n-nu`) authored the PR; Emil submitted a substantive COMMENT review and,
+  at his explicit direction, proceeded with merge without waiting for
+  `ChanMan64`. The comment is not represented as an approval.
+- Both blockers are now complete and merged. Ticket 43 is READY for its
+  post-merge integration handoff; its implementation and final combined QA
+  remain unstarted.
