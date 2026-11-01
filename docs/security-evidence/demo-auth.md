@@ -84,10 +84,11 @@ identities are rejected before database access; navigation continues to derive
 identity from the server-resolved session. The combined production build also
 passed.
 
-The prior Ticket 42 positive development login, real-session authorization,
-logout, and production `next start`/direct-action demonstration above remains
-the latest end-to-end before/control/after evidence. It was not repeated for
-Ticket 43: Docker was unavailable, `localhost:5432` had no PostgreSQL server,
-and this checkout's configured `morale_gg` database was not treated as a
-disposable test target. Do not interpret the current unit/build checks as a
-fresh production-browser demonstration.
+Ticket 43 repeated the development-browser path against the loopback-only
+PostgreSQL 16 QA database. Playwright verified root demo sign-in, ordinary
+Auth.js session creation and rotation, limited-user denial of Unit management,
+and sign-out; the entire dev viewport suite also passed. The two
+production-only browser cases were skipped because the server under test was
+`next dev`. The earlier Ticket 42 production `next start` / direct-action
+demonstration remains the latest production-browser evidence; no fresh
+production-mode browser result is claimed here.

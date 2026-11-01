@@ -50,18 +50,21 @@ or authorization changes. Concrete evidence and limitations are linked from
 
 ## M2 Leaderboard reassessment — 2026-11-01
 
-This source-level reassessment covers the merged `/leaderboard` surface and
-does not claim a penetration test or a fresh browser/database run.
+This focused reassessment covers the merged `/leaderboard` surface and final
+isolated-database/Chromium regression. It is not a penetration test.
 
 | Surface | Assessment and evidence | Residual risk |
 |---|---|---|
 | Public data exposure | Leaderboard reads are public, consistent with the system's public Statistics policy. Its subjects expose the stable game Player ID and public display-name fallback, or a Unit route identifier/name; the output does not include Audit, Event, participation, or internal Player-row identifiers. Reader tests check DTO identity boundaries; the added PostgreSQL integration assertions cover the Player DTO when run. | Public Player/Unit statistics are scrapeable. Privacy policy and rate limits are not configured. |
 | Query parameters | `parseLeaderboardQuery` allowlists board, Unit type, sort column, direction, and the shared window; unknown/repeated values resolve to safe defaults. It does not construct SQL. Model tests cover invalid, repeated, and board-incompatible parameters. | These checks bound accepted options, not request rate or total source-row volume. |
-| Access assumptions | The page performs public read-only Statistics queries; no protected write or authority check is bypassed. Draft data is excluded through the Audits-owned effective-finalized-Audit source contract. | Production authentication and management authorization were not browser-regressed in this run because the database was unavailable. |
+| Access assumptions | The page performs public read-only Statistics queries; no protected write or authority check is bypassed. Draft data is excluded through the Audits-owned effective-finalized-Audit source contract; the Ticket 43 live finalized-Audit integration case passed. The root/limited-user session and management authorization browser regression also passed against isolated PostgreSQL. | Production-mode `next start` demo-auth cases were not repeated; the earlier Ticket 42 production-browser evidence remains the latest. |
 | Links/navigation | Player links use encoded stable game Player IDs; Unit links use the existing public `/units/[unitId]` route. Presentation tests cover both links and URL encoding. | Existing public Unit route identifiers are addressable; they are not treated as authorization secrets. |
 | Query cost/availability | Windows are limited to 14 days, 30 days, and all time, and board/type/sort options are finite. All-time reads and unpaginated statistics remain dependent on the full relevant source population; this is consistent with existing Statistics behavior. | No pagination, rate limit, or load test establishes a safe maximum dataset/request rate. Treat growth/abuse as an availability risk before public hosting; no exploit or denial-of-service finding was reproduced. |
-| Error behavior | The server page renders the existing Statistics error state if a reader fails; it does not display partial fabricated results. | Browser loading/error behavior was not rechecked against a live database in this run. |
+| Error behavior | The server page renders the existing Statistics error state if a reader fails; it does not display partial fabricated results. | No injected reader-failure browser test or dynamic security scan was performed. |
 
-No new vulnerability was substantiated. The current direct demo sign-in guard
-test passed; the earlier production-server/browser control evidence remains
-historical and was not reproduced against this checkout.
+No new vulnerability was substantiated. Current production dependency audit
+reported zero findings; the full tree retains 19 moderate development-tool
+advisories and no high/critical findings. The development browser's demo login,
+session rotation, limited-authority denial, and sign-out passed. The earlier
+production-server/browser control evidence remains historical and was not
+reproduced against this checkout.

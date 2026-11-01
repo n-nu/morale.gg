@@ -68,10 +68,10 @@ or credentials belong in committed evidence. A second browser is optional.
 
 The combined regression plan adds the Leaderboard service/model/presentation
 and finalized-Audit-to-Leaderboard integration fixture to the M1 checks above.
-Do not run the complete suite, coverage command, or browser mutation cases
-unless a disposable database is available. The Ticket 43 run used
-database-independent tests plus lint, type-check, build, Prisma validation and
-generation. Docker and the configured local PostgreSQL endpoint were
-unavailable, so database-backed integration, coverage, migration-status,
-fresh-setup, and viewport/browser reruns remain unverified; see
-[VERIFICATION.md](VERIFICATION.md#ticket-43-post-merge-integration--2026-11-01).
+The Ticket 43 final review used a loopback-only PostgreSQL 16 Compose service
+with tmpfs storage, then ran the database-backed integration/coverage suite,
+fresh demo reset, and Chromium viewport checks. The disposable setup and exact
+results are recorded in
+[VERIFICATION.md](VERIFICATION.md#ticket-43-final-review--2026-11-01). Never
+redirect these tests or destructive demo-reset/fixture cleanup to a developer
+database.

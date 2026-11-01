@@ -30,36 +30,36 @@ submission report or a release record.
   Leaderboard inspection. These are prior evidence, not Ticket 43 browser work.
 - Ticket 43 added live PostgreSQL integration assertions to
   `src/modules/statistics/ranker.integration.test.ts`; they prove finalized
-  Audit -> Ranker -> Leaderboard metrics and public Player identity when run.
-  The new database-backed assertions were not executed because no disposable
-  PostgreSQL service was available.
-- Current database-independent tests passed 68/68 across Leaderboard,
-  Statistics, source contracts, authentication, and demo-seed safety. Exact
-  commands and limits are in [VERIFICATION.md](VERIFICATION.md#ticket-43-post-merge-integration--2026-11-01).
+  Audit -> Ranker -> Leaderboard metrics and public Player identity. The
+  focused integration case passed against isolated PostgreSQL 16. Full
+  `npm run test:coverage` passed 187/187 tests; exact results are in
+  [COVERAGE.md](COVERAGE.md).
 
 ## QA, coverage, security, and setup
 
 - [QA plan](QA_PLAN.md) and [coverage report](COVERAGE.md) document scope and
-  the unrerun status. The historical M1 coverage result is 164/164 tests and
-  79.71% statements; no combined M2 percentages are claimed.
-- [Viewport evidence](security-evidence/viewports.md#ticket-43-combined-m2-viewport-rerun--2026-11-01)
-  records the complete route/viewport matrix as NOT RUN due to unavailable
-  Docker/PostgreSQL. Static Leaderboard presentation coverage passed 9/9.
+  measured results: 81.08% statements, 79.18% branches, 84.70% functions,
+  and 81.08% lines. Statement coverage is 1.37 points above the historical
+  M1 baseline (79.71%) and meets the 70% target.
+- [Viewport evidence](security-evidence/viewports.md#ticket-43-combined-m2-viewport-verification--2026-11-01)
+  records 24/24 required route/viewport checks passing at 390/768/1440px,
+  Leaderboard interactions and local table scrolling passing, plus the
+  rechecked QA42-UI1 limitation.
 - [Threat model](THREAT_MODEL.md) and [OWASP baseline](OWASP_BASELINE.md)
   contain the M2 Leaderboard reassessment. No vulnerability was substantiated.
 - [Demo-auth control evidence](security-evidence/demo-auth.md) contains the
-  historical reproducible before/control/after browser case and the current
-  3/3 direct-guard and 5/5 auth-navigation checks. The production browser
-  demonstration was not repeated in Ticket 43.
+  historical reproducible before/control/after browser case and the final
+  browser session-rotation/limited-authority regression. Production-only
+  browser cases were skipped because the development server was used.
 - The [MVP demo walkthrough](MVP_DEMO.md) includes the public Leaderboard path
   and supported board/window interactions.
 - Current dependency audits: production 0 findings; full tree 19 moderate
   development-tool findings, no high/critical. See
-  [verification results](VERIFICATION.md#ticket-43-post-merge-integration--2026-11-01).
-- Fresh-environment reproduction, database-backed coverage, migration status,
-  and browser regression remain unverified. Docker was unavailable and
-  `localhost:5432/morale_gg` was unreachable; the configured database was not
-  treated as disposable.
+  [verification results](VERIFICATION.md#ticket-43-final-review--2026-11-01).
+- Fresh setup, migrations, demo reset, database-backed coverage, and browser
+  regression were performed against the loopback-only tmpfs QA database.
+  `localhost:5432/morale_gg` was not used. Exact setup and static-check outcomes
+  are in [VERIFICATION.md](VERIFICATION.md#ticket-43-final-review--2026-11-01).
 
 ## Release and remaining handoff
 
@@ -67,6 +67,6 @@ submission report or a release record.
   and `milestone-1` at `e67ecb78f7e982172b789d8243de71bc5723ebd6`. The two-tag
   minimum is met. No `milestone-2` or final release tag exists.
 - Changelog entry: [CHANGELOG.md](../CHANGELOG.md).
-- Emil remains responsible for final review/merge, milestone tagging, the final
-  report/PDF, and submission. No Ticket 43 merge, release tag, or final report
-  is authorized by this evidence index.
+- PR #29 final review and merge decision remain pending. Milestone tagging,
+  the final report/PDF, and submission remain Emil's next phase; no
+  `milestone-2` tag or final submission report/PDF was created.
