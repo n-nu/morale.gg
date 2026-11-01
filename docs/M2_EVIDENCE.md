@@ -7,6 +7,8 @@ submission report or a release record.
 
 - Ticket 43 started on `qa/m2-final-integration` at
   `1a34fda7357f384cd438bda4149d54ec64241589`, equal to `main` and `origin/main`.
+- Ticket 43 PR [#29](https://github.com/n-nu/morale.gg/pull/29) is OPEN from
+  `qa/m2-final-integration` to `main`; it has not been merged.
 - [Ticket 41 completion record](../tickets/COMPLETED/2026/11/TKT-20261027-000041-001.md)
   documents PR #27, merged as `758bb5d3e0392633a14d70e87cc7c103d3c6fbf5`.
   GitHub records Emil's substantive APPROVED review; no requested changes.

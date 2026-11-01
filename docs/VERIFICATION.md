@@ -309,6 +309,8 @@ public Player identity. **That database-backed test was added but not executed.*
   `c0420382ba63403983ca4a2d781cfdf9ccb6fbcc` and `milestone-1` at
   `e67ecb78f7e982172b789d8243de71bc5723ebd6`; the two-tag minimum is met.
   There is no `milestone-2` tag.
+- Ticket 43 PR #29 is open from `qa/m2-final-integration` to `main` and has not
+  been merged.
 - Emil's handoff index is [M2_EVIDENCE.md](M2_EVIDENCE.md). Known limitations
   include the unrerun database/browser evidence, 19 moderate development-tool
   advisories, and the historical narrow Event-manager layout limitation at
