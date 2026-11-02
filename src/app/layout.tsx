@@ -30,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <header className="h-16 border-b border-edge bg-surface">
-          <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between gap-2 overflow-x-auto px-6 md:gap-6 md:px-10">
+          <nav className="page-shell flex h-full items-center justify-between gap-2 overflow-x-auto md:gap-6">
             <Link
               href="/"
               className="text-lg font-extrabold tracking-tight text-white md:text-xl"

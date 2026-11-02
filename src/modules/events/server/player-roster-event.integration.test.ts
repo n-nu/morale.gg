@@ -188,7 +188,7 @@ test("Player roster and Event participation integrate through their real authori
     assert.equal(await canManageEvent(unauthorized.id, deniedEvent.id), false);
     assert.equal((await denyEventParticipation(unit.commanderUserId, deniedRequest.id)).status, "DENIED");
     assert.deepEqual(await listApprovedEventUnits(firstEvent.id), [
-      { unitId: unit.id, unitName: unit.name },
+      { unitId: unit.id, unitName: unit.name, imageRef: null },
     ]);
     assert.deepEqual(await listApprovedEventUnits(deniedEvent.id), []);
 
@@ -201,7 +201,7 @@ test("Player roster and Event participation integrate through their real authori
     assert.equal((await getCurrentRoster(unit.id)).some((entry) => entry.membershipId === membership.id), false);
     assert.equal((await prisma.eventParticipation.findUnique({ where: { id: approved.id } }))?.status, "APPROVED");
     assert.deepEqual(await listApprovedEventUnits(firstEvent.id), [
-      { unitId: unit.id, unitName: unit.name },
+      { unitId: unit.id, unitName: unit.name, imageRef: null },
     ]);
   } finally {
     if (createdEventIds.length > 0) {

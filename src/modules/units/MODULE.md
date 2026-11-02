@@ -3,8 +3,8 @@ module_id: units
 path: src/modules/units
 status: active
 version: 0.1
-last_reviewed: 2026-09-28
-updated_by_ticket: TKT-20260928-000037-001
+last_reviewed: 2026-11-02
+updated_by_ticket: TKT-20261102-000048-001
 ---
 
 # Units
@@ -34,8 +34,13 @@ generalized site-wide RBAC are outside this module boundary. Units may compose t
 Players-owned roster read-side but must not modify or own it.
 
 ## Public Interface
-Public pages: `/units` displays the Unit hierarchy; `/units/[unitId]` displays
-public profile metadata, parent/child structure, and the Players-owned roster.
+Public pages: `/units` displays minimal Unit cards with profile imagery,
+commander identity, and hover/focus details for active roster and total
+descendant counts; compact cards and tree nodes omit audit-derived
+performance. `/units/[unitId]` displays public profile metadata, an ancestor
+path, the Players-owned roster, full Statistics sections, and the complete
+hierarchy rendered as a centered, pannable family tree with sibling branches
+and explicit directional connectors.
 Authenticated management lives at `/units/[unitId]/manage`. It provides
 Units-owned profile, authorized-user/grant, structural create/move, and
 RootUnit-catalog workflows. The structural delete workflow hard-deletes only
@@ -109,9 +114,19 @@ website-administrator capability from ADR-20260915-003; it does not create Unit
 authority or generalized RBAC.
 
 ## Internal Structure
-`src/app/units/units.css` scopes a minimal neutral-dark table and detail presentation to the Units shell, with bright interaction accents and a visible sample-data label. The table shows names and direct-child counts; indentation communicates parent relationships.
+`src/app/units/units.css` scopes the dark visual directory, profile header,
+and organizational-tree presentation to the Units shell, using existing
+surface/accent tokens and a visible sample-data label. The directory uses
+expandable Unit cards; the detail family tree centers its root, distributes
+sibling subtrees without overlap, and uses local horizontal scrolling for
+large hierarchies.
 `server/demo.ts` contains sample country roots and nested units reaching four levels, plus opt-in mode selection. Country names are ordinary Unit fixtures, not a persisted country classification. Demo pages show a sample-data label. Queries select fixtures before loading Prisma; database errors never switch to fixtures automatically. Sample IDs do not represent persisted Units.
-`server/queries.ts` selects only public read fields, ordering lists by name then ID.
+`server/queries.ts` selects public Unit identity, profile, and commander,
+ordering lists by name then ID. Total descendant counts are derived from the
+loaded hierarchy, and current member counts use
+the Players-owned `getCurrentRosterCounts` operation; Unit performance uses the
+Statistics-owned all-Units Direct reader. Neither presentation path reads or
+mutates membership or statistics persistence directly.
 `server/authorization.ts` resolves current Unit ancestry, RootUnit consistency,
 memberships, grants, revocation, delegation lineage, and scope at decision time;
 Commander status does not bypass operational grants. `components/unit-links.tsx`
@@ -131,13 +146,14 @@ Units also produces `units-audits-submission-authorization`; Audits consumes
 only its semantic boolean and never receives authority persistence details.
 
 ## Limitations
-Lists are unpaginated. The table assembles the loaded hierarchy client-side and
-guards traversal against repeated IDs; it does not validate or repair stored
-hierarchy cycles. Detail pages show one level at a time. Historically used
-Units cannot be deleted in MVP; no archive/tombstone state or history cascade
-is provided. Player roster persistence and mutations are owned by Players;
-demo Units have no persistent rosters. Commander bootstrap is server-only and
-has no public UI.
+Lists are unpaginated. The directory and detail tree assemble loaded hierarchy
+data and guard traversal against repeated IDs; they do not validate or repair
+stored hierarchy cycles. The complete descendant tree remains visible and may
+use a locally scrollable region on narrow screens. Historically used Units
+cannot be deleted in MVP; no archive/tombstone state or history cascade is
+provided. Player roster persistence and mutations are owned by Players; demo
+Units have no persistent rosters or assigned commander. Commander bootstrap is
+server-only and has no public UI.
 
 ## Related Contracts
 - `docs/contracts/players-units-roster-read.md` (stable).

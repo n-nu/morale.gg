@@ -12,11 +12,11 @@ test("public Battle Structure renders atomic placeholders without manager or Uns
     name: "I Corps",
     side: "DEFENDER",
     participationId: "private-participation-id",
-    representedUnit: { id: "private-unit-id", name: "First Regiment" },
-    commanderPlayerId: "Adler",
+    representedUnit: { id: "", name: "First Regiment" },
+    commanderPlayerId: "GroupCommander",
     atomicUnits: [{
       id: "private-atomic-id",
-      name: "1st Infantry",
+      name: "1st Infantry Company",
       side: "DEFENDER",
       auditUnitType: "REGULAR",
       isMandatory: true,
@@ -24,7 +24,7 @@ test("public Battle Structure renders atomic placeholders without manager or Uns
       persistentUnitId: "private-unit-id",
       persistentUnitName: "First Regiment",
       unitType: null,
-      representedUnitId: "private-unit-id",
+      representedUnitId: "",
       representedUnitName: "First Regiment",
       resultState: "PENDING",
       commander: null,
@@ -44,11 +44,56 @@ test("public Battle Structure renders atomic placeholders without manager or Uns
   assert.match(html, /Battle Structure/);
   assert.match(html, /Defenders/);
   assert.match(html, /Attackers/);
-  assert.match(html, /Battle details/);
-  assert.match(html, /Unit Statistics/);
+  assert.match(html, /Company/);
+  assert.match(html, /Command Group/);
+  assert.match(html, /Company statistics and participating players/);
+  assert.match(html, /Company Statistics/);
   assert.match(html, /Participating Players/);
   assert.match(html, /Results pending/);
+  assert.match(html, /Commander pending Audit/);
+  assert.match(html, /aria-label="First Regiment Unit icon"/);
   assert.match(html, /lg:grid-cols-2/);
+  assert.match(html, /Jump to Attackers/);
+  assert.match(html, /Jump to Defenders/);
   assert.doesNotMatch(html, /Unsorted|Command structure|Move to|Manage event/);
+  assert.doesNotMatch(html, /Atomic Unit|Atomic Units/);
   assert.doesNotMatch(html, /private-(?:group|participation|unit|atomic)-id/);
+});
+
+test("public Battle Structure preserves the unconfigured empty state", () => {
+  const html = renderToStaticMarkup(<PublicBattleStructure
+    result={null}
+    defenderFlagRef={null}
+    attackerFlagRef={null}
+    groups={[]}
+    ungroupedAtomicUnits={[]}
+  />);
+
+  assert.match(html, /Battle sides not configured/);
+  assert.match(html, /Not recorded/);
+  assert.doesNotMatch(html, /Jump to Attackers/);
+});
+
+test("public Battle Structure gives empty sides and Command Groups explicit states", () => {
+  const html = renderToStaticMarkup(<PublicBattleStructure
+    result="DRAW"
+    defenderFlagRef={null}
+    attackerFlagRef={null}
+    groups={[{
+      id: "empty-group",
+      name: "Reserve Group",
+      side: "DEFENDER",
+      participationId: "participation",
+      representedUnit: { id: "", name: "Reserve Unit" },
+      commanderPlayerId: "public-player",
+      atomicUnits: [],
+      children: [],
+    }]}
+    ungroupedAtomicUnits={[]}
+  />);
+
+  assert.match(html, /This Command Group has no Companies or child Command Groups/);
+  assert.match(html, /No Companies or Command Groups are assigned to this side/);
+  assert.match(html, /Draw/);
+  assert.doesNotMatch(html, /0 Kills|0 Deaths|0 Assists/);
 });

@@ -196,7 +196,7 @@ export function CalendarGrid({
                         src={art.src}
                         alt={art.alt}
                         fill
-                        sizes="(max-width: 1280px) 100vw, 820px"
+                        sizes="(max-width: 767px) calc(100vw - 48px), (max-width: 1023px) calc(100vw - 64px), (max-width: 1791px) calc(100vw - 526px), 1234px"
                         className="object-cover"
                       />
                       <div className="absolute inset-0 bg-[rgba(8,9,11,0.66)]" />

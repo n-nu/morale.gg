@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function EventNotFound() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-start justify-center px-6 py-16">
+    <div className="page-shell flex flex-1 flex-col items-start justify-center py-16">
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">
         Not found
       </p>

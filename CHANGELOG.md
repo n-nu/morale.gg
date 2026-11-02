@@ -28,6 +28,13 @@
 ## 2026-11-02
 
 - Date: 2026-11-02
+- Ticket ID: TKT-20261102-000047-001
+- Change: Redesigned the public Event Battle Structure as a responsive Attacker/Defender comparison with contained, collapsible Command Groups, distinct Company cards, Company-scoped statistics, and side jump links. Linked represented Units and public Player/Commander pages; reused already-public Unit image references with a consistent fallback icon.
+- Reason: Make public Event hierarchy, finalized results, and available statistics easier to scan and navigate without changing their canonical readers or domain meaning.
+- Affected contracts/modules: Events presentation and approved-Unit read-side. No Statistics DTO, Audit calculation, schema, permission, persistence, route, or contract change.
+- Commit reference: N/A
+
+- Date: 2026-11-02
 - Ticket ID: TKT-20261102-000046-001
 - Change: Replaced Battle Structure tree rails and dedicated drag grips with nested rounded node surfaces that drag by their bodies. Group shells now accept drops across the full container, while interactive controls and nested nodes are excluded from parent drag starts. Added responsive browser coverage for node containment, Move actions, validation feedback, and real Company/group moves with restoration.
 - Reason: Make hierarchy containment clearer and node movement easier without changing battlefield behavior.

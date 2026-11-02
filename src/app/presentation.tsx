@@ -14,7 +14,7 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <div className={`mx-auto w-full max-w-[1280px] flex-1 px-6 pb-16 md:px-10 ${className}`}>
+    <div className={`page-shell flex-1 pb-16 ${className}`}>
       {children}
     </div>
   );

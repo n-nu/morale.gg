@@ -1,5 +1,35 @@
 # Changelog: Units
 
+## 2026-11-02 — organization family tree refinement
+
+- Replaced the selected-Unit horizontal descendant list with a full branch
+  family tree rooted at the top-level organization.
+- Centered the root, spaced each sibling subtree by its leaf count, and added
+  SVG branch connectors with downward arrowheads.
+- Kept oversized hierarchies in a local horizontal-scroll region and centered
+  the initial view on the root.
+
+## 2026-11-02 — TKT-20261102-000048-001 refinement
+
+- Simplified directory and tree nodes to show Unit imagery, name, and commander
+  by default; member and all-descendant counts animate into view on hover or
+  keyboard focus.
+- Removed audit-derived performance from compact Unit cards and tree nodes.
+- Preserved a touch-friendly always-visible details fallback where hover is
+  unavailable; the full Unit Statistics section remains on detail pages.
+
+## 2026-11-02 — TKT-20261102-000048-001
+
+- Replaced the text-heavy public hierarchy table with responsive Unit cards
+  using existing profile imagery, commander identity, active roster counts,
+  direct subunit counts, descriptions, and type-partitioned performance.
+- Strengthened public Unit identity headers and descendant nodes while keeping
+  visible tree branches, ancestor navigation, and local overflow handling.
+- Added hover/focus previews and graceful missing-data states without adding
+  Unit fields or changing authorization, hierarchy, roster, or statistics
+  semantics.
+- Consumed the approved Players batch roster-count read (BCR-20261102-008).
+
 ## 2026-09-26
 
 - Date: 2026-09-26

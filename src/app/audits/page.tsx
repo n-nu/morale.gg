@@ -47,7 +47,7 @@ export default async function AuditsPage({
   const auditsByAtomicUnit = new Map(auditViews);
 
   return (
-    <main className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-16 md:px-10">
+    <main className="page-shell flex-1 pb-16">
       <Breadcrumbs items={[{ label: "Community", href: "/events" }, { label: "Audits" }]} />
       <PageHeader category="Records and administration" title="Audits" description="Finalized event records and authorized submissions." />
 

@@ -1,5 +1,8 @@
 import "server-only";
 
+import { getCurrentRosterCounts } from "@/modules/players/server/queries";
+import { getUnitDescendantCounts } from "../public-presentation";
+
 import {
   canManageAuthorizedUsers,
   canMoveUnit,
@@ -23,6 +26,38 @@ export async function listUnits() {
     select: { ...identity, parent: { select: identity } },
     orderBy: [...orderBy],
   });
+}
+
+export async function listPublicUnitDirectory() {
+  if (isUnitsDemoMode()) {
+    const units = listDemoUnits();
+    const descendantCounts = getUnitDescendantCounts(units);
+    return units.map((unit) => ({
+      ...unit,
+      commander: null,
+      memberCount: null,
+      descendantCount: descendantCounts.get(unit.id) ?? 0,
+    }));
+  }
+
+  const { prisma } = await import("@/lib/prisma");
+  const units = await prisma.unit.findMany({
+    select: {
+      ...identity,
+      parent: { select: identity },
+      commander: { select: { name: true, image: true } },
+    },
+    orderBy: [...orderBy],
+  });
+  const rosterCounts = await getCurrentRosterCounts(units.map(({ id }) => id));
+  const membersByUnitId = new Map(rosterCounts.map(({ unitId, memberCount }) => [unitId, memberCount]));
+  const descendantCounts = getUnitDescendantCounts(units);
+
+  return units.map((unit) => ({
+    ...unit,
+    memberCount: membersByUnitId.get(unit.id) ?? 0,
+    descendantCount: descendantCounts.get(unit.id) ?? 0,
+  }));
 }
 
 export async function getUnit(id: string) {

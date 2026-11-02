@@ -1,5 +1,16 @@
 # Events — Changelog
 
+## 0.4 — 2026-11-02 — TKT-20261102-000047-001
+
+- Reworked the public Event Battle Structure for reading and comparison:
+  contained Command Groups, distinct Company cards, collapsible group contents,
+  side navigation, Company-scoped statistics, and responsive side summaries.
+- Public Event pages now use the existing Unit image reference for approved
+  represented Units, with a consistent fallback icon, and link Unit and public
+  Player identities to their existing routes.
+- Preserved the public Event Battle and battlefield readers, result
+  semantics, approved-participation boundary, and authorization behavior.
+
 ## 0.3 — 2026-09-26 — TKT-20260921-000017-001 post-merge stabilization
 
 - Removed the calendar's render-time clock read; current-day highlighting and

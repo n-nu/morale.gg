@@ -62,7 +62,7 @@ export default async function EventCalendarPage({
     "flex h-9 w-9 items-center justify-center rounded-lg border border-edge-strong bg-surface text-muted transition-colors hover:text-white";
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-16 md:px-10">
+    <div className="page-shell flex-1 pb-16">
       <nav aria-label="Breadcrumb" className="pt-5 text-[13px] text-muted">
         <span>Community</span>
         <span className="mx-2 text-[#3e434b]">/</span>
@@ -74,23 +74,25 @@ export default async function EventCalendarPage({
       </nav>
 
       <header className="mt-5 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link href={`/events/calendar?m=${prev}`} aria-label="Previous month" className={navButton}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
-          </Link>
-          <h1 className="text-[28px] font-extrabold tracking-tight text-white">
-            {title}
-          </h1>
-          <Link href={`/events/calendar?m=${next}`} aria-label="Next month" className={navButton}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          </Link>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="flex items-center gap-4">
+            <Link href={`/events/calendar?m=${prev}`} aria-label="Previous month" className={navButton}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+                <path d="M15 6l-6 6 6 6" />
+              </svg>
+            </Link>
+            <h1 className="text-[28px] font-extrabold tracking-tight text-white">
+              {title}
+            </h1>
+            <Link href={`/events/calendar?m=${next}`} aria-label="Next month" className={navButton}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+          </div>
           <ViewToggle active="calendar" />
         </div>
-        <div className="flex items-center gap-4 text-[13px] text-muted">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-muted">
           {LEGEND.map((label) => (
             <span key={label} className="inline-flex items-center gap-1.5">
               <span

@@ -1,5 +1,12 @@
 # Players changelog
 
+## 2026-11-02 — TKT-20261102-000048-001
+
+- Added the approved count-only batch read for active Unit rosters, using one
+  grouped query and preserving the existing `endedAt = NULL` semantics.
+- Extended `players-units-roster-read` additively under BCR-20261102-008; no
+  schema, membership, identity, or authorization behavior changed.
+
 ## 2026-09-26 — TKT-20260921-000014-001 post-merge verification
 
 - Added a real-PostgreSQL integration regression covering authorized roster

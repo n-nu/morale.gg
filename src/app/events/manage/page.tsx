@@ -19,7 +19,7 @@ export default async function ManageEventsPage() {
 
   if (userId === null) {
     return (
-      <div className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-16 md:px-10">
+      <div className="page-shell flex-1 pb-16">
         <div className="mt-16 rounded-[10px] border border-edge bg-surface px-6 py-12 text-center">
           <p className="font-bold text-white">Sign in to manage events.</p>
           <p className="mt-2 text-sm text-muted">
@@ -37,7 +37,7 @@ export default async function ManageEventsPage() {
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-16 md:px-10">
+    <div className="page-shell flex-1 pb-16">
       <nav aria-label="Breadcrumb" className="pt-5 text-[13px] text-muted">
         <span>Community</span>
         <span className="mx-2 text-[#3e434b]">/</span>

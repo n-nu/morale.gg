@@ -19,8 +19,8 @@ contracts:
     producer: players
     consumer: units
     status: stable
-    version: 0.1
-    updated_by_ticket: TKT-20260928-000037-001
+    version: 0.2
+    updated_by_ticket: TKT-20261102-000048-001
   - contract_id: events-audits-event-participation-management
     path: docs/contracts/events-audits-event-participation-management.md
     producer: events

@@ -45,3 +45,21 @@ export function getCurrentRoster(unitId: string, db = prisma) {
   })));
 }
 
+export async function getCurrentRosterCounts(unitIds: string[], db = prisma) {
+  const uniqueUnitIds = [...new Set(unitIds)];
+  if (uniqueUnitIds.length === 0) return [];
+
+  const groupedMemberships = await db.unitMembership.groupBy({
+    by: ["unitId"],
+    where: { unitId: { in: uniqueUnitIds }, endedAt: null },
+    _count: { _all: true },
+  });
+  const countByUnitId = new Map(
+    groupedMemberships.map(({ unitId, _count }) => [unitId, _count._all]),
+  );
+
+  return uniqueUnitIds.map((unitId) => ({
+    unitId,
+    memberCount: countByUnitId.get(unitId) ?? 0,
+  }));
+}

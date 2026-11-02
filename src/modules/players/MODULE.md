@@ -3,8 +3,8 @@ module_id: players
 path: src/modules/players
 status: active
 version: 0.1
-last_reviewed: 2026-09-28
-updated_by_ticket: TKT-20260928-000037-001
+last_reviewed: 2026-11-02
+updated_by_ticket: TKT-20261102-000048-001
 ---
 
 # Players
@@ -22,7 +22,8 @@ and statistics.
 
 ## Public Interface
 Server-only registration, add/end membership workflows, Player/roster/history
-queries, and the server-only PlayerID resolve-or-create operation for Audits.
+queries (including count-only batch reads for current Unit rosters), and the
+server-only PlayerID resolve-or-create operation for Audits.
 Application routes `/players`, `/players/[id]` and a roster section on
 `/units/[unitId]` remain unchanged.
 
@@ -54,6 +55,8 @@ UI controls are convenience only; the server always enforces authorization.
 
 ## Internal Structure
 `server/` contains persistence, workflows and server actions.
+`server/queries.ts` owns both per-Unit active roster rows and grouped active
+roster counts; both derive current membership from `endedAt = NULL`.
 `server/statistics-source.ts` accepts the stable game Player ID, resolves its
 internal Player key inside Players, and evaluates the matching UnitMembership
 period at canonical Event time without exposing the internal key to Statistics.
@@ -82,4 +85,5 @@ Unit demo fixtures do not have persistent rosters and show no mutation controls.
 
 ## AI Working Rules
 GREEN local implementation is allowed under an active ticket. Changes to identity,
-history, ownership or the Units contract require explicit RED approval.
+history, ownership or the Units contract require explicit RED approval; the
+count-only batch roster read is approved by BCR-20261102-008.

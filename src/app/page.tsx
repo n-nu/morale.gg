@@ -16,7 +16,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/30" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent" />
       </div>
-      <div className="relative mx-auto flex w-full max-w-[1280px] flex-1 flex-col items-start justify-center px-6 py-20 md:px-10">
+      <div className="page-shell relative flex flex-1 flex-col items-start justify-center py-20">
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">
           Community
         </p>
