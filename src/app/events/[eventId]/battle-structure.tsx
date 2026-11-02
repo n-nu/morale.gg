@@ -1,7 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import type { EventBattleAtomicUnit, EventBattleGroup } from "@/modules/statistics/event-battle";
+import type {
+  EventBattleAtomicUnit,
+  EventBattleGroup,
+  EventBattleSide,
+  EventBattleSideSummary,
+} from "@/modules/statistics/event-battle";
 import type { RatioMetric } from "@/modules/statistics/ratios";
 
 type IconName =
@@ -125,70 +130,162 @@ function PlayerReference({
   );
 }
 
-function Metric({
-  icon,
-  label,
-  value,
-}: {
-  icon: IconName;
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1 text-xs text-body-soft">
-      <Icon name={icon} className="h-3.5 w-3.5 shrink-0 text-muted" />
-      <span className="tabular-nums">{value}</span>
-      <span>{label}</span>
-    </span>
-  );
-}
-
 function AuditTypeLabel({ value }: { value: string }) {
   return value.charAt(0) + value.slice(1).toLowerCase();
 }
 
-function CompanyStatistics({
-  unit,
-}: {
-  unit: EventBattleAtomicUnit;
-}) {
-  if (unit.resultState !== "FINALIZED" || unit.summary === null) {
-    return (
-      <p className="text-xs text-muted">
-        {unit.resultState === "PENDING" ? "Results are pending." : "Statistics are unavailable."}
-      </p>
-    );
-  }
+function formatMetric(value: number) {
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2).replace(/\.?0+$/, "");
+}
 
-  const { summary } = unit;
+function atomicUnitsInGroups(groups: EventBattleGroup[]): EventBattleAtomicUnit[] {
+  return groups.flatMap((group) => [
+    ...group.atomicUnits,
+    ...atomicUnitsInGroups(group.children),
+  ]);
+}
+
+function SideSummaryCard({
+  side,
+  summary,
+}: {
+  side: EventBattleSide;
+  summary: EventBattleSideSummary | null;
+}) {
+  const label = side === "ATTACKER" ? "Attackers" : "Defenders";
+  const metrics = [
+    { label: "Tickets", value: summary ? String(summary.tickets) : "—", primary: true },
+    { label: "K/D", value: summary ? ratioDisplay(summary.kdr) : "—", primary: false },
+    { label: "Flag Captures", value: summary ? String(summary.flagCaptures) : "—", primary: false },
+  ];
+
   return (
-    <div className="grid gap-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-1 rounded-lg border border-edge-strong bg-surface px-2.5 py-2">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-muted">K/D</span>
-          <span className="text-base font-bold tabular-nums text-foreground">{ratioDisplay(summary.kdr)}</span>
-        </div>
-        {summary.tickets !== null ? (
-          <div className="flex flex-col gap-1 rounded-lg border border-edge-strong bg-surface px-2.5 py-2">
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-muted">
-              <Icon name="tickets" className="h-3 w-3" /> Tickets
-            </span>
-            <span className="text-base font-bold tabular-nums text-foreground">{summary.tickets}</span>
+    <section className="min-w-0 rounded-xl border border-edge bg-surface px-4 py-3" aria-label={`${label} summary`}>
+      <h3 className="text-xs font-bold uppercase tracking-wide text-muted">{label}</h3>
+      <dl className="mt-2 grid grid-cols-3 gap-3">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="min-w-0">
+            <dt className="text-[10px] font-semibold uppercase tracking-wide text-faint">{metric.label}</dt>
+            <dd className={`mt-0.5 whitespace-nowrap font-bold tabular-nums text-foreground ${metric.primary ? "text-2xl" : "text-lg"}`}>
+              {metric.value}
+            </dd>
+            {metric.label === "K/D" && summary ? (
+              <span className="text-[10px] text-muted">pooled kills ÷ deaths</span>
+            ) : null}
           </div>
-        ) : null}
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function LeaderboardMetric({
+  value,
+  average,
+  label,
+}: {
+  value: number | null;
+  average?: number | null;
+  label: string;
+}) {
+  if (value === null) return <span className="text-muted">—</span>;
+  return (
+    <span
+      className="inline-flex flex-col tabular-nums"
+      aria-label={`${label}: ${value}${average == null ? "" : `, average ${average} per finalized Player appearance`}`}
+    >
+      <span>{formatMetric(value)}</span>
+      {average != null ? (
+        <span className="whitespace-nowrap text-[10px] text-muted">avg {formatMetric(average)} / player</span>
+      ) : null}
+    </span>
+  );
+}
+
+export function PublicEventStatistics({
+  groups,
+  ungroupedAtomicUnits,
+  sideSummaries,
+}: {
+  groups: EventBattleGroup[];
+  ungroupedAtomicUnits: EventBattleAtomicUnit[];
+  sideSummaries: Record<EventBattleSide, EventBattleSideSummary | null>;
+}) {
+  const companies = [
+    ...ungroupedAtomicUnits,
+    ...atomicUnitsInGroups(groups),
+  ];
+
+  return (
+    <section className="grid min-w-0 gap-4" aria-labelledby="event-statistics-heading">
+      <div className="flex items-center justify-between border-b border-edge pb-2">
+        <h2 id="event-statistics-heading" className="text-lg font-extrabold text-white">Event Statistics</h2>
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-        <Metric icon="kills" label="Kills" value={summary.kills} />
-        <Metric icon="deaths" label="Deaths" value={summary.deaths} />
-        <Metric icon="assists" label="Assists" value={summary.assists} />
-        <Metric icon="players" label={unit.players.length === 1 ? "Player" : "Players"} value={unit.players.length} />
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+        <SideSummaryCard side="ATTACKER" summary={sideSummaries.ATTACKER} />
+        <SideSummaryCard side="DEFENDER" summary={sideSummaries.DEFENDER} />
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-        {summary.flagCaptures !== null ? <Metric icon="flag" label="Captures" value={summary.flagCaptures} /> : null}
-        {summary.flagLosses !== null ? <Metric icon="flag" label="Losses" value={summary.flagLosses} /> : null}
-        {summary.stars !== null ? <Metric icon="star" label={summary.stars === 1 ? "Star" : "Stars"} value={summary.stars} /> : null}
-      </div>
-    </div>
+      {companies.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-edge-strong px-3 py-3 text-sm text-muted">
+          No participating Companies are available for the Unit leaderboard.
+        </p>
+      ) : (
+        <div className="min-w-0 overflow-x-auto rounded-lg border border-edge">
+          <table className="w-full min-w-[1050px] border-collapse text-left text-xs">
+            <caption className="sr-only">
+              Unit results. Average Kills, Deaths, and Assists are per finalized Player appearance, including appearances with zero values.
+            </caption>
+            <thead className="bg-surface text-[10px] font-bold uppercase tracking-wide text-muted">
+              <tr>
+                <th scope="col" className="px-3 py-2.5">Unit</th>
+                <th scope="col" className="px-3 py-2.5">Side</th>
+                <th scope="col" className="px-3 py-2.5">Player Count</th>
+                <th scope="col" className="px-3 py-2.5">Kills</th>
+                <th scope="col" className="px-3 py-2.5">Deaths</th>
+                <th scope="col" className="px-3 py-2.5">Assists</th>
+                <th scope="col" className="px-3 py-2.5">K/D</th>
+                <th scope="col" className="px-3 py-2.5">Flag Captures</th>
+                <th scope="col" className="px-3 py-2.5">Flag Losses</th>
+                <th scope="col" className="px-3 py-2.5">Stars</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-edge/70">
+              {companies.map((unit) => {
+                const summary = unit.summary;
+                return (
+                  <tr key={unit.id} className="text-body-soft">
+                    <th scope="row" className="min-w-40 px-3 py-2.5 font-semibold text-foreground">
+                      <span className="block">{unitName(unit)}</span>
+                      {summary === null ? (
+                        <span className="mt-0.5 block text-[10px] font-normal text-muted">
+                          {unit.resultState === "PENDING" ? "Results pending" : "Statistics unavailable"}
+                        </span>
+                      ) : null}
+                    </th>
+                    <td className="px-3 py-2.5">{unit.side === "ATTACKER" ? "Attacker" : "Defender"}</td>
+                    <td className="px-3 py-2.5 tabular-nums">{summary?.playerCount ?? "—"}</td>
+                    <td className="px-3 py-2.5">
+                      <LeaderboardMetric value={summary?.kills ?? null} average={summary?.averagesPerPlayer?.kills} label="Kills" />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <LeaderboardMetric value={summary?.deaths ?? null} average={summary?.averagesPerPlayer?.deaths} label="Deaths" />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <LeaderboardMetric value={summary?.assists ?? null} average={summary?.averagesPerPlayer?.assists} label="Assists" />
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap tabular-nums">{summary ? ratioDisplay(summary.kdr) : "—"}</td>
+                    <td className="px-3 py-2.5 tabular-nums">{summary?.flagCaptures ?? "—"}</td>
+                    <td className="px-3 py-2.5 tabular-nums">{summary?.flagLosses ?? "—"}</td>
+                    <td className="px-3 py-2.5 tabular-nums">{summary?.stars ?? "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -285,20 +382,11 @@ function PublicCompany({
               {statusLabel}
             </span>
           </div>
-          {unit.resultState === "FINALIZED" && unit.summary ? (
-            <div className="mt-3 border-t border-edge pt-2.5">
-              <CompanyStatistics unit={unit} />
-            </div>
-          ) : null}
           <details className="mt-2 border-t border-edge pt-2">
             <summary className="w-fit cursor-pointer rounded text-xs font-semibold text-gold underline decoration-edge-strong underline-offset-2 hover:text-gold-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
-              Company statistics and participating players
+              Participating Players
             </summary>
             <div className="mt-3 grid min-w-0 gap-4">
-              <section className="grid min-w-0 gap-2" aria-label="Company statistics">
-                <h5 className="text-xs font-bold text-foreground">Company Statistics</h5>
-                <CompanyStatistics unit={unit} />
-              </section>
               <section className="grid min-w-0 gap-2" aria-label="Participating players">
                 <h5 className="text-xs font-bold text-foreground">Participating Players</h5>
                 <PlayerResults unit={unit} />
@@ -406,11 +494,26 @@ function SideColumn({
       : result === `${side}_WIN`
         ? "Winner"
         : "Loss";
+  const resultSurfaceClass = result === null
+    ? "border-edge bg-surface/60"
+    : result === "DRAW"
+      ? "border-white/25 bg-gradient-to-br from-white/[0.12] via-surface/75 to-surface/60"
+      : resultLabel === "Winner"
+        ? "border-emerald-500/35 bg-gradient-to-br from-emerald-500/[0.12] via-surface/75 to-surface/60"
+        : "border-rose-500/35 bg-gradient-to-br from-rose-500/[0.11] via-surface/75 to-surface/60";
+  const resultBadgeClass = result === null
+    ? ""
+    : result === "DRAW"
+      ? "border-white/25 bg-white/[0.08] text-foreground"
+      : resultLabel === "Winner"
+        ? "border-emerald-400/30 bg-emerald-500/[0.08] text-emerald-200"
+        : "border-rose-400/30 bg-rose-500/[0.08] text-rose-200";
 
   return (
     <section
       id={`battle-${side.toLowerCase()}s`}
-      className={`min-w-0 rounded-xl border border-edge bg-surface/60 p-3 sm:p-3.5 ${isDefender ? "border-t-2 border-t-type-blue/50" : "border-t-2 border-t-type-red/50"}`}
+      className={`min-w-0 rounded-xl border p-3 sm:p-3.5 ${resultSurfaceClass} ${isDefender ? "border-t-2 border-t-type-blue/50" : "border-t-2 border-t-type-red/50"}`}
+      data-outcome={resultLabel?.toLowerCase()}
       aria-labelledby={`${side.toLowerCase()}-heading`}
     >
       <div className="flex min-w-0 items-start justify-between gap-2">
@@ -441,7 +544,7 @@ function SideColumn({
           </div>
         </div>
         {resultLabel ? (
-          <span className="shrink-0 rounded-full border border-edge-strong px-2 py-1 text-[10px] font-semibold text-body-soft">
+          <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${resultBadgeClass}`}>
             {resultLabel}
           </span>
         ) : null}
@@ -490,16 +593,18 @@ export function PublicBattleStructure({
       ? "Attackers won"
       : result === "DRAW"
         ? "Draw"
-        : "Not recorded";
+        : null;
 
   return (
     <section className="grid min-w-0 gap-3" aria-labelledby="battle-structure-heading">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-edge pb-3">
         <h2 id="battle-structure-heading" className="text-lg font-extrabold text-white">Battle Structure</h2>
-        <p className="inline-flex items-center gap-1.5 text-sm text-muted">
-          <Icon name={result === null ? "status" : "flag"} className="h-4 w-4" />
-          Event result: <strong className="font-semibold text-foreground">{resultLabel}</strong>
-        </p>
+        {resultLabel ? (
+          <p className="inline-flex items-center gap-1.5 text-sm text-muted">
+            <Icon name="flag" className="h-4 w-4" />
+            Event result: <strong className="font-semibold text-foreground">{resultLabel}</strong>
+          </p>
+        ) : null}
       </div>
       {!hasAssignedNodes ? (
         <p className="rounded-lg border border-dashed border-edge-strong px-3 py-3 text-sm text-muted">

@@ -89,5 +89,5 @@ contracts:
     producer: statistics
     consumer: events
     status: stable
-    version: 0.1
-    updated_by_ticket: TKT-20260928-000033-001
+    version: 0.2
+    updated_by_ticket: TKT-20261102-000049-001

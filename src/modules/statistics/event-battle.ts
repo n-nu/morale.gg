@@ -24,15 +24,29 @@ export type EventBattlePlayerResult = {
 };
 
 export type EventBattleUnitStatistics = {
+  playerCount: number;
   kills: number;
   deaths: number;
   assists: number;
+  averagesPerPlayer: {
+    kills: number;
+    deaths: number;
+    assists: number;
+  } | null;
   kdr: RatioMetric;
   tickets: number | null;
   flagCaptures: number | null;
   flagLosses: number | null;
   stars: number | null;
 };
+
+export type EventBattleSideSummary = {
+  kdr: RatioMetric;
+  tickets: number;
+  flagCaptures: number;
+};
+
+export type EventBattleSide = "ATTACKER" | "DEFENDER";
 
 export type EventBattleAtomicUnit = CommandTreeAtomicUnit & {
   representedUnitId: string;
@@ -51,6 +65,7 @@ export type EventBattleGroup = Omit<PublicEventCommandGroup, "atomicUnits" | "ch
 
 export type EventBattleStatistics = {
   eventId: string;
+  sideSummaries: Record<EventBattleSide, EventBattleSideSummary | null>;
   groups: EventBattleGroup[];
   ungroupedAtomicUnits: EventBattleAtomicUnit[];
 };
@@ -85,6 +100,7 @@ function buildAtomicUnit(
     }),
     { kills: 0, deaths: 0, assists: 0 },
   );
+  const playerCount = observation.playerResults.length;
 
   return {
     ...unit,
@@ -97,6 +113,14 @@ function buildAtomicUnit(
       : null,
     summary: {
       ...totals,
+      playerCount,
+      averagesPerPlayer: playerCount === 0
+        ? null
+        : {
+            kills: totals.kills / playerCount,
+            deaths: totals.deaths / playerCount,
+            assists: totals.assists / playerCount,
+          },
       kdr: deriveRatio(totals.kills, totals.deaths, "K"),
       tickets: observation.unitResults.tickets,
       flagCaptures: observation.unitResults.flagCaptures,
@@ -113,6 +137,43 @@ function buildAtomicUnit(
       assists: player.assists,
       kdr: deriveRatio(player.kills, player.deaths, "K"),
     })),
+  };
+}
+
+function atomicUnitsInGroups(groups: EventBattleGroup[]): EventBattleAtomicUnit[] {
+  return groups.flatMap((group) => [
+    ...group.atomicUnits,
+    ...atomicUnitsInGroups(group.children),
+  ]);
+}
+
+function sideSummary(
+  units: EventBattleAtomicUnit[],
+  side: EventBattleSide,
+): EventBattleSideSummary | null {
+  const finalized = units.filter(
+    (unit) => unit.side === side && unit.resultState === "FINALIZED" && unit.summary !== null,
+  );
+  if (finalized.length === 0) return null;
+
+  const totals = finalized.reduce(
+    (result, unit) => {
+      const summary = unit.summary;
+      if (summary === null) return result;
+      return {
+        kills: result.kills + summary.kills,
+        deaths: result.deaths + summary.deaths,
+        tickets: result.tickets + (summary.tickets ?? 0),
+        flagCaptures: result.flagCaptures + (summary.flagCaptures ?? 0),
+      };
+    },
+    { kills: 0, deaths: 0, tickets: 0, flagCaptures: 0 },
+  );
+
+  return {
+    kdr: deriveRatio(totals.kills, totals.deaths, "K"),
+    tickets: totals.tickets,
+    flagCaptures: totals.flagCaptures,
   };
 }
 
@@ -133,9 +194,19 @@ export async function getEventBattleStatistics(eventId: string): Promise<EventBa
     children: group.children.map(mapGroup),
   });
 
+  const groups = structure.groups.map(mapGroup);
+  const ungroupedAtomicUnits = structure.ungroupedAtomicUnits.map((unit) =>
+    buildAtomicUnit(unit, observations.get(unit.id)),
+  );
+  const allUnits = [...ungroupedAtomicUnits, ...atomicUnitsInGroups(groups)];
+
   return {
     eventId: normalizedEventId,
-    groups: structure.groups.map(mapGroup),
-    ungroupedAtomicUnits: structure.ungroupedAtomicUnits.map((unit) => buildAtomicUnit(unit, observations.get(unit.id))),
+    sideSummaries: {
+      ATTACKER: sideSummary(allUnits, "ATTACKER"),
+      DEFENDER: sideSummary(allUnits, "DEFENDER"),
+    },
+    groups,
+    ungroupedAtomicUnits,
   };
 }

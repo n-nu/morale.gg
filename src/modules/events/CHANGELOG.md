@@ -1,5 +1,17 @@
 # Events — Changelog
 
+## 0.5 — 2026-11-02 — TKT-20261102-000049-001
+
+- Added a standalone public Event Unit leaderboard with the requested metric
+  order, secondary per-Player averages, and side Tickets/pooled K/D/Flag
+  Captures summaries from the Statistics-owned Event Battle read.
+- Applied subtle winner/loser/draw side treatments only for effective
+  conclusions and removed the duplicate Company-statistics disclosure while
+  retaining structural Unit links and collapsible Player results.
+- Preserved Event result, Audit finalization, and metric-calculation
+  semantics; the additive Statistics DTO extension is recorded by
+  BCR-20261102-009.
+
 ## 0.4 — 2026-11-02 — TKT-20261102-000047-001
 
 - Reworked the public Event Battle Structure for reading and comparison:

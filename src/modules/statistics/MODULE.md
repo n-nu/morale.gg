@@ -2,9 +2,9 @@
 module_id: statistics
 path: src/modules/statistics
 status: active
-version: 0.1
-last_reviewed: 2026-10-31
-updated_by_ticket: TKT-20261027-000041-001
+version: 0.2
+last_reviewed: 2026-11-02
+updated_by_ticket: TKT-20261102-000049-001
 ---
 
 # Statistics
@@ -39,6 +39,9 @@ fallback used by Event Battle, and Unit rows only the identifier of the public
 `/units/[unitId]` route. Event Battle reads return presentation-safe atomic and Player result DTOs,
 use stable public game identity when no safe Unit-local alias exists, and never
 include historical Rank-at-Event.
+Event Battle also returns finalized side summaries and per-Company average
+Kills/Deaths/Assists per finalized Player appearance, as defined by its public
+read contract.
 
 ## Inputs
 Read-only source contracts from Audits, Events, Players, and Units; a requested
@@ -84,6 +87,9 @@ public query-time results. `leaderboard.ts` (server) builds Leaderboard rows fro
 those readers; `leaderboard-model.ts` (client-safe) holds board/column
 definitions, query parsing, ranking, and display formatting, including the
 shared two-decimal ratio display that keeps the zero-denominator form.
+`event-battle.ts` aggregates finalized Company values into side summaries and
+derives per-Company K/D/A averages using finalized Player appearance counts;
+side K/D remains pooled Kills divided by pooled Deaths.
 
 ## Extension Points
 Future Audit supersession remains Audits-owned and may change the producer's
@@ -110,6 +116,7 @@ Organizational or Average Unit performance.
 - ADR-20260927-007 (accepted)
 - ADR-20260927-006 (accepted Audit source architecture)
 - ADR-20260928-008 (accepted Event Battlefield sides, results, and reads)
+- BCR-20261102-009 (approved additive Event Battle summaries and averages)
 
 ## AI Working Rules
 This manifest establishes approved ownership but does not itself authorize

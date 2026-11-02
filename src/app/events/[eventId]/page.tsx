@@ -15,7 +15,7 @@ import {
 } from "@/modules/events/server/queries";
 
 import { LocalDateTime, TimezoneNote } from "../local-time";
-import { PublicBattleStructure } from "./battle-structure";
+import { PublicBattleStructure, PublicEventStatistics } from "./battle-structure";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +140,11 @@ export default async function EventDetailPage({
             </section>
           ) : null}
 
+          <PublicEventStatistics
+            sideSummaries={battleStatistics?.sideSummaries ?? { ATTACKER: null, DEFENDER: null }}
+            groups={battleStatistics?.groups ?? []}
+            ungroupedAtomicUnits={battleStatistics?.ungroupedAtomicUnits ?? []}
+          />
           <PublicBattleStructure
             result={resultState.effective?.value ?? null}
             defenderFlagRef={event.defenderFlagRef}

@@ -6,7 +6,7 @@ import { PublicBattleStructure } from "./[eventId]/battle-structure";
 
 const ratio = { numerator: 10, denominator: 0 as const, state: "ZERO_DENOMINATOR" as const, value: null, display: "10 K" };
 
-test("public Battle Structure keeps Company details collapsed and renders finalized metrics", () => {
+test("public Battle Structure keeps Company structure compact and Player results collapsed", () => {
   const html = renderToStaticMarkup(<PublicBattleStructure
     result="DEFENDER_WIN"
     defenderFlagRef={null}
@@ -33,7 +33,18 @@ test("public Battle Structure keeps Company details collapsed and renders finali
         representedUnitName: "1st Regiment",
         resultState: "FINALIZED",
         commander: "Cmdr. Adler",
-        summary: { kills: 10, deaths: 0, assists: 2, kdr: ratio, tickets: 4, flagCaptures: 1, flagLosses: 0, stars: 2 },
+        summary: {
+          kills: 10,
+          deaths: 0,
+          assists: 2,
+          playerCount: 1,
+          averagesPerPlayer: { kills: 10, deaths: 0, assists: 2 },
+          kdr: ratio,
+          tickets: 4,
+          flagCaptures: 1,
+          flagLosses: 0,
+          stars: 2,
+        },
         players: [{ position: 1, playerId: "player-1", displayName: "Adler", role: "COMMANDER", kills: 10, deaths: 0, assists: 2, kdr: ratio }],
       }],
     }]}
@@ -43,10 +54,6 @@ test("public Battle Structure keeps Company details collapsed and renders finali
   assert.match(html, /Defenders won/);
   assert.match(html, /10 K/);
   assert.match(html, /K\/D/);
-  assert.match(html, /Tickets/);
-  assert.match(html, /Captures/);
-  assert.match(html, /Stars/);
-  assert.match(html, /Company Statistics/);
   assert.match(html, /Participating Players/);
   assert.match(html, /Commander/);
   assert.match(html, /Adler/);
@@ -56,5 +63,6 @@ test("public Battle Structure keeps Company details collapsed and renders finali
   assert.match(html, /href="\/players\/player-1"/);
   assert.match(html, /src="\/icons\/regiment-test.png"/);
   assert.doesNotMatch(html, /Atomic Unit|Battle Statistics/);
+  assert.doesNotMatch(html, /Company Statistics|Tickets|Captures|Stars/);
   assert.doesNotMatch(html, /Manage event|Move to/);
 });
