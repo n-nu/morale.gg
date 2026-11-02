@@ -1,4 +1,4 @@
-import type { Permission, PermissionScope } from "@prisma/client";
+import type { AwardCategory, Permission, PermissionScope } from "@prisma/client";
 
 export class UnitManagementError extends Error {
   constructor(message: string) {
@@ -9,6 +9,7 @@ export class UnitManagementError extends Error {
 
 const permissions = new Set<Permission>([
   "MANAGE_UNIT",
+  "MANAGE_AWARDS",
   "MANAGE_STRUCTURE",
   "MANAGE_ROSTER",
   "REQUEST_EVENT_PARTICIPATION",
@@ -22,6 +23,7 @@ const scopes = new Set<PermissionScope>([
   "SELF_AND_CHILDREN",
   "SELF_AND_DESCENDANTS",
 ]);
+const awardCategories = new Set<AwardCategory>(["PLAYER", "UNIT"]);
 
 export function requiredText(
   value: unknown,
@@ -165,6 +167,8 @@ export function validateGrant(input: { permission: unknown; scope: unknown }): {
 
 export function validateRank(input: {
   name: unknown;
+  abbreviation?: unknown;
+  imageRef?: unknown;
   description: unknown;
   sortOrder: unknown;
 }) {
@@ -174,19 +178,37 @@ export function validateRank(input: {
   }
   return {
     name: requiredText(input.name, "Rank name", 100),
+    abbreviation: optionalText(input.abbreviation, "Rank short code", 20),
+    imageRef: validateImageReference(input.imageRef),
     description: optionalText(input.description, "Description", 2000),
     sortOrder,
   };
 }
 
-export function validateMedal(input: {
+export function validateAwardCategory(value: unknown): AwardCategory {
+  if (typeof value !== "string" || !awardCategories.has(value as AwardCategory)) {
+    throw new UnitManagementError("Select a valid Award category.");
+  }
+  return value as AwardCategory;
+}
+
+export function validateAward(input: {
+  category: unknown;
   name: unknown;
   description: unknown;
   imageRef: unknown;
+  sortOrder: unknown;
 }) {
+  const category = validateAwardCategory(input.category);
+  const sortOrder = typeof input.sortOrder === "number" ? input.sortOrder : Number(input.sortOrder);
+  if (!Number.isInteger(sortOrder) || sortOrder < -100000 || sortOrder > 100000) {
+    throw new UnitManagementError("Award order must be a whole number from -100000 to 100000.");
+  }
   return {
-    name: requiredText(input.name, "Medal name", 100),
+    category,
+    name: requiredText(input.name, "Award name", 100),
     description: optionalText(input.description, "Description", 2000),
     imageRef: validateImageReference(input.imageRef),
+    sortOrder,
   };
 }

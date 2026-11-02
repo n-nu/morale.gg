@@ -28,6 +28,13 @@ capabilities:
     output: Promise<boolean>
     consumer: players
     status: stable
+  - capability_id: canManageAwards
+    owner: units
+    contract: null
+    input: userId, unitId
+    output: Promise<boolean>
+    consumer: Units Player/Unit Award workflows
+    status: stable
   - capability_id: canSubmitAudit
     owner: units
     contract: units-audits-submission-authorization

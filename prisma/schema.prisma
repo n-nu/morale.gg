@@ -173,6 +173,7 @@ model Unit {
   memberships     AuthorizedUserMembership[]
   eventParticipations EventParticipation[]
   playerMemberships UnitMembership[]
+  unitAwardGrants UnitAwardGrant[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -190,6 +191,7 @@ model Player {
   auditResults AuditPlayerResult[]
   auditRoles AuditRoleAssignment[]
   commandedEventGroups EventCommandGroup[] @relation("EventGroupCommander")
+  awardGrants PlayerAwardGrant[]
 }
 
 enum AuditLifecycle {
@@ -338,7 +340,7 @@ model RootUnit {
   designatedUnit  Unit     @relation("RootDesignation", fields: [unitId], references: [id], onDelete: Restrict)
   units           Unit[]   @relation("UnitRoot")
   ranks           RankDefinition[]
-  medals          MedalDefinition[]
+  awards          AwardDefinition[]
 }
 
 model AuthorizedUserMembership {
@@ -366,6 +368,8 @@ model RankDefinition {
   id          String   @id @default(cuid())
   rootUnitId  String
   name        String
+  abbreviation String?
+  imageRef    String?
   description String?
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
@@ -376,22 +380,52 @@ model RankDefinition {
   @@index([rootUnitId, sortOrder, name])
 }
 
-model MedalDefinition {
+enum AwardCategory {
+  PLAYER
+  UNIT
+}
+
+model AwardDefinition {
   id          String   @id @default(cuid())
   rootUnitId  String
+  category    AwardCategory
   name        String
   description String?
   imageRef    String?
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  rootUnit    RootUnit @relation(fields: [rootUnitId], references: [unitId], onDelete: Restrict)
+  rootUnit    RootUnit         @relation(fields: [rootUnitId], references: [unitId], onDelete: Restrict)
+  playerGrants PlayerAwardGrant[]
+  unitGrants  UnitAwardGrant[]
 
-  @@unique([rootUnitId, name])
-  @@index([rootUnitId])
+  @@unique([rootUnitId, category, name])
+  @@index([rootUnitId, category, sortOrder, name])
+}
+
+model PlayerAwardGrant {
+  awardId  String
+  playerId String
+  award    AwardDefinition @relation(fields: [awardId], references: [id], onDelete: Restrict)
+  player   Player          @relation(fields: [playerId], references: [playerId], onDelete: Restrict)
+
+  @@id([awardId, playerId])
+  @@index([playerId])
+}
+
+model UnitAwardGrant {
+  awardId String
+  unitId  String
+  award   AwardDefinition @relation(fields: [awardId], references: [id], onDelete: Restrict)
+  unit    Unit            @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  @@id([awardId, unitId])
+  @@index([unitId])
 }
 
 enum Permission {
   MANAGE_UNIT
+  MANAGE_AWARDS
   MANAGE_STRUCTURE
   MANAGE_ROSTER
   REQUEST_EVENT_PARTICIPATION

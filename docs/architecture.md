@@ -77,7 +77,7 @@ flowchart TB
 - persistent users/accounts and players;
 - Unit profile, hierarchy, RootUnit identity, and authority;
 - history-preserving Player and authorized-user membership periods;
-- RootUnit-scoped Rank and Medal catalogs;
+- RootUnit-scoped Rank and Award catalogs with current Player/Unit grants;
 - Events and participation requests/decisions;
 - Audits, audit details, and historical records.
 
@@ -179,11 +179,15 @@ boundary is in BCR-20260926-003.
 
 ### Unit Metadata and RootUnit Catalogs
 
-Ordinary Unit metadata is managed under `MANAGE_UNIT`. Rank and Medal catalogs
-are owned by exactly one RootUnit and are managed through the narrow
-Units-owned RootUnit settings capability. It permits only that RootUnit's
-current owner and grants no other Unit authority. Catalog inheritance,
-descendant overrides, and Player relationships are not implemented.
+Ordinary Unit metadata is managed under `MANAGE_UNIT`. Rank and Award
+definitions are owned by exactly one RootUnit. Rank settings remain available
+to the current RootUnit owner; Award definitions are managed by that owner or
+a full-root `MANAGE_AWARDS` grant. Award assignment requires effective scoped
+`MANAGE_AWARDS`. Player grants additionally require active membership in the
+Award's RootUnit. If no active membership remains, orphaned Player grants may
+be removed only by the RootUnit owner or a full-root Award manager. Award
+counts derive from current grant rows. Catalog inheritance and descendant
+overrides are not implemented.
 
 ---
 
@@ -191,8 +195,9 @@ descendant overrides, and Player relationships are not implemented.
 
 Represents delegated authority associated with a Unit under
 ADR-20260915-002. The approved permission set is `MANAGE_UNIT`,
-`MANAGE_STRUCTURE`, `MANAGE_ROSTER`, `REQUEST_EVENT_PARTICIPATION`,
-`MANAGE_EVENTS`, `SUBMIT_AUDITS`, and `MANAGE_AUTHORIZED_USERS`.
+`MANAGE_STRUCTURE`, `MANAGE_ROSTER`, `MANAGE_AWARDS`,
+`REQUEST_EVENT_PARTICIPATION`, `MANAGE_EVENTS`, `SUBMIT_AUDITS`, and
+`MANAGE_AUTHORIZED_USERS`.
 
 Ordinary permissions use `SELF`, `SELF_AND_CHILDREN`, or
 `SELF_AND_DESCENDANTS`. Authority is additive, delegated scope must narrow,
@@ -354,7 +359,9 @@ flowchart TB
     authorized[AuthorizedUserMembership]
     grant[PermissionGrant]
     rank[Rank Definition]
-    medal[Medal Definition]
+    award[Award Definition]
+    playerAward[PlayerAwardGrant]
+    unitAward[UnitAwardGrant]
     player[Player]
     membership[Player UnitMembership]
     event[Event]
@@ -371,7 +378,11 @@ flowchart TB
     permission --> unit
     root -->|designates / bounds| unit
     root --> rank
-    root --> medal
+    root --> award
+    playerAward --> player
+    playerAward --> award
+    unitAward --> unit
+    unitAward --> award
     unit -->|parent / child| unit
     player <--> membership
     membership <--> unit
@@ -412,8 +423,10 @@ The following are current MVP-level rules unless changed through the approved ar
   operation-specific rules. Hard deletion is limited to unused non-RootUnit
   leaves under the approved protected-history and bootstrap-membership rules;
   archival and subtree deletion remain out of scope.
-- Rank and Medal catalogs each belong to exactly one RootUnit and are managed
-    only by that RootUnit's owner through the approved narrow capability.
+- Rank and Award definitions each belong to exactly one RootUnit. Rank
+    catalogs remain owner-managed; Award definitions are available to the
+    owner and full-root `MANAGE_AWARDS` managers. Player/Unit grants are
+    category-scoped current associations; recipient counts are derived.
 
 ### Authorized-user membership
 
@@ -516,11 +529,14 @@ The active modules and their detailed ownership rules are documented in
 
 - **Units:** Unit profiles and hierarchy, RootUnit boundaries, authorized-user
   memberships, delegated permissions, structural management, and RootUnit
-  Rank/Medal catalogs. It exposes public Unit pages and the authorization
-  decisions consumed by other modules.
+  Rank/Award catalogs with current Player/Unit grants. It exposes public Unit
+  pages, Player Awards by stable Player ID, and the authorization decisions
+  consumed by other modules.
 - **Players:** Persistent public PlayerID identity, history-preserving roster
-  membership, Player lookup/profile, and roster workflows. It does not own
-  website identity or Unit identity.
+  membership, Player lookup/profile, and roster workflows. It provides the
+  minimal active Unit-ID read used by Units Award authorization, and consumes
+  the Units-owned Player Award read. It does not own website identity, Unit
+  identity, Awards, or Award grants.
 - **Events:** Event identity and management, Event-authorized users,
   participation request/approval, Event result history, and public Event
   presentation. Participation is approved organizational acceptance, not

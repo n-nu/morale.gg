@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs, PageHeader, SectionHeading } from "@/app/presentation";
+import { getAuthenticatedUserId } from "@/lib/website-admin";
+import { PlayerAwardsSection } from "@/modules/units/components/awards";
+import { getPlayerAwardManagementData } from "@/modules/units/server/awards";
 import { findPlayerByGameId, getPlayerMemberships } from "@/modules/players/server/queries";
 import {
   getAttendanceSummaryForPlayerUnit,
@@ -25,25 +28,31 @@ function playerName(player: { name: string | null; playerId: string }) {
   return player.name?.trim() || player.playerId;
 }
 
+function queryValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default async function PlayerPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ window?: string | string[] }>;
+  searchParams: Promise<{ window?: string | string[]; notice?: string | string[]; error?: string | string[] }>;
 }) {
   const { id: playerId } = await params;
-  const { window } = await searchParams;
+  const { window, notice, error } = await searchParams;
   const player = await findPlayerByGameId(playerId);
   if (!player) notFound();
 
   const selectedWindow = resolveStatisticsWindow(window);
-  const [memberships, ranker, commander, general] = await Promise.all([
+  const [memberships, ranker, commander, general, userId] = await Promise.all([
     getPlayerMemberships(player.id),
     getRankerStatistics(selectedWindow),
     getCommanderStatistics(selectedWindow),
     getGeneralStatistics(selectedWindow),
+    getAuthenticatedUserId(),
   ]);
+  const awardData = await getPlayerAwardManagementData(userId, player.playerId);
 
   let attendanceSummaries: Array<{
     membership: (typeof memberships)[number];
@@ -88,6 +97,15 @@ export default async function PlayerPage({
         commander={commanderEntry}
         general={generalEntry}
         window={selectedWindow}
+      />
+
+      <PlayerAwardsSection
+        playerId={player.playerId}
+        awards={awardData.awards}
+        available={awardData.available}
+        manageableAwardIds={awardData.manageableAwardIds}
+        notice={queryValue(notice)}
+        error={queryValue(error)}
       />
 
       <section className="mt-8" aria-labelledby="attendance-heading">

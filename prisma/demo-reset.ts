@@ -691,7 +691,9 @@ async function clearResettableData(tx: TxClient, rootUnitId: string, rootCommand
     });
   }
   await tx.rankDefinition.deleteMany();
-  await tx.medalDefinition.deleteMany();
+  await tx.playerAwardGrant.deleteMany();
+  await tx.unitAwardGrant.deleteMany();
+  await tx.awardDefinition.deleteMany();
   await tx.player.deleteMany();
   await deleteUnitsBelowRoot(tx, rootUnitId);
   await tx.verificationToken.deleteMany();
@@ -701,6 +703,7 @@ async function clearResettableData(tx: TxClient, rootUnitId: string, rootCommand
 function expectedCommanderGrants(): Array<{ permission: Permission; scope: PermissionScope | null }> {
   return [
     { permission: "MANAGE_UNIT", scope: "SELF_AND_DESCENDANTS" },
+    { permission: "MANAGE_AWARDS", scope: "SELF_AND_DESCENDANTS" },
     { permission: "MANAGE_STRUCTURE", scope: null },
     { permission: "MANAGE_ROSTER", scope: "SELF_AND_DESCENDANTS" },
     { permission: "REQUEST_EVENT_PARTICIPATION", scope: "SELF_AND_DESCENDANTS" },
@@ -783,11 +786,13 @@ async function seedCatalogs(tx: TxClient, rootUnitId: string): Promise<void> {
       sortOrder,
     })),
   });
-  await tx.medalDefinition.createMany({
+  await tx.awardDefinition.createMany({
     data: [
-      { id: "demo-medal-campaign", rootUnitId, name: "Campaign Service Medal", description: "Service in a major campaign.", imageRef: "/maps/austerlitz.jpg" },
-      { id: "demo-medal-merit", rootUnitId, name: "Distinguished Merit", description: "Recognition for exceptional service.", imageRef: "/maps/borodino.jpg" },
-      { id: "demo-medal-long-service", rootUnitId, name: "Long Service Cross", description: "Recognition for sustained service.", imageRef: null },
+      { id: "demo-award-player-campaign", rootUnitId, category: "PLAYER", name: "Campaign Service Medal", description: "Service in a major campaign.", imageRef: "/maps/austerlitz.jpg", sortOrder: 1 },
+      { id: "demo-award-player-merit", rootUnitId, category: "PLAYER", name: "Distinguished Merit", description: "Recognition for exceptional service.", imageRef: "/maps/borodino.jpg", sortOrder: 2 },
+      { id: "demo-award-player-long-service", rootUnitId, category: "PLAYER", name: "Long Service Cross", description: "Recognition for sustained service.", imageRef: null, sortOrder: 3 },
+      { id: "demo-award-unit-campaign", rootUnitId, category: "UNIT", name: "Campaign Honor", description: "Recognition for a Unit's service in a major campaign.", imageRef: "/maps/austerlitz.jpg", sortOrder: 1 },
+      { id: "demo-award-unit-citation", rootUnitId, category: "UNIT", name: "Unit Citation", description: "Recognition for collective distinction.", imageRef: null, sortOrder: 2 },
     ],
   });
 }
@@ -1055,6 +1060,15 @@ async function seedDemoWorld(tx: TxClient, rootUnitId: string, rootCommanderUser
   await seedAuthorization(tx, rootUnitId, rootCommanderUserId);
   await seedCatalogs(tx, rootUnitId);
   const memberships = await seedPlayers(tx);
+  const firstActiveMembership = memberships.find(({ endedAt }) => endedAt === null);
+  if (firstActiveMembership) {
+    await tx.playerAwardGrant.create({
+      data: { awardId: "demo-award-player-campaign", playerId: firstActiveMembership.gamePlayerId },
+    });
+    await tx.unitAwardGrant.create({
+      data: { awardId: "demo-award-unit-campaign", unitId: UNIT.frenchArmy },
+    });
+  }
   const participationIds = await seedEvents(tx, rootCommanderUserId);
   await seedBattleStructures(tx, memberships, participationIds, rootCommanderUserId);
   await seedEventAuthorizations(tx, rootCommanderUserId);
@@ -1289,14 +1303,16 @@ async function printSummary(prisma: PrismaClient, rootUnitId: string, rootName: 
   const authorizedMemberships = await prisma.authorizedUserMembership.count();
   const eventAuthorizedUsers = await prisma.eventAuthorizedUser.count();
   const ranks = await prisma.rankDefinition.count();
-  const medals = await prisma.medalDefinition.count();
+  const awards = await prisma.awardDefinition.count();
+  const playerAwards = await prisma.playerAwardGrant.count();
+  const unitAwards = await prisma.unitAwardGrant.count();
   const countFor = <T extends { _count: { _all: number } }>(rows: T[], field: string, key: string): number =>
     (rows as Array<T & Record<string, string | number | null>>).find((row) => row[field] === key)?._count._all ?? 0;
   console.log(`RootUnits ${rootUnits}; Units ${units}; Players ${players}; Users ${users}; UnitMemberships ${unitMemberships}; Events ${events}.`);
   console.log(`EventParticipations APPROVED ${countFor(participationGroups, "status", "APPROVED")}, REQUESTED ${countFor(participationGroups, "status", "REQUESTED")}, DENIED ${countFor(participationGroups, "status", "DENIED")}.`);
   console.log(`AtomicEventUnits ${atomics} (Unsorted ${unsortedAtomics}); EventCommandGroups ${groups} (Unsorted ${unsortedGroups}).`);
   console.log(`Audits FINAL ${countFor(audits, "lifecycle", "FINAL")}, DRAFT ${countFor(audits, "lifecycle", "DRAFT")}; EventResults EFFECTIVE ${countFor(results, "status", "EFFECTIVE")}, SUPERSEDED ${countFor(results, "status", "SUPERSEDED")}, PENDING ${countFor(results, "status", "PENDING")}, REJECTED ${countFor(results, "status", "REJECTED")}.`);
-  console.log(`PermissionGrants ${permissionGrants}; AuthorizedUserMemberships ${authorizedMemberships}; EventAuthorizedUsers ${eventAuthorizedUsers}; Ranks ${ranks}; Medals ${medals}.`);
+  console.log(`PermissionGrants ${permissionGrants}; AuthorizedUserMemberships ${authorizedMemberships}; EventAuthorizedUsers ${eventAuthorizedUsers}; Ranks ${ranks}; Awards ${awards}; Player Award grants ${playerAwards}; Unit Award grants ${unitAwards}.`);
   console.log(`Preserved RootUnit: ${rootUnitId} (${rootName}); Commander User: ${rootCommanderUserId}.`);
   console.log("Demo identities (no passwords; with DEV_SIGN_IN_ENABLED=\"true\" under `npm run dev`, sign in at http://localhost:3000/dev/sign-in):");
   console.log(`- Root Commander / Event owner: ${rootCommanderUserId}`);

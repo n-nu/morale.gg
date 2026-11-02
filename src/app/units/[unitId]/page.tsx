@@ -6,6 +6,8 @@ import { Breadcrumbs, SectionHeading } from "@/app/presentation";
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { UnitOrganizationTree } from "@/modules/units/components/unit-organization-tree";
 import { UnitQuickFacts } from "@/modules/units/components/unit-quick-facts";
+import { UnitAwardsSection } from "@/modules/units/components/awards";
+import { getUnitAwards } from "@/modules/units/server/awards";
 import {
   canCreateChildUnit,
   canDeleteUnit,
@@ -42,9 +44,10 @@ export default async function UnitPage({
   const unit = await getUnit(unitId);
   if (!unit) notFound();
 
-  const [directory, userId] = await Promise.all([
+  const [directory, userId, unitAwards] = await Promise.all([
     listPublicUnitDirectory(),
     getAuthenticatedUserId(),
+    isUnitsDemoMode() ? Promise.resolve([]) : getUnitAwards(unitId),
   ]);
   const selectedWindow = resolveStatisticsWindow(window);
   type DirectPerformance = Awaited<ReturnType<typeof getDirectUnitPerformance>>;
@@ -179,6 +182,8 @@ export default async function UnitPage({
         selected={selectedUnit}
         units={directoryUnits}
       />
+
+      <UnitAwardsSection awards={unitAwards} />
 
       {isUnitsDemoMode() ? (
         <section className="mt-8 border-t border-edge pt-4" aria-labelledby="roster-heading">

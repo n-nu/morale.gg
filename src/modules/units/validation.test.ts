@@ -6,9 +6,9 @@ import {
   validateAuthorityLevel,
   validateDiscordInvite,
   validateExternalGroupLink,
+  validateAward,
   validateGrant,
   validateImageReference,
-  validateMedal,
   validateRank,
   validateUnitProfile,
 } from "./validation";
@@ -50,6 +50,10 @@ test("validates authority levels and permission scopes", () => {
     { permission: "MANAGE_ROSTER", scope: "SELF_AND_CHILDREN" },
   );
   assert.deepEqual(
+    validateGrant({ permission: "MANAGE_AWARDS", scope: "SELF_AND_DESCENDANTS" }),
+    { permission: "MANAGE_AWARDS", scope: "SELF_AND_DESCENDANTS" },
+  );
+  assert.deepEqual(
     validateGrant({ permission: "MANAGE_STRUCTURE", scope: "" }),
     { permission: "MANAGE_STRUCTURE", scope: null },
   );
@@ -62,5 +66,50 @@ test("validates authority levels and permission scopes", () => {
 test("validates RootUnit catalog fields and ordering", () => {
   assert.equal(validateRank({ name: "  Lieutenant  ", description: "", sortOrder: "4" }).name, "Lieutenant");
   assert.throws(() => validateRank({ name: "", description: "", sortOrder: "x" }), UnitManagementError);
-  assert.equal(validateMedal({ name: "Cross", description: "Service", imageRef: "" }).imageRef, null);
+  assert.deepEqual(
+    validateAward({
+      category: "PLAYER",
+      name: "Cross",
+      description: "Service",
+      imageRef: "",
+      sortOrder: "3",
+    }),
+    {
+      category: "PLAYER",
+      name: "Cross",
+      description: "Service",
+      imageRef: null,
+      sortOrder: 3,
+    },
+  );
+  assert.throws(() => validateAward({
+    category: "BATTLE",
+    name: "Cross",
+    description: "",
+    imageRef: "",
+    sortOrder: "0",
+  }), /category/);
+  assert.throws(() => validateAward({
+    category: "UNIT",
+    name: "Cross",
+    description: "",
+    imageRef: "",
+    sortOrder: "x",
+  }), /order/);
+});
+
+test("rank short codes and images are optional, normalized and validated", () => {
+  const input = { name: "Private", description: "", sortOrder: 10 };
+  assert.deepEqual(validateRank({ ...input, abbreviation: " PVT ", imageRef: " /ranks/private.png " }), {
+    name: "Private",
+    abbreviation: "PVT",
+    imageRef: "/ranks/private.png",
+    description: null,
+    sortOrder: 10,
+  });
+  assert.equal(validateRank(input).abbreviation, null);
+  assert.equal(validateRank(input).imageRef, null);
+  assert.throws(() => validateRank({ ...input, abbreviation: "x".repeat(21) }), /Rank short code/);
+  assert.throws(() => validateRank({ ...input, imageRef: "http://example.test/rank.png" }), /HTTPS/);
+  assert.throws(() => validateRank({ ...input, imageRef: "//example.test/rank.png" }), /safe site path/);
 });

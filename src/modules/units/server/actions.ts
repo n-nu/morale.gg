@@ -5,12 +5,18 @@ import { redirect } from "next/navigation";
 
 import { UnitManagementError } from "../validation";
 import {
-  createRootMedal,
-  createRootRank,
-  deleteRootMedal,
-  deleteRootRank,
-  updateRootMedal,
-  updateRootRank,
+  createRootAward,
+  deleteRootAward,
+  grantPlayerAward,
+  grantUnitAward,
+  removePlayerAward,
+  removeUnitAward,
+  updateRootAward,
+} from "./awards";
+import {
+  createRootRank as createRank,
+  deleteRootRank as deleteRank,
+  updateRootRank as updateRank,
 } from "./catalogs";
 import {
   addAuthorizedUser,
@@ -28,6 +34,12 @@ import {
 function managementPath(unitId: string) {
   return `/units/${encodeURIComponent(unitId)}/manage`;
 }
+
+type AwardActionResult = {
+  rootUnitId: string;
+  unitId?: string;
+  playerId?: string;
+};
 
 async function runUnitAction(
   unitId: string,
@@ -56,6 +68,38 @@ async function runUnitAction(
   revalidatePath(managementPath(unitId));
   if (successDestination) redirect(successDestination);
   redirect(`${managementPath(unitId)}?notice=${encodeURIComponent(notice)}`);
+}
+
+async function runAwardAction(
+  targetPath: string,
+  notice: string,
+  operation: () => Promise<AwardActionResult>,
+): Promise<never> {
+  let outcome: AwardActionResult;
+  try {
+    outcome = await operation();
+  } catch (error) {
+    const errorMessage = error instanceof UnitManagementError
+      ? error.message
+      : "Unable to save this Award change. Please try again.";
+    if (!(error instanceof UnitManagementError)) {
+      console.error("Award management action failed", error);
+    }
+    redirect(`${targetPath}?error=${encodeURIComponent(errorMessage)}`);
+  }
+
+  revalidatePath("/units");
+  revalidatePath("/players");
+  revalidatePath(`/units/${encodeURIComponent(outcome.rootUnitId)}`);
+  revalidatePath(managementPath(outcome.rootUnitId));
+  if (outcome.unitId) {
+    revalidatePath(`/units/${encodeURIComponent(outcome.unitId)}`);
+    revalidatePath(managementPath(outcome.unitId));
+  }
+  if (outcome.playerId) {
+    revalidatePath(`/players/${encodeURIComponent(outcome.playerId)}`);
+  }
+  redirect(`${targetPath}?notice=${encodeURIComponent(notice)}`);
 }
 
 function value(data: FormData, name: string): string {
@@ -157,9 +201,11 @@ export async function deleteUnitAction(data: FormData): Promise<void> {
 
 export async function createRankAction(data: FormData): Promise<void> {
   const rootUnitId = value(data, "rootUnitId");
-  await runUnitAction(rootUnitId, "Rank added.", () => createRootRank({
+  await runUnitAction(rootUnitId, "Rank added.", () => createRank({
     rootUnitId,
     name: value(data, "name"),
+    abbreviation: value(data, "abbreviation"),
+    imageRef: value(data, "imageRef"),
     description: value(data, "description"),
     sortOrder: value(data, "sortOrder"),
   }));
@@ -167,10 +213,12 @@ export async function createRankAction(data: FormData): Promise<void> {
 
 export async function updateRankAction(data: FormData): Promise<void> {
   const rootUnitId = value(data, "rootUnitId");
-  await runUnitAction(rootUnitId, "Rank saved.", () => updateRootRank({
+  await runUnitAction(rootUnitId, "Rank saved.", () => updateRank({
     rootUnitId,
     rankId: value(data, "rankId"),
     name: value(data, "name"),
+    abbreviation: data.get("abbreviation") ?? undefined,
+    imageRef: data.get("imageRef") ?? undefined,
     description: value(data, "description"),
     sortOrder: value(data, "sortOrder"),
   }));
@@ -178,31 +226,67 @@ export async function updateRankAction(data: FormData): Promise<void> {
 
 export async function deleteRankAction(data: FormData): Promise<void> {
   const rootUnitId = value(data, "rootUnitId");
-  await runUnitAction(rootUnitId, "Rank deleted.", () => deleteRootRank(rootUnitId, value(data, "rankId")));
+  await runUnitAction(rootUnitId, "Rank deleted.", () => deleteRank(rootUnitId, value(data, "rankId")));
 }
 
-export async function createMedalAction(data: FormData): Promise<void> {
+export async function createAwardAction(data: FormData): Promise<void> {
   const rootUnitId = value(data, "rootUnitId");
-  await runUnitAction(rootUnitId, "Medal added.", () => createRootMedal({
+  await runUnitAction(rootUnitId, "Award added.", () => createRootAward({
     rootUnitId,
+    category: value(data, "category"),
     name: value(data, "name"),
     description: value(data, "description"),
     imageRef: value(data, "imageRef"),
+    sortOrder: value(data, "sortOrder"),
   }));
 }
 
-export async function updateMedalAction(data: FormData): Promise<void> {
+export async function updateAwardAction(data: FormData): Promise<void> {
   const rootUnitId = value(data, "rootUnitId");
-  await runUnitAction(rootUnitId, "Medal saved.", () => updateRootMedal({
+  await runUnitAction(rootUnitId, "Award saved.", () => updateRootAward({
     rootUnitId,
-    medalId: value(data, "medalId"),
+    awardId: value(data, "awardId"),
+    category: value(data, "category"),
     name: value(data, "name"),
     description: value(data, "description"),
     imageRef: value(data, "imageRef"),
+    sortOrder: value(data, "sortOrder"),
   }));
 }
 
-export async function deleteMedalAction(data: FormData): Promise<void> {
+export async function deleteAwardAction(data: FormData): Promise<void> {
   const rootUnitId = value(data, "rootUnitId");
-  await runUnitAction(rootUnitId, "Medal deleted.", () => deleteRootMedal(rootUnitId, value(data, "medalId")));
+  await runUnitAction(rootUnitId, "Award deleted.", () => deleteRootAward(rootUnitId, value(data, "awardId")));
+}
+
+export async function grantUnitAwardAction(data: FormData): Promise<void> {
+  const unitId = value(data, "unitId");
+  await runAwardAction(managementPath(unitId), "Unit Award granted.", () => grantUnitAward({
+    unitId,
+    awardId: value(data, "awardId"),
+  }));
+}
+
+export async function removeUnitAwardAction(data: FormData): Promise<void> {
+  const unitId = value(data, "unitId");
+  await runAwardAction(managementPath(unitId), "Unit Award removed.", () => removeUnitAward({
+    unitId,
+    awardId: value(data, "awardId"),
+  }));
+}
+
+export async function grantPlayerAwardAction(data: FormData): Promise<void> {
+  const playerId = value(data, "playerId");
+  await runAwardAction(`/players/${encodeURIComponent(playerId)}`, "Player Award granted.", () => grantPlayerAward({
+    playerId,
+    awardId: value(data, "awardId"),
+  }));
+}
+
+export async function removePlayerAwardAction(data: FormData): Promise<void> {
+  const playerId = value(data, "playerId");
+  await runAwardAction(`/players/${encodeURIComponent(playerId)}`, "Player Award removed.", () => removePlayerAward({
+    playerId,
+    awardId: value(data, "awardId"),
+  }));
 }

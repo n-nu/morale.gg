@@ -76,17 +76,27 @@ export async function getUnit(id: string) {
 export async function getUnitManagementData(id: string) {
   if (isUnitsDemoMode()) return null;
   const { prisma } = await import("@/lib/prisma");
-  return prisma.unit.findUnique({
-    where: { id },
-    select: {
-      ...identity,
-      parentId: true,
-      rootUnitId: true,
-      parent: { select: { id: true, name: true } },
-      children: { select: { id: true, name: true }, orderBy: [...orderBy] },
-      rootUnit: { select: { unitId: true } },
-    },
-  });
+  const [unit, rosterCounts] = await Promise.all([
+    prisma.unit.findUnique({
+      where: { id },
+      select: {
+        ...identity,
+        parentId: true,
+        rootUnitId: true,
+        parent: { select: { id: true, name: true } },
+        children: { select: { id: true, name: true }, orderBy: [...orderBy] },
+        commander: { select: { name: true, image: true } },
+        rootUnit: { select: { unitId: true } },
+      },
+    }),
+    getCurrentRosterCounts([id], prisma),
+  ]);
+  if (unit === null) return null;
+
+  return {
+    ...unit,
+    memberCount: rosterCounts[0]?.memberCount ?? 0,
+  };
 }
 
 export async function listAuthorizedMembershipsForManagement(

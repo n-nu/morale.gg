@@ -1,14 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Permission, PermissionGrant, PermissionScope } from "@prisma/client";
+import type { AwardCategory, Permission, PermissionGrant, PermissionScope } from "@prisma/client";
 
 import {
+  createAwardAction,
   addAuthorizedUserAction,
   createChildUnitAction,
-  createMedalAction,
   createRankAction,
-  deleteMedalAction,
+  deleteAwardAction,
   deleteRankAction,
   deleteUnitAction,
   endAuthorizedUserMembershipAction,
@@ -17,7 +17,7 @@ import {
   removeUnitImageAction,
   revokePermissionGrantAction,
   updateAuthorizedUserLevelAction,
-  updateMedalAction,
+  updateAwardAction,
   updateRankAction,
   updateUnitImageAction,
   updateUnitProfileAction,
@@ -36,15 +36,30 @@ type MembershipEntry = {
 type RankEntry = {
   id: string;
   name: string;
+  abbreviation: string | null;
+  imageRef: string | null;
   description: string | null;
   sortOrder: number;
 };
 
-type MedalEntry = {
+type AwardEntry = {
   id: string;
+  category: AwardCategory;
   name: string;
   description: string | null;
   imageRef: string | null;
+  sortOrder: number;
+  quantityAwarded: number;
+};
+
+type ManagementHeaderUnit = {
+  id: string;
+  name: string;
+  imageRef: string | null;
+  parent: { id: string; name: string } | null;
+  children: { id: string; name: string }[];
+  commander: { name: string | null; image: string | null } | null;
+  memberCount: number;
 };
 
 const fieldClass = "units-management-input";
@@ -53,6 +68,7 @@ const buttonClass = "units-management-button";
 
 const permissionLabels: Record<Permission, string> = {
   MANAGE_UNIT: "Manage Unit",
+  MANAGE_AWARDS: "Manage Awards",
   MANAGE_STRUCTURE: "Manage structure",
   MANAGE_ROSTER: "Manage roster",
   REQUEST_EVENT_PARTICIPATION: "Request Event participation",
@@ -116,12 +132,88 @@ export function ManagementNotice({ notice, error }: { notice?: string; error?: s
 }
 
 export function ManagementSectionNav({ sections }: { sections: { id: string; label: string }[] }) {
+  const icons: Record<string, ReactNode> = {
+    overview: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h5" /></>,
+    organization: <><circle cx="12" cy="5" r="2" /><circle cx="6" cy="19" r="2" /><circle cx="18" cy="19" r="2" /><path d="M12 7v5M6 17v-3h12v3" /></>,
+    structure: <><path d="M4 5h16v5H4zM4 14h7v5H4zM15 14h5v5h-5z" /><path d="M12 10v2M7.5 12h10" /></>,
+    access: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1zM17 8h4M19 6v4" /></>,
+    lifecycle: <><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></>,
+  };
+
   return (
     <nav aria-label="Management sections" className="units-management-nav">
       <ul>
-        {sections.map((section) => <li key={section.id}><a href={`#${section.id}`}>{section.label}</a></li>)}
+        {sections.map((section) => (
+          <li key={section.id}>
+            <a href={`#${section.id}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                {icons[section.id] ?? icons.overview}
+              </svg>
+              <span>{section.label}</span>
+            </a>
+          </li>
+        ))}
       </ul>
     </nav>
+  );
+}
+
+export function UnitManagementHeader({ unit }: { unit: ManagementHeaderUnit }) {
+  const commanderName = unit.commander?.name?.trim() || (unit.commander ? "Name unavailable" : "Unassigned");
+
+  return (
+    <header className="units-management-header">
+      <div className="units-management-heading">
+        <div className="units-management-emblem" aria-hidden="true">
+          {unit.imageRef ? (
+            <Image src={unit.imageRef} alt="" width={64} height={64} unoptimized />
+          ) : (
+            <svg viewBox="0 0 48 48" fill="none">
+              <path d="M24 4 41 10v12c0 11-7 18-17 22C14 40 7 33 7 22V10L24 4Z" />
+              <path d="M24 12v23M15 20h18" />
+            </svg>
+          )}
+        </div>
+        <div className="units-management-identity">
+          <p className="units-eyebrow">Unit management</p>
+          <h1>{unit.name}</h1>
+          <p className="units-management-subtitle">
+            {unit.parent ? <>Under <Link href={`/units/${encodeURIComponent(unit.parent.id)}`}>{unit.parent.name}</Link></> : "Root Unit"}
+          </p>
+        </div>
+      </div>
+
+      <dl className="units-management-summary" aria-label="Unit summary">
+        <div>
+          <dt>Commander</dt>
+          <dd className="units-management-commander">
+            {unit.commander?.image ? <Image src={unit.commander.image} alt="" width={24} height={24} unoptimized /> : null}
+            <span>{commanderName}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Members</dt>
+          <dd>{unit.memberCount}</dd>
+        </div>
+        <div>
+          <dt>Subunits</dt>
+          <dd>{unit.children.length}</dd>
+        </div>
+        <div>
+          <dt>Position</dt>
+          <dd>{unit.parent ? "Subunit" : "Root"}</dd>
+        </div>
+      </dl>
+
+      <nav className="units-management-header-actions" aria-label="Unit shortcuts">
+        <Link href={`/units/${encodeURIComponent(unit.id)}#roster-heading`} className="units-management-link">
+          Manage roster
+        </Link>
+        <Link href={`/units/${encodeURIComponent(unit.id)}`} className="units-management-secondary-link">
+          Public Unit page
+        </Link>
+      </nav>
+    </header>
   );
 }
 
@@ -146,8 +238,7 @@ export function UnitOverview({ unit, canEdit }: { unit: OverviewUnit; canEdit: b
           )}
         </figure>
         <dl className="units-overview-facts">
-          <div><dt>Name</dt><dd>{unit.name}</dd></div>
-          <div><dt>Description</dt><dd>{unit.description || <span className="units-muted">No description</span>}</dd></div>
+          <div><dt>About</dt><dd>{unit.description || <span className="units-muted">No description</span>}</dd></div>
           <div>
             <dt>Links</dt>
             <dd>
@@ -172,7 +263,7 @@ export function UnitOverview({ unit, canEdit }: { unit: OverviewUnit; canEdit: b
                   Image reference
                   <input className={fieldClass} name="imageRef" maxLength={2048} required placeholder="https://… or /images/…" defaultValue={unit.imageRef ?? ""} />
                 </label>
-                <p className="units-management-help">Use a site path beginning with / or an HTTPS URL. Files are not uploaded.</p>
+                <p className="units-management-help">HTTPS URL or site path. Files are not uploaded.</p>
                 <button className={buttonClass} type="submit">Save image</button>
               </form>
             </Disclosure>
@@ -244,9 +335,7 @@ export function AuthorizedUserManagement({ unitId, entries, manageableMembership
                 <input className={fieldClass} name="authorityLevel" type="number" min={1} max={100000} step={1} defaultValue={1} required />
               </label>
             </div>
-            <p className="units-management-help">
-              The person must already have signed in once. Higher numbers are weaker authority; you can add only levels weaker than your own. Roster membership does not grant management access.
-            </p>
+            <p className="units-management-help">The account must sign in once first. Higher levels have less authority; roster membership does not grant management access.</p>
             <button className={buttonClass} type="submit">Add authorized User</button>
           </form>
         </Disclosure>
@@ -314,7 +403,7 @@ function AuthorizedUserRow({ unitId, entry, canManage }: {
           <GrantList grants={entry.grants} canRevoke={canManage} target={target} />
           {canManage ? <GrantForms target={target} /> : null}
           {isCommander ? (
-            <p className="units-management-help">The level-0 Commander membership is protected. Replace the Commander through the separate Commander workflow.</p>
+            <p className="units-management-help">The level-0 Commander membership is protected from these access controls.</p>
           ) : canManage ? (
             <form action={updateAuthorizedUserLevelAction} className="units-management-inline-form">
               <input type="hidden" name="unitId" value={unitId} />
@@ -438,18 +527,20 @@ export function OrganizationManagement({ unit, canCreateChild, moveDestinations,
           <dt className="units-management-kicker">Direct children ({unit.children.length})</dt>
           <dd>
             {unit.children.length ? (
-              <>
+              <div className="units-child-links">
                 {unit.children.slice(0, 8).map((child) => (
                   <Link key={child.id} href={`/units/${encodeURIComponent(child.id)}`}>{child.name}</Link>
                 ))}
                 {unit.children.length > 8 ? (
                   <Disclosure summary={`${unit.children.length - 8} more`}>
-                    {unit.children.slice(8).map((child) => (
-                      <Link key={child.id} href={`/units/${encodeURIComponent(child.id)}`}>{child.name}</Link>
-                    ))}
+                    <div className="units-child-links">
+                      {unit.children.slice(8).map((child) => (
+                        <Link key={child.id} href={`/units/${encodeURIComponent(child.id)}`}>{child.name}</Link>
+                      ))}
+                    </div>
                   </Disclosure>
                 ) : null}
-              </>
+              </div>
             ) : (
               <span>None</span>
             )}
@@ -457,10 +548,11 @@ export function OrganizationManagement({ unit, canCreateChild, moveDestinations,
         </div>
       </dl>
 
-      <p className="units-management-help">
-        Roster membership is managed on the <Link className="units-inline-link" href={`/units/${encodeURIComponent(unit.id)}`}>public Unit page</Link> and never grants management access.
-        {rootSettingsHref ? <> Rank and Medal catalogs are managed in <Link className="units-inline-link" href={rootSettingsHref}>RootUnit organization settings</Link>.</> : null}
-      </p>
+      {rootSettingsHref ? (
+        <p className="units-management-shortcut">
+          <Link href={rootSettingsHref}>Manage root catalogs</Link>
+        </p>
+      ) : null}
 
       {canCreateChild || (unit.parent && moveDestinations.length > 0) ? (
         <div className="units-disclosure-group">
@@ -511,7 +603,7 @@ export function UnitLifecycle({ unitId, unitName }: { unitId: string; unitName: 
     <div className="units-danger-row">
       <div>
         <h3>Delete Unit</h3>
-        <p className="units-management-help">Only an unused leaf Unit can be deleted. Player, Event, membership, grant, and child-Unit history block deletion.</p>
+        <p className="units-management-help">Only unused leaf Units can be deleted; linked player, event, membership, grant, or child history blocks deletion.</p>
       </div>
       <details className="units-confirm">
         <summary>Delete Unit</summary>
@@ -525,15 +617,18 @@ export function UnitLifecycle({ unitId, unitName }: { unitId: string; unitName: 
   );
 }
 
-export function OrganizationCatalogs({ rootUnitId, ranks, medals }: {
+export function OrganizationCatalogs({ rootUnitId, ranks, playerAwards, unitAwards, canManageRanks }: {
   rootUnitId: string;
   ranks: RankEntry[];
-  medals: MedalEntry[];
+  playerAwards: AwardEntry[];
+  unitAwards: AwardEntry[];
+  canManageRanks: boolean;
 }) {
   return (
     <div className="units-management-stack">
-      <RankStructure rootUnitId={rootUnitId} ranks={ranks} />
-      <MedalCatalog rootUnitId={rootUnitId} medals={medals} />
+      {canManageRanks ? <RankStructure rootUnitId={rootUnitId} ranks={ranks} /> : null}
+      <AwardCatalog rootUnitId={rootUnitId} category="PLAYER" awards={playerAwards} />
+      <AwardCatalog rootUnitId={rootUnitId} category="UNIT" awards={unitAwards} />
     </div>
   );
 }
@@ -542,139 +637,182 @@ function displayName(entry: MembershipEntry) {
   return entry.user.name ?? entry.user.email ?? entry.userId;
 }
 
+function RankFields({ rank, nextOrder }: { rank?: RankEntry; nextOrder?: number }) {
+  return (
+    <>
+      <div className="units-rank-fields">
+        <label className={labelClass}>
+          Order
+          <input className={fieldClass} name="sortOrder" type="number" min={-100000} max={100000} step={1} defaultValue={rank?.sortOrder ?? nextOrder} required />
+        </label>
+        <label className={labelClass}>
+          Rank (short code)
+          <input className={fieldClass} name="abbreviation" maxLength={20} placeholder="PVT" defaultValue={rank?.abbreviation ?? ""} />
+        </label>
+        <label className={labelClass}>
+          Rank name
+          <input className={fieldClass} name="name" maxLength={100} placeholder="Private" defaultValue={rank?.name ?? ""} required />
+        </label>
+      </div>
+      <label className={labelClass}>
+        Image reference
+        <input className={fieldClass} name="imageRef" maxLength={2048} placeholder="https://... or /images/..." defaultValue={rank?.imageRef ?? ""} />
+      </label>
+      <p className="units-management-help">Optional image: HTTPS URL or site path. Files are not uploaded.</p>
+      <label className={labelClass}>
+        Description
+        <textarea className={fieldClass} name="description" rows={2} maxLength={2000} defaultValue={rank?.description ?? ""} />
+      </label>
+    </>
+  );
+}
+
 export function RankStructure({ rootUnitId, ranks }: { rootUnitId: string; ranks: RankEntry[] }) {
   const nextOrder = ranks.length === 0 ? 1 : Math.max(...ranks.map((rank) => rank.sortOrder)) + 1;
 
   return (
     <section className="units-management-catalog" aria-label="Rank Structure">
-      <div className="units-management-section-header">
+      <div className="units-catalog-heading">
         <h3>Rank Structure</h3>
-        <details className="units-management-disclosure compact-disclosure">
-          <summary>Add Rank</summary>
+        <Disclosure summary="Add Rank" className="units-add">
           <form action={createRankAction} className="units-management-form">
             <input type="hidden" name="rootUnitId" value={rootUnitId} />
-            <div className="units-management-grid">
-              <label className={labelClass}>
-                Rank name
-                <input className={fieldClass} name="name" maxLength={100} required />
-              </label>
-              <label className={labelClass}>
-                Order
-                <input className={fieldClass} name="sortOrder" type="number" min={-100000} max={100000} step={1} defaultValue={nextOrder} required />
-              </label>
-            </div>
-            <label className={labelClass}>
-              Description
-              <textarea className={fieldClass} name="description" rows={2} maxLength={2000} />
-            </label>
+            <RankFields nextOrder={nextOrder} />
             <button className={buttonClass} type="submit">Add Rank</button>
           </form>
-        </details>
+        </Disclosure>
       </div>
 
       {ranks.length === 0 ? (
         <p className="units-management-empty">No Ranks defined yet.</p>
       ) : (
-        <div className="units-management-table">
-          {ranks.map((rank, index) => (
-            <div className="units-management-table-row" key={rank.id}>
-              <span className="units-catalog-position">{index + 1}</span>
-              <div className="units-management-row-main">
-                <strong>{rank.name}</strong>
-                {rank.description ? <span>{rank.description}</span> : null}
-              </div>
-              <div className="units-management-row-meta">
-                <span className="sr-only">Order </span>{rank.sortOrder}
-              </div>
-              <div className="units-management-row-actions">
-                <details className="units-management-disclosure compact-disclosure">
-                  <summary>Edit</summary>
-                  <form action={updateRankAction} className="units-management-form">
-                    <input type="hidden" name="rootUnitId" value={rootUnitId} />
-                    <input type="hidden" name="rankId" value={rank.id} />
-                    <div className="units-management-grid">
-                      <label className={labelClass}>
-                        Rank name
-                        <input className={fieldClass} name="name" maxLength={100} defaultValue={rank.name} required />
-                      </label>
-                      <label className={labelClass}>
-                        Order
-                        <input className={fieldClass} name="sortOrder" type="number" min={-100000} max={100000} step={1} defaultValue={rank.sortOrder} required />
-                      </label>
-                    </div>
-                    <label className={labelClass}>
-                      Description
-                      <textarea className={fieldClass} name="description" rows={2} maxLength={2000} defaultValue={rank.description ?? ""} />
-                    </label>
-                    <button className={buttonClass} type="submit">Save</button>
-                  </form>
+        <div className="units-ranks">
+          <div className="units-rank-columns units-rank-head" aria-hidden="true">
+            <span>Order</span><span>Image</span><span>Rank</span><span>Rank name</span><span />
+          </div>
+          <ul className="units-catalog-list" aria-label="Ranks">
+            {ranks.map((rank) => (
+              <li key={rank.id}>
+                <details className="units-disclosure units-rank-row">
+                  <summary className="units-rank-columns">
+                    <span className="units-catalog-position"><span className="sr-only">Order </span>{rank.sortOrder}</span>
+                    <span className="units-catalog-thumb">
+                      {rank.imageRef ? (
+                        <Image src={rank.imageRef} alt="" width={32} height={32} unoptimized className="h-8 w-8 object-contain" />
+                      ) : (
+                        <><span className="units-muted" aria-hidden="true">—</span><span className="sr-only">No image</span></>
+                      )}
+                    </span>
+                    <span className="units-rank-code"><span className="sr-only">Rank </span>{rank.abbreviation || "—"}</span>
+                    <strong className="units-rank-name">{rank.name}</strong>
+                    <span className="units-rank-action">Edit<span className="sr-only"> {rank.name}</span></span>
+                  </summary>
+                  <div className="units-disclosure-panel">
+                    <form action={updateRankAction} className="units-management-form">
+                      <input type="hidden" name="rootUnitId" value={rootUnitId} />
+                      <input type="hidden" name="rankId" value={rank.id} />
+                      <RankFields rank={rank} />
+                      <button className={buttonClass} type="submit">Save</button>
+                    </form>
+                    <form action={deleteRankAction}>
+                      <input type="hidden" name="rootUnitId" value={rootUnitId} />
+                      <input type="hidden" name="rankId" value={rank.id} />
+                      <button className="units-management-text-button" type="submit">Delete {rank.name}</button>
+                    </form>
+                  </div>
                 </details>
-                <form action={deleteRankAction}>
-                  <input type="hidden" name="rootUnitId" value={rootUnitId} />
-                  <input type="hidden" name="rankId" value={rank.id} />
-                  <button className="units-management-danger-button" type="submit">Delete {rank.name}</button>
-                </form>
-              </div>
-            </div>
-          ))}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </section>
   );
 }
 
-function MedalFields({ medal }: { medal?: MedalEntry }) {
+function AwardFields({ award, category, nextOrder }: {
+  award?: AwardEntry;
+  category: AwardCategory;
+  nextOrder?: number;
+}) {
   return (
     <>
-      <label className={labelClass}>Medal name<input className={fieldClass} name="name" maxLength={100} defaultValue={medal?.name} required /></label>
-      <label className={labelClass}>Description<textarea className={fieldClass} name="description" rows={2} maxLength={2000} defaultValue={medal?.description ?? ""} /></label>
-      <label className={labelClass}>Image reference<input className={fieldClass} name="imageRef" maxLength={2048} placeholder="https://… or /images/…" defaultValue={medal?.imageRef ?? ""} /></label>
+      <input type="hidden" name="category" value={category} />
+      <div className="units-award-fields">
+        <label className={labelClass}>
+          Order
+          <input className={fieldClass} name="sortOrder" type="number" min={-100000} max={100000} step={1} defaultValue={award?.sortOrder ?? nextOrder} required />
+        </label>
+        <label className={labelClass}>
+          Award name
+          <input className={fieldClass} name="name" maxLength={100} defaultValue={award?.name ?? ""} required />
+        </label>
+      </div>
+      <label className={labelClass}>
+        Image reference
+        <input className={fieldClass} name="imageRef" maxLength={2048} placeholder="https://... or /images/..." defaultValue={award?.imageRef ?? ""} />
+      </label>
+      <p className="units-management-help">Optional image: HTTPS URL or site path. Files are not uploaded.</p>
+      <label className={labelClass}>
+        Description
+        <textarea className={fieldClass} name="description" rows={2} maxLength={2000} defaultValue={award?.description ?? ""} />
+      </label>
     </>
   );
 }
 
-export function MedalCatalog({ rootUnitId, medals }: { rootUnitId: string; medals: MedalEntry[] }) {
+export function AwardCatalog({ rootUnitId, category, awards }: {
+  rootUnitId: string;
+  category: AwardCategory;
+  awards: AwardEntry[];
+}) {
+  const title = category === "PLAYER" ? "Player Awards" : "Unit Awards";
+  const nextOrder = awards.length === 0 ? 1 : Math.max(...awards.map((award) => award.sortOrder)) + 1;
   return (
-    <section className="units-management-catalog" aria-labelledby="medal-catalog-heading">
+    <section className="units-management-catalog" aria-label={title}>
       <div className="units-catalog-heading">
-        <h3 id="medal-catalog-heading">Medals <span className="units-muted">{medals.length}</span></h3>
-        <Disclosure summary="Add Medal" className="units-add">
-          <form action={createMedalAction} className="units-management-form">
+        <h3>{title} <span className="units-muted">{awards.length}</span></h3>
+        <Disclosure summary={`Add ${category === "PLAYER" ? "Player" : "Unit"} Award`} className="units-add">
+          <form action={createAwardAction} className="units-management-form">
             <input type="hidden" name="rootUnitId" value={rootUnitId} />
-            <MedalFields />
-            <button className={buttonClass} type="submit">Add Medal</button>
+            <AwardFields category={category} nextOrder={nextOrder} />
+            <button className={buttonClass} type="submit">Add Award</button>
           </form>
         </Disclosure>
       </div>
-      {medals.length ? (
-        <div className="units-catalog">
-          <div className="units-catalog-head is-medal" aria-hidden="true"><span>Image</span><span>Medal</span><span /></div>
-          <ul className="units-catalog-list" aria-label="Medals">
-            {medals.map((medal) => (
-              <li key={medal.id}>
-                <details className="units-disclosure units-catalog-row">
-                  <summary className="is-medal">
+      {awards.length ? (
+        <div className="units-awards">
+          <div className="units-award-columns units-award-head" aria-hidden="true">
+            <span>Order</span><span>Image</span><span>Quantity Awarded</span><span>Award Name</span><span />
+          </div>
+          <ul className="units-catalog-list" aria-label={title}>
+            {awards.map((award) => (
+              <li key={award.id}>
+                <details className="units-disclosure units-award-row">
+                  <summary className="units-award-columns">
+                    <span className="units-catalog-position"><span className="sr-only">Order </span>{award.sortOrder}</span>
                     <span className="units-catalog-thumb">
-                      {medal.imageRef ? <Image src={medal.imageRef} alt="" width={32} height={32} unoptimized className="h-8 w-8 object-contain" /> : <><span className="units-muted" aria-hidden="true">—</span><span className="sr-only">No image</span></>}
+                      {award.imageRef ? <Image src={award.imageRef} alt="" width={32} height={32} unoptimized className="h-8 w-8 object-contain" /> : <><span className="units-muted" aria-hidden="true">—</span><span className="sr-only">No image</span></>}
                     </span>
-                    <span className="units-catalog-name">
-                      <strong>{medal.name}</strong>
-                      {medal.description ? <span>{medal.description}</span> : null}
+                    <span className="units-award-quantity"><span className="sr-only">Quantity awarded </span>{award.quantityAwarded}</span>
+                    <span className="units-award-name">
+                      <strong>{award.name}</strong>
+                      {award.description ? <span>{award.description}</span> : null}
                     </span>
-                    <span className="units-access-action">Edit</span>
+                    <span className="units-rank-action">Edit<span className="sr-only"> {award.name}</span></span>
                   </summary>
                   <div className="units-disclosure-panel">
-                    <form action={updateMedalAction} className="units-management-form">
+                    <form action={updateAwardAction} className="units-management-form">
                       <input type="hidden" name="rootUnitId" value={rootUnitId} />
-                      <input type="hidden" name="medalId" value={medal.id} />
-                      <MedalFields medal={medal} />
-                      <button className={buttonClass} type="submit">Save Medal</button>
+                      <input type="hidden" name="awardId" value={award.id} />
+                      <AwardFields award={award} category={category} />
+                      <button className={buttonClass} type="submit">Save Award</button>
                     </form>
                     <ConfirmAction
-                      label="Delete Medal"
-                      confirmLabel={`Delete ${medal.name}`}
-                      action={deleteMedalAction}
-                      fields={{ rootUnitId, medalId: medal.id }}
+                      label="Delete Award"
+                      confirmLabel={`Delete ${award.name}`}
+                      action={deleteAwardAction}
+                      fields={{ rootUnitId, awardId: award.id }}
                     />
                   </div>
                 </details>
@@ -682,7 +820,7 @@ export function MedalCatalog({ rootUnitId, medals }: { rootUnitId: string; medal
             ))}
           </ul>
         </div>
-      ) : <p className="units-management-empty">No Medals defined yet.</p>}
+      ) : <p className="units-management-empty">No {title} defined yet.</p>}
     </section>
   );
 }

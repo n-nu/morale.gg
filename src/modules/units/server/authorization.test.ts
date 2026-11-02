@@ -6,6 +6,8 @@ import {
   canCreateChildUnit,
   canCreateEvent,
   canDeleteUnit,
+  canManageAwards,
+  canManageRootAwardCatalog,
   canManageRootSettings,
   canManageAuthorizedUsers,
   canManageRoster,
@@ -30,7 +32,7 @@ type Snapshot = {
   grants: Array<{
     id: string;
     authorizedUserMembershipId: string;
-    permission: "MANAGE_UNIT" | "MANAGE_STRUCTURE" | "MANAGE_ROSTER" | "MANAGE_EVENTS" | "MANAGE_AUTHORIZED_USERS";
+    permission: "MANAGE_UNIT" | "MANAGE_AWARDS" | "MANAGE_STRUCTURE" | "MANAGE_ROSTER" | "MANAGE_EVENTS" | "MANAGE_AUTHORIZED_USERS";
     scope: "SELF" | "SELF_AND_CHILDREN" | "SELF_AND_DESCENDANTS" | null;
     delegatedFromGrantId: string | null;
     revokedAt: Date | null;
@@ -199,6 +201,33 @@ test("RootUnit settings belong only to the designated RootUnit Commander", async
   assert.equal(await canManageRootSettings(commander, rootA), true);
   assert.equal(await canManageRootSettings(actor, rootA), false);
   assert.equal(await canManageRootSettings(commander, rootB), false);
+});
+
+test("MANAGE_AWARDS uses hierarchy scopes and full RootUnit scope for catalog edits", async () => {
+  const snapshot = baseSnapshot();
+  addGrant(snapshot, {
+    id: "all-awards",
+    permission: "MANAGE_AWARDS",
+    scope: "SELF_AND_DESCENDANTS",
+  });
+  installSnapshot(snapshot);
+  assert.equal(await canManageAwards(actor, rootA), true);
+  assert.equal(await canManageAwards(actor, grandchild), true);
+  assert.equal(await canManageRootAwardCatalog(actor, rootA), true);
+
+  snapshot.grants = [];
+  addGrant(snapshot, {
+    id: "branch-awards",
+    permission: "MANAGE_AWARDS",
+    scope: "SELF_AND_DESCENDANTS",
+    unitId: branch,
+  });
+  installSnapshot(snapshot);
+  assert.equal(await canManageAwards(actor, branch), true);
+  assert.equal(await canManageAwards(actor, grandchild), true);
+  assert.equal(await canManageAwards(actor, rootA), false);
+  assert.equal(await canManageRootAwardCatalog(actor, rootA), false);
+  assert.equal(await canManageRootAwardCatalog(commander, rootA), true);
 });
 
 test("structural workflows authorize their operation territory separately", async () => {

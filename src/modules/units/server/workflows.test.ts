@@ -7,16 +7,23 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import {
-  createRootMedal,
+  createRootAward,
+  deleteRootAward,
+  getPlayerAwardManagementData,
+  grantPlayerAward,
+  grantUnitAward,
+  listRootAwards,
+  removePlayerAward,
+  removeUnitAward,
+  updateRootAward,
+} from "./awards";
+import { canManageRootSettings } from "./authorization";
+import {
   createRootRank,
-  deleteRootMedal,
   deleteRootRank,
-  listRootMedals,
   listRootRanks,
-  updateRootMedal,
   updateRootRank,
 } from "./catalogs";
-import { canManageRootSettings } from "./authorization";
 import { unitWorkflows } from "./workflows";
 
 test("Unit management workflows preserve authority and hierarchy invariants", async (t) => {
@@ -55,6 +62,12 @@ test("Unit management workflows preserve authority and hierarchy invariants", as
         );
         await client.query('UPDATE "Unit" SET "commanderUserId" = $1 WHERE "id" = $2', ["owner", "root-a"]);
       }
+      if (migration === "20261102213000_awards") {
+        await client.query(
+          'INSERT INTO "MedalDefinition" ("id", "rootUnitId", "name", "description", "imageRef", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP), ($6, $2, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+          ["legacy-medal-z", "root-a", "Z Service Medal", "Legacy description", "/medals/z.png", "legacy-medal-a", "A Service Cross", "Earlier alphabetical Medal", null],
+        );
+      }
       const sql = await readFile(new URL(`${migration}/migration.sql`, migrationsUrl), "utf8");
       await client.query(sql);
     }
@@ -63,6 +76,41 @@ test("Unit management workflows preserve authority and hierarchy invariants", as
     await client.query(`ALTER FUNCTION "${schema}"."validate_unit_root_consistency"() SET search_path TO "${schema}", public`);
 
     db = new PrismaClient({ adapter: new PrismaPg({ connectionString }, { schema }) });
+    const migratedAwards = await db.awardDefinition.findMany({
+      where: { id: { in: ["legacy-medal-a", "legacy-medal-z"] } },
+      orderBy: [{ sortOrder: "asc" }],
+    });
+    assert.deepEqual(
+      migratedAwards.map(({ id, category, rootUnitId, name, description, imageRef, sortOrder }) => ({
+        id,
+        category,
+        rootUnitId,
+        name,
+        description,
+        imageRef,
+        sortOrder,
+      })),
+      [
+        {
+          id: "legacy-medal-a",
+          category: "PLAYER",
+          rootUnitId: "root-a",
+          name: "A Service Cross",
+          description: "Earlier alphabetical Medal",
+          imageRef: null,
+          sortOrder: 0,
+        },
+        {
+          id: "legacy-medal-z",
+          category: "PLAYER",
+          rootUnitId: "root-a",
+          name: "Z Service Medal",
+          description: "Legacy description",
+          imageRef: "/medals/z.png",
+          sortOrder: 1,
+        },
+      ],
+    );
     await db.user.createMany({
       data: [
         { id: "commander-a", name: "Commander A", email: "commander-a@example.test" },
@@ -80,6 +128,7 @@ test("Unit management workflows preserve authority and hierarchy invariants", as
       await tx.permissionGrant.createMany({
         data: [
           { authorizedUserMembershipId: membership.id, permission: "MANAGE_UNIT", scope: "SELF", createdByUserId: "owner" },
+          { authorizedUserMembershipId: membership.id, permission: "MANAGE_AWARDS", scope: "SELF_AND_DESCENDANTS", createdByUserId: "owner" },
           { authorizedUserMembershipId: membership.id, permission: "MANAGE_AUTHORIZED_USERS", scope: "SELF_AND_DESCENDANTS", createdByUserId: "owner" },
           { authorizedUserMembershipId: membership.id, permission: "MANAGE_STRUCTURE", scope: null, createdByUserId: "owner" },
           { authorizedUserMembershipId: membership.id, permission: "MANAGE_ROSTER", scope: "SELF_AND_DESCENDANTS", createdByUserId: "owner" },
@@ -94,10 +143,12 @@ test("Unit management workflows preserve authority and hierarchy invariants", as
       updateRootRank: (input: Parameters<typeof updateRootRank>[0]) => updateRootRank(input, catalogDependencies),
       deleteRootRank: (rootUnitId: string, rankId: string) => deleteRootRank(rootUnitId, rankId, catalogDependencies),
       listRootRanks: (rootUnitId: string) => listRootRanks(rootUnitId, catalogDependencies),
-      createRootMedal: (input: Parameters<typeof createRootMedal>[0]) => createRootMedal(input, catalogDependencies),
-      updateRootMedal: (input: Parameters<typeof updateRootMedal>[0]) => updateRootMedal(input, catalogDependencies),
-      deleteRootMedal: (rootUnitId: string, medalId: string) => deleteRootMedal(rootUnitId, medalId, catalogDependencies),
-      listRootMedals: (rootUnitId: string) => listRootMedals(rootUnitId, catalogDependencies),
+    };
+    const awards = {
+      create: (input: Parameters<typeof createRootAward>[0]) => createRootAward(input, catalogDependencies),
+      update: (input: Parameters<typeof updateRootAward>[0]) => updateRootAward(input, catalogDependencies),
+      delete: (rootUnitId: string, awardId: string) => deleteRootAward(rootUnitId, awardId, catalogDependencies),
+      list: (rootUnitId: string, category: "PLAYER" | "UNIT") => listRootAwards(rootUnitId, category, catalogDependencies),
     };
     const createDeleteCandidate = (name: string) => workflow.createChildUnit({
       parentUnitId: "root-a",
@@ -346,16 +397,20 @@ test("Unit management workflows preserve authority and hierarchy invariants", as
       );
     });
 
-    await t.test("only RootUnit owner manages its Rank and Medal catalogs", async () => {
+    await t.test("RootUnit owner manages Rank and Award definitions without losing migrated Medals", async () => {
       assert.equal(await canManageRootSettings("owner", "root-a", db!), true);
       assert.equal(await canManageRootSettings("commander-a", "root-a", db!), false);
 
       const rank = await catalogs.createRootRank({
         rootUnitId: "root-a",
         name: "Lieutenant",
+        abbreviation: "LT",
+        imageRef: "/ranks/lieutenant.png",
         description: "Junior officer",
         sortOrder: 3,
       });
+      assert.equal(rank.abbreviation, "LT");
+      assert.equal(rank.imageRef, "/ranks/lieutenant.png");
       await catalogs.createRootRank({ rootUnitId: "root-a", name: "Captain", description: "", sortOrder: 2 });
       assert.deepEqual((await catalogs.listRootRanks("root-a")).map((item) => item.name), ["Captain", "Lieutenant"]);
       const updatedRank = await catalogs.updateRootRank({
@@ -366,23 +421,171 @@ test("Unit management workflows preserve authority and hierarchy invariants", as
         sortOrder: 1,
       });
       assert.equal(updatedRank.name, "First Lieutenant");
+      assert.equal(updatedRank.abbreviation, "LT", "legacy updates preserve the short code");
+      assert.equal(updatedRank.imageRef, "/ranks/lieutenant.png", "legacy updates preserve the image");
+      const revisedRank = await catalogs.updateRootRank({
+        rootUnitId: "root-a", rankId: rank.id, name: "First Lieutenant",
+        description: "", sortOrder: 1, abbreviation: "1LT", imageRef: "https://example.test/first-lieutenant.png",
+      });
+      assert.equal(revisedRank.abbreviation, "1LT");
+      assert.equal(revisedRank.imageRef, "https://example.test/first-lieutenant.png");
+      await assert.rejects(
+        updateRootRank({
+          rootUnitId: "root-a", rankId: rank.id, name: "Unauthorized",
+          description: "", sortOrder: 1, abbreviation: "BAD", imageRef: "",
+        }, { db: db!, getUserId: async () => "commander-a" }),
+        /current owner/,
+      );
+      const clearedRank = await catalogs.updateRootRank({
+        rootUnitId: "root-a", rankId: rank.id, name: "First Lieutenant",
+        description: "", sortOrder: 1, abbreviation: "", imageRef: "",
+      });
+      assert.equal(clearedRank.abbreviation, null);
+      assert.equal(clearedRank.imageRef, null);
       await catalogs.deleteRootRank("root-a", rank.id);
 
-      const medal = await catalogs.createRootMedal({
+      const playerAward = await awards.create({
         rootUnitId: "root-a",
+        category: "PLAYER",
         name: "Service Cross",
         description: "Long service",
         imageRef: "/medals/service.png",
+        sortOrder: 5,
       });
-      assert.equal((await catalogs.listRootMedals("root-a")).length, 1);
-      await catalogs.updateRootMedal({
+      const unitAward = await awards.create({
         rootUnitId: "root-a",
-        medalId: medal.id,
+        category: "UNIT",
+        name: "Unit Citation",
+        description: "Collective distinction",
+        imageRef: "",
+        sortOrder: 1,
+      });
+      assert.equal((await awards.list("root-a", "PLAYER")).length, 3);
+      assert.equal((await awards.list("root-a", "PLAYER")).at(-1)?.name, "Service Cross");
+      assert.deepEqual((await awards.list("root-a", "UNIT")).map(({ name }) => name), ["Unit Citation"]);
+      assert.equal((await awards.list("root-a", "PLAYER")).find(({ id }) => id === "legacy-medal-z")?.quantityAwarded, 0);
+
+      const updatedAward = await awards.update({
+        rootUnitId: "root-a",
+        awardId: playerAward.id,
+        category: "PLAYER",
         name: "Distinguished Service Cross",
         description: "Distinguished service",
         imageRef: "",
+        sortOrder: 2,
       });
-      await catalogs.deleteRootMedal("root-a", medal.id);
+      assert.equal(updatedAward.name, "Distinguished Service Cross");
+      assert.equal(updatedAward.imageRef, null);
+      assert.equal(updatedAward.sortOrder, 2);
+
+      await db!.player.create({ data: { id: "award-player-internal", playerId: "award-player" } });
+      await db!.unitMembership.create({
+        data: { playerId: "award-player-internal", unitId: "root-a" },
+      });
+      const awardDependencies = { db: db!, getUserId: async () => "owner" };
+      await grantPlayerAward({ playerId: "award-player", awardId: playerAward.id }, awardDependencies);
+      await grantUnitAward({ unitId: "root-a", awardId: unitAward.id }, awardDependencies);
+      await assert.rejects(
+        grantPlayerAward({ playerId: "award-player", awardId: playerAward.id }, awardDependencies),
+        /already holds that Award/,
+      );
+      await assert.rejects(
+        grantUnitAward({ unitId: "root-a", awardId: unitAward.id }, awardDependencies),
+        /already holds that Award/,
+      );
+      await assert.rejects(
+        grantPlayerAward({ playerId: "award-player", awardId: unitAward.id }, awardDependencies),
+        /Player Award/,
+      );
+      await assert.rejects(
+        grantUnitAward({ unitId: "root-a", awardId: playerAward.id }, awardDependencies),
+        /Unit Award/,
+      );
+      const playerCounts = await awards.list("root-a", "PLAYER");
+      const unitCounts = await awards.list("root-a", "UNIT");
+      assert.equal(playerCounts.find(({ id }) => id === playerAward.id)?.quantityAwarded, 1);
+      assert.equal(unitCounts.find(({ id }) => id === unitAward.id)?.quantityAwarded, 1);
+      await assert.rejects(awards.delete("root-a", playerAward.id), /Remove this Award/);
+      await removePlayerAward({ playerId: "award-player", awardId: playerAward.id }, awardDependencies);
+      await removeUnitAward({ unitId: "root-a", awardId: unitAward.id }, awardDependencies);
+      assert.equal((await awards.list("root-a", "PLAYER")).find(({ id }) => id === playerAward.id)?.quantityAwarded, 0);
+      assert.equal((await awards.list("root-a", "UNIT")).find(({ id }) => id === unitAward.id)?.quantityAwarded, 0);
+
+      const commanderAMembership = await db!.authorizedUserMembership.findFirstOrThrow({
+        where: { userId: "commander-a", unitId: childAId, endedAt: null },
+        select: { id: true },
+      });
+      await db!.permissionGrant.create({
+        data: {
+          authorizedUserMembershipId: commanderAMembership.id,
+          permission: "MANAGE_AWARDS",
+          scope: "SELF",
+          createdByUserId: "owner",
+        },
+      });
+      await db!.player.create({ data: { id: "multi-award-player-internal", playerId: "multi-award-player" } });
+      await db!.unitMembership.create({
+        data: { playerId: "multi-award-player-internal", unitId: childBId },
+      });
+      const branchManagerDependencies = { db: db!, getUserId: async () => "commander-a" };
+      await assert.rejects(
+        grantPlayerAward({ playerId: "multi-award-player", awardId: playerAward.id }, branchManagerDependencies),
+        /Manage Awards for a Unit this Player currently belongs to/,
+      );
+      await db!.unitMembership.create({
+        data: { playerId: "multi-award-player-internal", unitId: childAId },
+      });
+      await grantPlayerAward({ playerId: "multi-award-player", awardId: playerAward.id }, branchManagerDependencies);
+      assert.equal((await awards.list("root-a", "PLAYER")).find(({ id }) => id === playerAward.id)?.quantityAwarded, 1);
+      await removePlayerAward({ playerId: "multi-award-player", awardId: playerAward.id }, branchManagerDependencies);
+
+      await grantPlayerAward({ playerId: "award-player", awardId: playerAward.id }, awardDependencies);
+      await db!.unitMembership.updateMany({
+        where: { playerId: "award-player-internal", unitId: "root-a", endedAt: null },
+        data: { endedAt: new Date() },
+      });
+      const orphanedPlayerAwards = await getPlayerAwardManagementData("owner", "award-player", { db: db! });
+      assert.deepEqual(orphanedPlayerAwards.manageableAwardIds, [playerAward.id]);
+      assert.deepEqual(orphanedPlayerAwards.available, []);
+      const cleanupMembership = await db!.authorizedUserMembership.findFirstOrThrow({
+        where: { unitId: "root-a", userId: "staff", endedAt: null },
+        select: { id: true },
+      });
+      await db!.permissionGrant.create({
+        data: {
+          authorizedUserMembershipId: cleanupMembership.id,
+          permission: "MANAGE_AWARDS",
+          scope: "SELF_AND_DESCENDANTS",
+          createdByUserId: "owner",
+        },
+      });
+      const fullRootManagerAwards = await getPlayerAwardManagementData("staff", "award-player", { db: db! });
+      assert.deepEqual(fullRootManagerAwards.manageableAwardIds, [playerAward.id]);
+      await assert.rejects(
+        removePlayerAward(
+          { playerId: "award-player", awardId: playerAward.id },
+          { db: db!, getUserId: async () => "commander-a" },
+        ),
+        /RootUnit owner or a full-root Award manager/,
+      );
+      await removePlayerAward(
+        { playerId: "award-player", awardId: playerAward.id },
+        { db: db!, getUserId: async () => "staff" },
+      );
+      assert.equal((await awards.list("root-a", "PLAYER")).find(({ id }) => id === playerAward.id)?.quantityAwarded, 0);
+      await awards.delete("root-a", playerAward.id);
+      await awards.delete("root-a", unitAward.id);
+      await assert.rejects(
+        createRootAward({
+          rootUnitId: "root-a",
+          category: "PLAYER",
+          name: "Unauthorized Award",
+          description: "",
+          imageRef: "",
+          sortOrder: 1,
+        }, { db: db!, getUserId: async () => "commander-a" }),
+        /Manage Awards at this RootUnit/,
+      );
       await assert.rejects(
         listRootRanks("root-a", { db: db!, getUserId: async () => "commander-a" }),
         /current owner/,

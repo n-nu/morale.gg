@@ -2,9 +2,9 @@
 module_id: units
 path: src/modules/units
 status: active
-version: 0.1
+version: 0.2
 last_reviewed: 2026-11-02
-updated_by_ticket: TKT-20261102-000048-001
+updated_by_ticket: TKT-20261102-000050-001
 ---
 
 # Units
@@ -25,7 +25,10 @@ Units-owned. Units also owns the approved server-enforced profile,
 authorized-user/grant, and operation-specific structural workflows and their
 management UI (TKT-20260926-000019-001). RootUnit-scoped Rank and Medal
 catalogs and the narrow RootUnit settings capability are Units-owned under
-ADR-20260926-005.
+ADR-20260926-005. Under BCR-20261102-010, Units also owns ordered
+RootUnit-scoped Player/Unit Award definitions, current Player/Unit Award
+grants, derived recipient counts, Award presentation reads, and the scoped
+`MANAGE_AWARDS` capability/workflows.
 
 ## Non-Ownership
 Player identity, Player-to-Unit `UnitMembership`, roster persistence and
@@ -43,7 +46,7 @@ hierarchy rendered as a centered, pannable family tree with sibling branches
 and explicit directional connectors.
 Authenticated management lives at `/units/[unitId]/manage`. It provides
 Units-owned profile, authorized-user/grant, structural create/move, and
-RootUnit-catalog workflows. The structural delete workflow hard-deletes only
+RootUnit Rank/Award catalog and Unit Award grant workflows. The structural delete workflow hard-deletes only
 otherwise-unused non-RootUnit leaf Units; its server-side transaction rejects
 protected history and removes the sole bootstrap Commander membership only
 with the Unit. No archive/tombstone workflow exists.
@@ -51,12 +54,29 @@ with the Unit. No archive/tombstone workflow exists.
 Server-only capabilities in `server/authorization.ts` include
 `canManageUnit`, `canManageRoster`, `canManageAuthorizedUsers`,
 `canRequestEventParticipation`, `canCreateEvent`, `canCreateChildUnit`,
-`canMoveUnit`, `canDeleteUnit`, and `canManageRootSettings`. Structural
+`canMoveUnit`, `canDeleteUnit`, `canManageRootSettings`, and `canManageAwards`.
+Structural
 operations use operation-specific contextual checks; no generic structure
 boolean is the sole authorization boundary. `canManageAuthorizedUsers` remains
 permission coverage only; mutation workflows also enforce hierarchy, scope,
-authority level, delegation, and Commander invariants. RootUnit settings are
-restricted to the designated RootUnit's current Commander and its catalogs.
+authority level, delegation, and Commander invariants. RootUnit Rank settings are restricted to the designated RootUnit's current
+Commander. Award definitions may also be managed by a full-root
+`MANAGE_AWARDS` grant.
+Rank definitions retain their name, description, and sort order, with optional
+short code (`abbreviation`, up to 20 characters) and image reference. Management
+shows Order, Image, Rank (short code), and Rank name; add/edit forms expand below
+the list/header rather than inside action cells. Image references use the same
+safe site-path/HTTPS validation as other catalog imagery; uploads are not supported.
+Existing ranks migrate with null short codes/images, and older internal updates
+that omit these fields preserve their values. Rank catalog authorization is
+unchanged. Award definitions are categorized as `PLAYER` or `UNIT` with
+independent ordering. Each Award/recipient association is unique and current
+recipient counts derive from grant rows. RootUnit owners and full-root
+`MANAGE_AWARDS` grants manage definitions; assignment requires scoped
+`MANAGE_AWARDS`. Player assignment also requires active membership in the
+Award's RootUnit. When no active membership remains there, only the RootUnit
+owner or full-root Award manager may remove the orphaned grant; this exception
+does not permit a new grant.
 `canSubmitAudit` authorizes atomic-unit creation, Audit draft creation, and
 Audit finalization for a target Unit through the Audits consumer contract; it
 does not authorize command-group management.
@@ -72,12 +92,15 @@ Public outputs include Unit identity, profile metadata, hierarchy links, and
 empty/not-found/error states. Management reads include authorized-user periods,
 authority levels, grant/scope/revocation history, RootUnit catalogs, and valid
 move destinations. The Unit detail route composes the Players-owned roster
-view; demo fixtures remain read-only and have no management workflows.
+view; public Award reads provide current Player Awards by stable Player ID.
+Demo fixtures remain read-only and have no management workflows.
 
 ## Dependencies
 Shared server-only `src/lib/prisma.ts` and Prisma persistence; Next.js route
 rendering. Players and Events consume only their approved Units capabilities
 without transferring Unit identity, roster, Event, or authority ownership.
+Units consumes `players-units-roster-read` for active Player Unit IDs, and
+Players consumes `units-players-awards` for public Player Award presentation.
 
 ## Invariants
 Persistence access stays server-only. Protected mutations resolve the session
@@ -93,10 +116,10 @@ non-RootUnit leaf with no Player membership, EventParticipation, other
 protected references, additional or historical authorized-user memberships,
 or PermissionGrant/delegation history. Exactly one active level-0 membership
 for the current Commander is bootstrap state and may be removed only in that
-Unit deletion transaction. Root settings are restricted to the current
-RootUnit owner and do not confer operational permissions. Each Rank and Medal
-definition belongs to exactly one RootUnit. No depth limit is imposed by
-navigation.
+Unit deletion transaction. Root settings do not confer operational permissions. Each Rank definition
+belongs to exactly one RootUnit. Each Award definition belongs to one RootUnit
+and one category; Player/Unit grants are current, unique associations and
+recipient counts are derived. No depth limit is imposed by navigation.
 
 ## Permissions / Authority
 Hierarchy browsing is public and requires no session. ADR-20260915-002 assigns
@@ -107,9 +130,14 @@ create, move, and delete use operation-specific Units workflows enforcing the
 approved `MANAGE_STRUCTURE` territory and contextual invariants. Deletion
 rejects RootUnits, non-leaves, and any protected history; the narrowly approved
 bootstrap Commander teardown applies only when the Unit itself is deleted.
-The RootUnit settings capability authorizes only Rank/Medal catalog operations
-for the current RootUnit owner. Players owns and enforces roster mutations
-through `canManageRoster`. The server-only Commander bootstrap uses the bounded
+The RootUnit settings capability authorizes Rank catalog operations for the
+current RootUnit owner. Award catalog access is available to that owner or a
+full-root `MANAGE_AWARDS` grant; Award grants require `MANAGE_AWARDS` at an
+in-scope Unit. Player assignment additionally requires current membership in
+the Award's RootUnit. Orphaned Player Award removal is restricted to the
+RootUnit owner or full-root Award manager. Players owns and enforces roster
+mutations through `canManageRoster`; Units consumes its stable-ID active-Unit
+read for Award scope validation. The server-only Commander bootstrap uses the bounded
 website-administrator capability from ADR-20260915-003; it does not create Unit
 authority or generalized RBAC.
 
@@ -132,6 +160,10 @@ memberships, grants, revocation, delegation lineage, and scope at decision time;
 Commander status does not bypass operational grants. `components/unit-links.tsx`
 renders reusable hierarchy links. Route adapters and route-specific states live
 in `src/app/units/`.
+`server/awards.ts` owns Award definitions, category-specific ordering, current
+Player/Unit grant reads and writes, derived recipient counts, and the
+Players-to-Units scope check. Player membership Unit IDs are read through the
+Players contract rather than by querying Players persistence directly.
 `server/statistics-source.ts` provides read-only direct Unit identity and
 deduplicated descendant subtree resolution for Statistics perspectives.
 
@@ -157,6 +189,7 @@ server-only and has no public UI.
 
 ## Related Contracts
 - `docs/contracts/players-units-roster-read.md` (stable).
+- `docs/contracts/units-players-awards.md` (stable).
 - `docs/contracts/units-statistics-hierarchy-read.md` (stable).
 - `events-units-event-creation-authorization` (stable).
 - `units-audits-submission-authorization` (stable).
@@ -170,6 +203,10 @@ server-only and has no public UI.
 - ADR-20260926-005 (accepted; RootUnit catalogs, management authority, Unit
 	profile metadata, and authorized-user membership lifecycle).
 - ADR-20260927-006 (accepted; Audit submission authority boundary).
+
+## Related BCRs
+- BCR-20261102-010 (approved; RootUnit Awards, grants, scoped management, and
+  cross-module reads).
 
 ## AI Working Rules
 GREEN local changes and logged YELLOW internal changes may proceed within an

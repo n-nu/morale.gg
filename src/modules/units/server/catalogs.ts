@@ -9,7 +9,6 @@ import { canManageRootSettings } from "./authorization";
 import {
   UnitManagementError,
   requiredText,
-  validateMedal,
   validateRank,
 } from "../validation";
 
@@ -57,6 +56,8 @@ export async function listRootRanks(rootUnitIdValue: unknown, dependencies: Cata
 export async function createRootRank(input: {
   rootUnitId: unknown;
   name: unknown;
+  abbreviation?: unknown;
+  imageRef?: unknown;
   description: unknown;
   sortOrder: unknown;
 }, dependencies: CatalogDependencies = {}) {
@@ -82,6 +83,8 @@ export async function updateRootRank(input: {
   rootUnitId: unknown;
   rankId: unknown;
   name: unknown;
+  abbreviation?: unknown;
+  imageRef?: unknown;
   description: unknown;
   sortOrder: unknown;
 }, dependencies: CatalogDependencies = {}) {
@@ -89,13 +92,17 @@ export async function updateRootRank(input: {
   const getUserId = dependencies.getUserId ?? getAuthenticatedUserId;
   const rootUnitId = requiredText(input.rootUnitId, "RootUnit");
   const rankId = requiredText(input.rankId, "Rank");
-  const rank = validateRank(input);
+  const { abbreviation, imageRef, ...rank } = validateRank(input);
   try {
     return await db.$transaction(async (tx) => {
       await requireOwner(rootUnitId, getUserId, tx, db);
       const result = await tx.rankDefinition.updateMany({
         where: { id: rankId, rootUnitId },
-        data: rank,
+        data: {
+          ...rank,
+          ...(input.abbreviation === undefined ? {} : { abbreviation }),
+          ...(input.imageRef === undefined ? {} : { imageRef }),
+        },
       });
       if (result.count !== 1) throw new UnitManagementError("Rank not found in this RootUnit.");
       return tx.rankDefinition.findUniqueOrThrow({ where: { id: rankId } });
@@ -120,85 +127,5 @@ export async function deleteRootRank(
     const result = await tx.rankDefinition.deleteMany({ where: { id: rankId, rootUnitId } });
     if (result.count !== 1) throw new UnitManagementError("Rank not found in this RootUnit.");
     return { id: rankId, rootUnitId };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-}
-
-export async function listRootMedals(rootUnitIdValue: unknown, dependencies: CatalogDependencies = {}) {
-  const db = dependencies.db ?? prisma;
-  const getUserId = dependencies.getUserId ?? getAuthenticatedUserId;
-  const rootUnitId = requiredText(rootUnitIdValue, "RootUnit");
-  await requireOwner(rootUnitId, getUserId, undefined, db);
-  return db.medalDefinition.findMany({
-    where: { rootUnitId },
-    orderBy: [{ name: "asc" }, { id: "asc" }],
-  });
-}
-
-export async function createRootMedal(input: {
-  rootUnitId: unknown;
-  name: unknown;
-  description: unknown;
-  imageRef: unknown;
-}, dependencies: CatalogDependencies = {}) {
-  const db = dependencies.db ?? prisma;
-  const getUserId = dependencies.getUserId ?? getAuthenticatedUserId;
-  const rootUnitId = requiredText(input.rootUnitId, "RootUnit");
-  const medal = validateMedal(input);
-  try {
-    return await db.$transaction(async (tx) => {
-      await requireOwner(rootUnitId, getUserId, tx, db);
-      if (!(await tx.rootUnit.findUnique({ where: { unitId: rootUnitId }, select: { unitId: true } }))) {
-        throw new UnitManagementError("RootUnit not found.");
-      }
-      return tx.medalDefinition.create({ data: { rootUnitId, ...medal } });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  } catch (error) {
-    duplicateName(error, "Medal");
-    throw error;
-  }
-}
-
-export async function updateRootMedal(input: {
-  rootUnitId: unknown;
-  medalId: unknown;
-  name: unknown;
-  description: unknown;
-  imageRef: unknown;
-}, dependencies: CatalogDependencies = {}) {
-  const db = dependencies.db ?? prisma;
-  const getUserId = dependencies.getUserId ?? getAuthenticatedUserId;
-  const rootUnitId = requiredText(input.rootUnitId, "RootUnit");
-  const medalId = requiredText(input.medalId, "Medal");
-  const medal = validateMedal(input);
-  try {
-    return await db.$transaction(async (tx) => {
-      await requireOwner(rootUnitId, getUserId, tx, db);
-      const result = await tx.medalDefinition.updateMany({
-        where: { id: medalId, rootUnitId },
-        data: medal,
-      });
-      if (result.count !== 1) throw new UnitManagementError("Medal not found in this RootUnit.");
-      return tx.medalDefinition.findUniqueOrThrow({ where: { id: medalId } });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  } catch (error) {
-    duplicateName(error, "Medal");
-    throw error;
-  }
-}
-
-export async function deleteRootMedal(
-  rootUnitIdValue: unknown,
-  medalIdValue: unknown,
-  dependencies: CatalogDependencies = {},
-) {
-  const db = dependencies.db ?? prisma;
-  const getUserId = dependencies.getUserId ?? getAuthenticatedUserId;
-  const rootUnitId = requiredText(rootUnitIdValue, "RootUnit");
-  const medalId = requiredText(medalIdValue, "Medal");
-  return db.$transaction(async (tx) => {
-    await requireOwner(rootUnitId, getUserId, tx, db);
-    const result = await tx.medalDefinition.deleteMany({ where: { id: medalId, rootUnitId } });
-    if (result.count !== 1) throw new UnitManagementError("Medal not found in this RootUnit.");
-    return { id: medalId, rootUnitId };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

@@ -3,9 +3,9 @@ contract_id: players-units-roster-read
 path: docs/contracts/players-units-roster-read.md
 documentation_path: src/modules/players/MODULE.md
 status: stable
-version: 0.2
+version: 0.3
 last_reviewed: 2026-11-02
-updated_by_ticket: TKT-20261102-000048-001
+updated_by_ticket: TKT-20261102-000050-001
 ---
 
 # Players -> Units Public Roster Read
@@ -24,6 +24,8 @@ key as a Player reference.
 
 - `units` public roster composition and presentation
 - application route adapters rendering the public Unit roster
+- `units` Award authorization, which checks current Unit membership without
+  reading Players-owned persistence directly
 
 ## Inputs
 
@@ -49,6 +51,7 @@ one aggregate row per distinct requested Unit ID without roster identities.
 | `displayName` | string or null | yes | Existing optional compatibility display value; when null/blank, presentation falls back to `playerId`. |
 | `startedAt` | timestamp | yes | Start of this active membership period. |
 | `getCurrentRosterCounts(unitIds)` | array of `{ unitId, memberCount }` | yes | Count-only batch read for the active roster of each distinct requested Unit ID. |
+| `getCurrentUnitIdsForPlayer(playerId)` | array of Unit ID strings | yes | Minimal server-side authorization read of the Player's current active Unit memberships. |
 
 `Player.id` is not part of the presentation DTO. Internal Player FKs remain
 available only inside the Players-owned persistence/read boundary.
@@ -65,6 +68,10 @@ reads by this roster-specific contract.
 `getCurrentRoster`. It returns one row per distinct requested Unit ID,
 including zero for an ID with no active memberships, in first-requested order.
 An empty input returns an empty array. Counts do not reveal roster identities.
+`getCurrentUnitIdsForPlayer` resolves the stable external `playerId`, returns
+distinct active Unit IDs sorted by ID, and returns an empty array when the
+Player has no active Unit memberships. It is an internal server-side read for
+authorization; it does not expose a membership ID or the internal Player key.
 
 ## Guarantees
 
@@ -77,6 +84,8 @@ An empty input returns an empty array. Counts do not reveal roster identities.
   semantics are unchanged.
 - Batch counts are derived from active membership rows at read time; no count
   is persisted or cached.
+- The Unit-ID authorization read does not grant authority and does not permit
+  roster mutation.
 
 ## Constraints
 
@@ -93,8 +102,9 @@ An empty input returns an empty array. Counts do not reveal roster identities.
 The existing Unit roster layout and supported membership actions remain
 available. The route value used for Player navigation changes to stable
 `playerId`; internal Player database IDs are not accepted as a compatibility
-route alias. The count-only batch operation is additive and does not change
-existing roster readers.
+route alias. The count-only batch operation and current-Unit-ID authorization read are
+additive and do not change existing roster readers or roster mutation
+semantics.
 
 ## Stability
 
@@ -106,8 +116,10 @@ BCR-20261102-008.
 
 - TKT-20260928-000037-001
 - TKT-20261102-000048-001
+- TKT-20261102-000050-001
 
 ## Related BCRs
 
 - BCR-20260928-007
 - BCR-20261102-008
+- BCR-20261102-010

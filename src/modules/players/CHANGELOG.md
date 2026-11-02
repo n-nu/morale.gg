@@ -1,5 +1,12 @@
 # Players changelog
 
+## 2026-11-02 — TKT-20261102-000050-001
+
+- Added the minimal current-Unit-ID read by stable Player ID for Units Award
+  authorization; it returns distinct active memberships without exposing
+  internal Player IDs or permitting roster mutation.
+- Extended `players-units-roster-read` additively under BCR-20261102-010.
+
 ## 2026-11-02 — TKT-20261102-000048-001
 
 - Added the approved count-only batch read for active Unit rosters, using one

@@ -6,6 +6,8 @@ import { getAuthenticatedUserId } from "@/lib/website-admin";
 import {
   canCreateChildUnit,
   canDeleteUnit,
+  canManageAwards,
+  canManageRootAwardCatalog,
   canManageAuthorizedUser,
   canManageAuthorizedUsers,
   canManageRootSettings,
@@ -16,16 +18,19 @@ import {
   listAuthorizedMembershipsForManagement,
   listMoveDestinations,
 } from "@/modules/units/server/queries";
-import { listRootMedals, listRootRanks } from "@/modules/units/server/catalogs";
+import { getUnitAwardManagementData, listRootAwards } from "@/modules/units/server/awards";
+import { listRootRanks } from "@/modules/units/server/catalogs";
 import {
   AuthorizedUserManagement,
   ManagementNotice,
   ManagementSectionNav,
   OrganizationCatalogs,
   OrganizationManagement,
+  UnitManagementHeader,
   UnitLifecycle,
   UnitOverview,
 } from "@/modules/units/components/management";
+import { UnitAwardManagement } from "@/modules/units/components/awards";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +69,7 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
   if (unit === null) notFound();
 
   const rootUnitId = unit.rootUnitId;
-  const [canEditProfile, canAdministerUsers, canCreateChild, canDelete, canManageOrganization] = await Promise.all([
+  const [canEditProfile, canAdministerUsers, canCreateChild, canDelete, canManageOrganization, canManageAwardsHere] = await Promise.all([
     canManageUnit(userId, unitId),
     canManageAuthorizedUsers(userId, unitId),
     canCreateChildUnit(userId, unitId),
@@ -72,21 +77,27 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
     rootUnitId !== null && unit.id === rootUnitId
       ? canManageRootSettings(userId, rootUnitId)
       : Promise.resolve(false),
+    canManageAwards(userId, unitId),
   ]);
 
+  const canManageAwardCatalog = rootUnitId !== null && unit.id === rootUnitId
+    ? await canManageRootAwardCatalog(userId, rootUnitId)
+    : false;
   const canManageRootFromChild = rootUnitId !== null && unit.id !== rootUnitId
     ? await canManageRootSettings(userId, rootUnitId)
     : false;
 
-  if (!canEditProfile && !canAdministerUsers && !canCreateChild && !canDelete && !canManageOrganization && !canManageRootFromChild) {
+  if (!canEditProfile && !canAdministerUsers && !canCreateChild && !canDelete && !canManageOrganization && !canManageAwardCatalog && !canManageAwardsHere && !canManageRootFromChild) {
     notFound();
   }
 
-  const [memberships, moveDestinations, ranks, medals] = await Promise.all([
+  const [memberships, moveDestinations, ranks, playerAwards, unitAwards, unitAwardManagement] = await Promise.all([
     canAdministerUsers ? listAuthorizedMembershipsForManagement(userId, unitId) : null,
     unit.parentId !== null ? listMoveDestinations(userId, unitId) : [],
     canManageOrganization && rootUnitId ? listRootRanks(rootUnitId) : [],
-    canManageOrganization && rootUnitId ? listRootMedals(rootUnitId) : [],
+    canManageAwardCatalog && rootUnitId ? listRootAwards(rootUnitId, "PLAYER") : [],
+    canManageAwardCatalog && rootUnitId ? listRootAwards(rootUnitId, "UNIT") : [],
+    canManageAwardsHere ? getUnitAwardManagementData(unitId) : null,
   ]);
 
   const notice = queryValue(query.notice);
@@ -99,13 +110,16 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
           .map(async (membership) => (await canManageAuthorizedUser(userId, membership.id, unitId)) ? membership.id : null),
       )).filter((id): id is string => id !== null)
     : [];
+  const canManageRankCatalog = canManageOrganization && rootUnitId === unitId;
+  const canShowAwardCatalogs = canManageRankCatalog || canManageAwardCatalog;
 
   const sections = [
-    { id: "overview", label: "Overview" },
+    { id: "overview", label: "Profile" },
     { id: "organization", label: "Organization" },
-    ...(canManageOrganization && rootUnitId === unitId ? [{ id: "structure", label: "Structure" }] : []),
-    ...(canAdministerUsers && memberships ? [{ id: "access", label: "Access" }] : []),
-    ...(canDelete ? [{ id: "lifecycle", label: "Lifecycle" }] : []),
+    ...(canShowAwardCatalogs ? [{ id: "structure", label: "Catalogs" }] : []),
+    ...(canManageAwardsHere ? [{ id: "awards", label: "Awards" }] : []),
+    ...(canAdministerUsers && memberships ? [{ id: "access", label: "Permissions" }] : []),
+    ...(canDelete ? [{ id: "lifecycle", label: "Danger Zone" }] : []),
   ];
 
   return (
@@ -118,26 +132,14 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
         <span>Manage</span>
       </nav>
 
-      <header className="units-management-header">
-        <div>
-          <p className="units-eyebrow">Unit administration</p>
-          <h1>{unit.name}</h1>
-          <p className="units-management-subtitle">
-            {unit.parent ? `Within ${unit.parent.name}` : "Root organization"}
-          </p>
-        </div>
-        <Link href={`/units/${encodeURIComponent(unitId)}`} className="units-management-link">
-          Public Unit page
-        </Link>
-      </header>
+      <UnitManagementHeader unit={unit} />
 
       <ManagementSectionNav sections={sections} />
       <ManagementNotice notice={notice} error={error} />
 
       <section id="overview" className="units-management-section" aria-labelledby="unit-overview-heading">
         <div className="units-section-title">
-          <h2 id="unit-overview-heading">Overview</h2>
-          <span>{canEditProfile ? "MANAGE_UNIT" : "Read-only"}</span>
+          <h2 id="unit-overview-heading">Public Profile</h2>
         </div>
         <UnitOverview unit={unit} canEdit={canEditProfile} />
       </section>
@@ -145,7 +147,6 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
       <section id="organization" className="units-management-section" aria-labelledby="organization-heading">
         <div className="units-section-title">
           <h2 id="organization-heading">Organization</h2>
-          <span>Operation-specific structure authority</span>
         </div>
         <OrganizationManagement
           unit={{ id: unit.id, name: unit.name, parent: unit.parent, children: unit.children }}
@@ -155,21 +156,38 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
         />
       </section>
 
-      {canManageOrganization && rootUnitId === unitId ? (
+      {canShowAwardCatalogs && rootUnitId ? (
         <section id="structure" className="units-management-section" aria-labelledby="structure-heading">
           <div className="units-section-title">
-            <h2 id="structure-heading">Structure</h2>
-            <span>RootUnit owner</span>
+            <h2 id="structure-heading">{canManageRankCatalog ? "Rank Structure & Awards" : "Awards"}</h2>
           </div>
-          <OrganizationCatalogs rootUnitId={rootUnitId} ranks={ranks} medals={medals} />
+          <OrganizationCatalogs
+            rootUnitId={rootUnitId}
+            ranks={ranks}
+            playerAwards={playerAwards}
+            unitAwards={unitAwards}
+            canManageRanks={canManageRankCatalog}
+          />
+        </section>
+      ) : null}
+
+      {canManageAwardsHere && unitAwardManagement ? (
+        <section id="awards" className="units-management-section" aria-labelledby="unit-awards-management-heading">
+          <div className="units-section-title">
+            <h2 id="unit-awards-management-heading">Unit Awards</h2>
+          </div>
+          <UnitAwardManagement
+            unitId={unitId}
+            assigned={unitAwardManagement.assigned}
+            available={unitAwardManagement.available}
+          />
         </section>
       ) : null}
 
       {canAdministerUsers && memberships ? (
         <section id="access" className="units-management-section" aria-labelledby="authorized-users-heading">
           <div className="units-section-title">
-            <h2 id="authorized-users-heading">Authorized Users</h2>
-            <span>MANAGE_AUTHORIZED_USERS</span>
+            <h2 id="authorized-users-heading">Permissions</h2>
           </div>
           <AuthorizedUserManagement unitId={unitId} entries={memberships} manageableMembershipIds={manageableMembershipIds} />
         </section>
@@ -178,8 +196,7 @@ export default async function UnitManagementPage({ params, searchParams }: PageP
       {canDelete ? (
         <section id="lifecycle" className="units-management-section is-danger" aria-labelledby="lifecycle-heading">
           <div className="units-section-title">
-            <h2 id="lifecycle-heading">Lifecycle</h2>
-            <span>Destructive actions</span>
+            <h2 id="lifecycle-heading">Danger Zone</h2>
           </div>
           <UnitLifecycle unitId={unit.id} unitName={unit.name} />
         </section>

@@ -1,5 +1,26 @@
 # Changelog: Units
 
+## 2026-11-02 — TKT-20261102-000050-001
+
+- Replaced Medal definitions with RootUnit-scoped Player and Unit Award
+  catalogs, preserving existing definitions and assigning deterministic
+  initial order through a forward migration.
+- Added current Player/Unit grant associations, derived recipient counts,
+  category validation, and server-enforced hierarchy-scoped `MANAGE_AWARDS`.
+- Added public Player/Unit Award presentation and scoped assignment controls;
+  orphaned Player Award removal is restricted to the RootUnit owner or a
+  full-root Award manager.
+- Published the Units-to-Players Award read contract and updated the
+  Players-to-Units active-Unit-ID authorization read contract.
+
+## 2026-11-02 - rank catalog layout and imagery
+
+- Simplified rank rows to saved Order, Image, Rank short code, and Rank name.
+- Moved add/edit forms out of narrow action cells into full-width disclosures.
+- Added user-approved nullable rank abbreviation and image-reference fields;
+  existing names, descriptions, ordering, and owner-only authorization are preserved.
+- Kept rank descriptions editable without adding them to the compact list.
+
 ## 2026-11-02 — organization family tree refinement
 
 - Replaced the selected-Unit horizontal descendant list with a full branch

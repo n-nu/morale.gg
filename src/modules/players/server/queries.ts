@@ -1,5 +1,8 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type PlayerMembershipDatabase = Pick<Prisma.TransactionClient, "unitMembership">;
 
 export function listPlayers(search = "", db = prisma) {
   const query = search.trim().slice(0, 128);
@@ -28,6 +31,21 @@ export function getPlayerMemberships(playerId: string, db = prisma) {
     include: { unit: { select: { id: true, name: true } } },
     orderBy: [{ startedAt: "desc" }, { id: "desc" }],
   });
+}
+
+export async function getCurrentUnitIdsForPlayer(
+  playerId: string,
+  db: PlayerMembershipDatabase = prisma,
+) {
+  const memberships = await db.unitMembership.findMany({
+    where: {
+      endedAt: null,
+      player: { is: { playerId: playerId.trim() } },
+    },
+    select: { unitId: true },
+    orderBy: [{ unitId: "asc" }],
+  });
+  return [...new Set(memberships.map(({ unitId }) => unitId))].sort();
 }
 
 export function getCurrentRoster(unitId: string, db = prisma) {

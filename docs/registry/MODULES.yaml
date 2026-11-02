@@ -11,16 +11,16 @@ modules:
   - module_id: units
     path: src/modules/units
     status: active
-    version: 0.1
+    version: 0.2
     last_reviewed: 2026-11-02
-    updated_by_ticket: TKT-20261102-000048-001
+    updated_by_ticket: TKT-20261102-000050-001
   - module_id: players
     path: src/modules/players
     manifest: src/modules/players/MODULE.md
     status: active
-    version: 0.1
+    version: 0.2
     last_reviewed: 2026-11-02
-    updated_by_ticket: TKT-20261102-000048-001
+    updated_by_ticket: TKT-20261102-000050-001
   - module_id: audits
     path: src/modules/audits
     manifest: src/modules/audits/MODULE.md
