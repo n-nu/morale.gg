@@ -119,7 +119,7 @@ export async function createAuditDraftForAtomicUnit(
 ): Promise<{ id: string; lifecycle: "DRAFT" }> {
   const userId = normalizePlayerId(input.userId, "User");
   const atomicEventUnitId = input.atomicEventUnitId.trim();
-  if (atomicEventUnitId === "") throw new AuditSubmissionError("Atomic Event-unit is required.");
+  if (atomicEventUnitId === "") throw new AuditSubmissionError("Company is required.");
 
   const atomicUnit = await prisma.atomicEventUnit.findUnique({
     where: { id: atomicEventUnitId },
@@ -130,7 +130,7 @@ export async function createAuditDraftForAtomicUnit(
     },
   });
   if (atomicUnit === null) {
-    throw new AuditSubmissionError("Atomic Event-unit not found.");
+    throw new AuditSubmissionError("Company not found.");
   }
   if (atomicUnit.eventParticipation.status !== "APPROVED") {
     throw new AuditSubmissionError("Only approved Event participations can create an Audit draft.");
@@ -146,7 +146,7 @@ export async function createAuditDraftForAtomicUnit(
     select: { id: true },
   });
   if (existingAudit !== null) {
-    throw new AuditSubmissionError("One Audit maximum exists per atomic Event-unit.");
+    throw new AuditSubmissionError("A company can have only one Audit.");
   }
 
   try {
@@ -161,7 +161,7 @@ export async function createAuditDraftForAtomicUnit(
     return { id: draft.id, lifecycle: "DRAFT" as const };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new AuditSubmissionError("One Audit maximum exists per atomic Event-unit.");
+      throw new AuditSubmissionError("A company can have only one Audit.");
     }
     throw error;
   }

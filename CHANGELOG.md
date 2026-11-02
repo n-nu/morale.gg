@@ -17,3 +17,19 @@
 - Reason: Provide a truthful combined Milestone 2 evidence handoff after Tickets 41 and 42 merged.
 - Affected contracts/modules: Statistics integration tests; repository QA/security documentation. No production behavior, schema, contract, or ownership change.
 - Commit reference: `7bb7a5c`
+
+- Date: 2026-11-01
+- Ticket ID: TKT-20261101-000045-001
+- Change: Redesigned the Event manager Battle Structure organizer with distinct side markers, explicit Command Group and Company labels, compact commander/type metadata, responsive hierarchy rails, clearer drag handles and drop targets, and accessible node-action disclosures. Added 390/768/1440 browser checks and refreshed the MVP demo walkthrough.
+- Reason: Improve battlefield hierarchy scanning and narrow-screen usability without changing Event or battlefield behavior.
+- Affected contracts/modules: Events presentation and shared Event-route drag/drop UI. No schema, domain semantics, authorization, persistence, or contract change.
+- Commit reference: N/A
+
+## 2026-11-02
+
+- Date: 2026-11-02
+- Ticket ID: TKT-20261102-000046-001
+- Change: Replaced Battle Structure tree rails and dedicated drag grips with nested rounded node surfaces that drag by their bodies. Group shells now accept drops across the full container, while interactive controls and nested nodes are excluded from parent drag starts. Added responsive browser coverage for node containment, Move actions, validation feedback, and real Company/group moves with restoration.
+- Reason: Make hierarchy containment clearer and node movement easier without changing battlefield behavior.
+- Affected contracts/modules: Events presentation and shared Event-route drag/drop UI. No schema, domain semantics, authorization, persistence, or contract change.
+- Commit reference: N/A

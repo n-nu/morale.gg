@@ -97,7 +97,7 @@ flowchart LR
   auth --> authority[Unit / Event authorization]
   authority --> participation[Event participation]
   participation --> battlefield[Battlefield structure]
-  battlefield --> audit[Atomic Event Unit and Audit]
+  battlefield --> audit[Company and Audit]
   audit --> statistics[Query-derived statistics]
   statistics --> presentation[Public Event / Player / Unit pages]
 ```
@@ -257,17 +257,18 @@ Audit.
 
 ---
 
-### Atomic Event Unit
+### Company
 
-Represents one historical battlefield appearance within an Event. It belongs
+A Company represents one historical battlefield appearance within an Event.
+It is represented internally by the `AtomicEventUnit` domain model and belongs
 to exactly one approved EventParticipation, while one EventParticipation may
-have many atomic Event units. It is created manually after the Event and may
-be mandatory or optional. It is the stable identity for the battlefield
+have many companies. It is created manually after the Event and may be
+mandatory or optional. It is the stable identity for the battlefield
 appearance and may have zero or one Audit.
 
 ### Audit
 
-Represents the result record attached to one atomic Event unit. A creator-owned
+Represents the result record attached to one Company. A creator-owned
 draft may be edited by its creator before submission; submission automatically
 finalizes it. Finalized Audits, Player results, and roles are immutable and are
 authoritative historical source data. Finalized result data is public while
@@ -308,17 +309,17 @@ persistent Unit merely because of one Event appearance.
 ### Event Command Group
 
 Represents a temporary, Event-scoped command structure with a descriptive
-persistent Unit, Commander Player, optional parent group, and child atomic
-Event units and/or groups. Groups form a strict tree: cycles, overlapping
+persistent Unit, Commander Player, optional parent group, and child
+companies and/or groups. Groups form a strict tree: cycles, overlapping
 atomic ancestry, duplicate parents, and cross-Event edges are forbidden.
-Groups may be edited or deleted by Event managers without mutating atomic units
-or finalized Audits. Nested future statistics flatten to unique atomic Audits
-and partition combat values by Unit type.
+Groups may be edited or deleted by Event managers without mutating companies
+or finalized Audits. Nested future statistics flatten to unique Audits for
+descendant companies and partition combat values by Unit type.
 
 ### Event Battlefield Sides and Result
 
 The Event Battle domain has exactly two fixed sides: `ATTACKER` and
-`DEFENDER`. Atomic Event units and Event command groups store explicit side
+`DEFENDER`. Companies and Event command groups store explicit side
 values; EventParticipation remains acceptance of a persistent Unit and is not
 side placement. Same-side hierarchy is enforced server-side. Optional Event
 side image references reuse validated site-path/HTTPS image behavior; blue and
@@ -447,9 +448,9 @@ The following are current MVP-level rules unless changed through the approved ar
 
 ### Audits
 
-- Audits require approved EventParticipation through an atomic Event unit.
-- One submitted Audit exists per atomic Event unit; one approved
-  EventParticipation may have multiple atomic Event units.
+- Audits require approved EventParticipation through a Company.
+- One submitted Audit exists per Company; one approved
+  EventParticipation may have multiple Companies.
 - Submitted Audits, Player results, and roles are immutable in the MVP.
 - Submitted audit data is authoritative for derived statistics.
 - Event managers may construct/manage battlefield structure through
@@ -524,7 +525,7 @@ The active modules and their detailed ownership rules are documented in
   participation request/approval, Event result history, and public Event
   presentation. Participation is approved organizational acceptance, not
   battlefield placement.
-- **Audits:** Atomic Event Units, Event Command Groups, Audit draft/final
+- **Audits:** Companies, Event Command Groups, Audit draft/final
   lifecycle, player/unit result values, role assignments, and immutable
   finalized source records.
 - **Statistics:** Public query-time Ranker, Commander, General, Event Battle,

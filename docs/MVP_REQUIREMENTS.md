@@ -12,8 +12,8 @@ morale.gg is a structured information and statistics system for multiplayer gami
 - **Unit roster:** Player-to-Unit memberships preserve join/leave history and are distinct from authorized-user memberships.
 - **Unit authorization:** Server-enforced delegated permissions control Unit operations; roster membership does not grant management authority.
 - **Events and participation:** Events are owned by website Users. EventParticipation records a Unit's requested, approved, or denied participation.
-- **Battlefield structure:** Each Event has fixed ATTACKER and DEFENDER sides. Atomic Event Units are auditable battlefield leaves; Event Command Groups organize those leaves and do not replace persistent Unit hierarchy.
-- **Audits:** A creator-owned draft records an atomic unit's results. Submission finalizes and makes the Audit immutable in the MVP.
+- **Battlefield structure:** Each Event has fixed ATTACKER and DEFENDER sides. Companies are auditable battlefield leaves; Event Command Groups organize those leaves and do not replace persistent Unit hierarchy.
+- **Audits:** A creator-owned draft records a Company's results. Submission finalizes and makes the Audit immutable in the MVP.
 - **Statistics:** Public Player, Unit, Ranker, Commander, General, attendance, and Event Battle views are derived from authoritative source records.
 
 ## Implemented MVP
@@ -22,7 +22,7 @@ morale.gg is a structured information and statistics system for multiplayer gami
 - Browse RootUnit/Unit hierarchy and public Unit profiles; manage authorized Unit access and supported Unit settings when permitted.
 - Register/find Players by stable game PlayerID; manage active rosters while retaining membership history.
 - Create/manage Events and administer Event managers; request, review, approve, or deny Unit participation.
-- Build and present Event battlefield structure with fixed sides, Atomic Event Units, and nested Event Command Groups.
+- Build and present Event battlefield structure with fixed sides, Companies, and nested Event Command Groups.
 - Create and edit eligible Audit drafts, record Player K/D/A, Unit tickets/flag captures/flag losses/stars, Unit type, Commander, and Flag Bearer; finalize immutable Audits for approved participation.
 - Record and present Event results separately from computed statistics.
 - Browse Event Battle results; view query-derived Ranker, Commander, General, Player, Unit performance, and attendance statistics.

@@ -68,7 +68,7 @@ test("Commander and General remain collapsed and retain their returned fields", 
   const html = renderToStaticMarkup(<PlayerStatisticsSections commander={commander} general={general} window="30d" />);
 
   assert.match(html, /2 Regular battles/);
-  assert.match(html, /1 qualifying commands · 1 events · 2 atomic units/);
+  assert.match(html, /1 qualifying commands · 1 events · 2 companies/);
   assert.match(html, /Avg tickets\/unit/);
   assert.match(html, /Avg players\/unit/);
   assert.equal((html.match(/<details class="group border-t border-edge\/70">/g) ?? []).length, 2);

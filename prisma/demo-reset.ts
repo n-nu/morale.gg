@@ -1227,7 +1227,7 @@ async function smokeReaders(ids: { rootUnitId: string; rootCommanderUserId: stri
   const assertAssigned = (nodes: typeof organizerPublicStructure.groups): void => {
     for (const node of nodes) {
       assert.notEqual(node.side, null, "Public Battle reader exposed an Unsorted group.");
-      assert.ok(node.atomicUnits.every((unit) => unit.side !== null), "Public Battle reader exposed an Unsorted atomic unit.");
+      assert.ok(node.atomicUnits.every((unit) => unit.side !== null), "Public Battle reader exposed an Unsorted company.");
       assertAssigned(node.children);
     }
   };
@@ -1235,7 +1235,7 @@ async function smokeReaders(ids: { rootUnitId: string; rootCommanderUserId: stri
 
   const eligibleAudits = await atomicUnits.listAuthorizedAtomicEventUnits(DEMO_USER_IDS.auditFrench);
   const unrelatedAudits = await atomicUnits.listAuthorizedAtomicEventUnits(DEMO_USER_IDS.limited);
-  assert.ok(eligibleAudits.length > 0, "/audits discovery returned no atomic units for an eligible Unit user.");
+  assert.ok(eligibleAudits.length > 0, "/audits discovery returned no companies for an eligible Unit user.");
   assert.ok(eligibleAudits.every((unit) => unit.eventParticipation.unitId.startsWith("demo-unit-french")));
   assert.equal(unrelatedAudits.length, 0, "/audits discovery exposed units to an unrelated user.");
 

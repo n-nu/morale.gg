@@ -188,7 +188,7 @@ function RankingGuide({ query }: { query: LeaderboardQuery }) {
   const boardNote: Record<LeaderboardQuery["board"], string> = {
     players: "Each finalized Audit a player appears in counts once. Distinct Events are on each player's own page.",
     commanders: "Unit K/D and totals belong to the whole unit in battles the player commanded, not to the commander's own kills.",
-    generals: "A qualifying command is an Event Command Group containing two or more atomic units. Branch columns count the units led.",
+    generals: "A qualifying command is an Event Command Group containing two or more companies. Branch columns count the companies led.",
     units: "Direct results only: a parent Unit is not credited with its subunits' battles. Unit pages show organizational totals.",
   };
   return (

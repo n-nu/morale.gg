@@ -25,33 +25,57 @@ function readDraggedNode(event: React.DragEvent): DraggedNode | null {
   }
 }
 
-export function DragHandle({
+export function DragSurface({
   type,
   id,
   descendantIds = [],
   label,
+  className,
+  children,
 }: {
   type: DraggedNode["type"];
   id: string;
   descendantIds?: string[];
   label: string;
+  className: string;
+  children: ReactNode;
 }) {
+  const [isDragging, setIsDragging] = useState(false);
+
   return (
-    <button
-      type="button"
+    <div
       draggable
       onDragStart={(event) => {
+        const target = event.target;
+        const currentTarget = event.currentTarget;
+        if (!(target instanceof Element)) return;
+        const nestedNode = target.closest<HTMLElement>("[data-battle-node]");
+        const interactive = target.closest("button, a, input, select, textarea, summary, [contenteditable='true'], [role='button']");
+        if (interactive || (nestedNode && nestedNode !== currentTarget)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         activeDraggedNode = { type, id, descendantIds };
+        setIsDragging(true);
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("application/x-morale-battle-node", JSON.stringify(activeDraggedNode));
+        event.stopPropagation();
       }}
-      onDragEnd={() => { activeDraggedNode = null; }}
-      aria-label={`Drag ${label}`}
-      title={`Drag ${label}`}
-      className="grid h-7 w-7 shrink-0 cursor-grab grid-cols-2 place-content-center gap-0.5 rounded text-faint hover:bg-white/5 hover:text-foreground active:cursor-grabbing"
+      onDragEnd={() => {
+        activeDraggedNode = null;
+        setIsDragging(false);
+      }}
+      aria-label={`Draggable ${type === "group" ? "Command Group" : "Company"}: ${label}`}
+      title={`Drag this ${type === "group" ? "Command Group" : "Company"} by its body; use its actions for a non-drag move`}
+      data-battle-node="true"
+      data-node-type={type}
+      data-node-id={id}
+      data-dragging={isDragging}
+      className={`${className} cursor-grab transition-colors hover:border-edge-strong hover:bg-white/5 active:cursor-grabbing ${isDragging ? "border-gold/60 bg-gold/10 opacity-65" : ""}`}
     >
-      {Array.from({ length: 6 }, (_, index) => <span key={index} className="h-1 w-1 rounded-full bg-current" />)}
-    </button>
+      {children}
+    </div>
   );
 }
 
@@ -61,7 +85,6 @@ export function DropTarget({
   label,
   moveAction,
   className = "",
-  inline = false,
   children,
 }: {
   eventId: string;
@@ -69,7 +92,6 @@ export function DropTarget({
   label: string;
   moveAction: ServerAction;
   className?: string;
-  inline?: boolean;
   children: ReactNode;
 }) {
   const [state, setState] = useState<"idle" | "valid" | "invalid">("idle");
@@ -80,10 +102,8 @@ export function DropTarget({
       || (node.id !== destination.groupId && !node.descendantIds?.includes(destination.groupId));
   };
 
-  const Target = inline ? "span" : "div";
-
   return (
-    <Target
+    <div
       onDragOver={(event) => {
         event.stopPropagation();
         const node = readDraggedNode(event);
@@ -112,10 +132,12 @@ export function DropTarget({
         await moveAction(data);
       }}
       role="group"
-      aria-label={label}
-      className={`min-w-0 rounded transition-colors ${className} ${state === "valid" ? "outline outline-2 outline-gold bg-gold/10" : state === "invalid" ? "outline outline-2 outline-type-red bg-type-red/10" : ""}`}
+      aria-label={state === "invalid" ? `${label} — invalid destination` : label}
+      data-drop-state={state}
+      data-destination={"groupId" in destination ? `group:${destination.groupId}` : `side:${destination.side ?? "UNSORTED"}`}
+      className={`min-w-0 rounded-2xl transition-colors ${className} ${state === "valid" ? "outline outline-2 outline-gold bg-gold/10 ring-2 ring-gold/20" : state === "invalid" ? "border-2 border-dashed border-type-red bg-type-red/5 ring-2 ring-type-red/20 cursor-not-allowed" : ""}`}
     >
       {children}
-    </Target>
+    </div>
   );
 }

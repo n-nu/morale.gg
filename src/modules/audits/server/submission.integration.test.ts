@@ -70,7 +70,7 @@ test("Audit submission persists identity-only Players, results, roles, and immut
         atomicEventUnitId: atomicUnit.id,
         canSubmitAudit: async () => true,
       }),
-      /one Audit maximum/i,
+      /company can have only one Audit/i,
     );
     await assert.rejects(
       () => submitAudit({

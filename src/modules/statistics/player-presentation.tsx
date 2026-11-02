@@ -19,6 +19,10 @@ function formatMetric(value: number) {
   return value.toFixed(2).replace(/\.0+$/, "");
 }
 
+function formatCompanyCount(count: number) {
+  return `${count} ${count === 1 ? "company" : "companies"}`;
+}
+
 function MetricGrid({ values }: { values: [string, ReactNode][] }) {
   return (
     <dl className="grid grid-cols-2 border-y border-edge sm:grid-cols-3 xl:grid-cols-5">
@@ -152,7 +156,7 @@ function GeneralTypeDetails({ player }: { player: GeneralPlayerStatistics }) {
           <details key={stats.unitType} className="border-b border-edge">
             <summary className="flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-2 py-2 text-sm font-bold text-foreground outline-none hover:text-gold focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
               <span>{UnitTypeLabel[stats.unitType]}</span>
-              <span className="text-xs font-normal text-muted">{stats.atomicUnits} atomic units · KDR <StatisticsRatio ratio={stats.killDeathRatio} /></span>
+              <span className="text-xs font-normal text-muted">{formatCompanyCount(stats.atomicUnits)} · KDR <StatisticsRatio ratio={stats.killDeathRatio} /></span>
             </summary>
             <div className="pb-3">
               <MetricGrid values={[
@@ -184,7 +188,7 @@ function GeneralSection({ player }: { player: GeneralPlayerStatistics }) {
   return (
     <StatisticsDisclosure
       title="General"
-      summary={`${player.qualifyingGroupsCommanded} qualifying commands · ${player.distinctEventsCommanded} events · ${player.totalAtomicUnitsCommanded} atomic units`}
+      summary={`${player.qualifyingGroupsCommanded} qualifying commands · ${player.distinctEventsCommanded} events · ${formatCompanyCount(player.totalAtomicUnitsCommanded)}`}
     >
       <GeneralTypeDetails player={player} />
     </StatisticsDisclosure>

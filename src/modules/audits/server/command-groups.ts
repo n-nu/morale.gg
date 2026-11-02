@@ -127,14 +127,14 @@ async function validateEventCommandTree(
   const atomicUnitsByGroup = new Map<string, string[]>();
   for (const membership of atomicUnits) {
     if (!groupsById.has(membership.groupId)) {
-      throw new EventCommandGroupError("Atomic Event-units must belong to a group in the same Event.");
+      throw new EventCommandGroupError("Companies must belong to a group in the same Event.");
     }
     if (membership.atomicEventUnit.eventParticipation.eventId !== eventId) {
-      throw new EventCommandGroupError("Atomic Event-units must belong to a group in the same Event.");
+      throw new EventCommandGroupError("Companies must belong to a group in the same Event.");
     }
     const group = groupsById.get(membership.groupId);
     if (group?.side !== membership.atomicEventUnit.side) {
-      throw new EventCommandGroupError("Atomic Event-units and parent groups must use the same battlefield side.");
+      throw new EventCommandGroupError("Companies and parent groups must use the same battlefield side.");
     }
     const groupAtomicUnits = atomicUnitsByGroup.get(membership.groupId) ?? [];
     groupAtomicUnits.push(membership.atomicEventUnit.id);
@@ -162,7 +162,7 @@ async function validateEventCommandTree(
     const nextPath = new Set(path).add(groupId);
     for (const atomicUnitId of atomicUnitsByGroup.get(groupId) ?? []) {
       if (seenAtomicUnits.has(atomicUnitId)) {
-        throw new EventCommandGroupError("An atomic Event-unit cannot contribute more than once.");
+        throw new EventCommandGroupError("A company cannot contribute more than once.");
       }
       seenAtomicUnits.add(atomicUnitId);
     }
@@ -237,7 +237,7 @@ export async function attachAtomicEventUnit(
   atomicEventUnitId: string,
 ) {
   const normalizedGroupId = requiredId(groupId, "Command group");
-  const normalizedAtomicId = requiredId(atomicEventUnitId, "Atomic Event-unit");
+  const normalizedAtomicId = requiredId(atomicEventUnitId, "Company");
   const eventId = await eventIdForGroup(normalizedGroupId);
   return authorizedEventMutation(userId, eventId, async (transaction) => {
     const group = await transaction.eventCommandGroup.findUnique({ where: { id: normalizedGroupId }, select: { id: true, eventId: true, side: true } });
@@ -246,12 +246,12 @@ export async function attachAtomicEventUnit(
       select: { id: true, side: true, eventParticipation: { select: { eventId: true } } },
     });
     const existingMembership = await transaction.eventCommandGroupAtomicUnit.findUnique({ where: { atomicEventUnitId: normalizedAtomicId }, select: { groupId: true } });
-    if (group === null || atomicUnit === null) throw new EventCommandGroupError("Command group or atomic Event-unit not found.");
+    if (group === null || atomicUnit === null) throw new EventCommandGroupError("Command group or company not found.");
     if (atomicUnit.eventParticipation.eventId !== eventId) {
-      throw new EventCommandGroupError("Atomic Event-unit must belong to the same Event.");
+      throw new EventCommandGroupError("Company must belong to the same Event.");
     }
     if (existingMembership !== null) {
-      throw new EventCommandGroupError("Atomic Event-unit already has a parent group.");
+      throw new EventCommandGroupError("Company already has a parent group.");
     }
     const membership = await transaction.eventCommandGroupAtomicUnit.create({
       data: { groupId: normalizedGroupId, atomicEventUnitId: normalizedAtomicId },
@@ -267,7 +267,7 @@ export async function detachAtomicEventUnit(
   atomicEventUnitId: string,
 ) {
   const normalizedGroupId = requiredId(groupId, "Command group");
-  const normalizedAtomicId = requiredId(atomicEventUnitId, "Atomic Event-unit");
+  const normalizedAtomicId = requiredId(atomicEventUnitId, "Company");
   const eventId = await eventIdForGroup(normalizedGroupId);
   return authorizedEventMutation(userId, eventId, async (transaction) => {
     const membership = await transaction.eventCommandGroupAtomicUnit.findUnique({
@@ -275,10 +275,10 @@ export async function detachAtomicEventUnit(
       select: { groupId: true, atomicEventUnit: { select: { eventParticipation: { select: { eventId: true } } } } },
     });
     if (membership === null || membership.atomicEventUnit.eventParticipation.eventId !== eventId) {
-      throw new EventCommandGroupError("Atomic Event-unit must belong to the same Event.");
+      throw new EventCommandGroupError("Company must belong to the same Event.");
     }
     if (membership.groupId !== normalizedGroupId) {
-      throw new EventCommandGroupError("Atomic Event-unit is not a direct child of this group.");
+      throw new EventCommandGroupError("Company is not a direct child of this group.");
     }
     return transaction.eventCommandGroupAtomicUnit.delete({
       where: { atomicEventUnitId: normalizedAtomicId },
@@ -703,7 +703,7 @@ export async function moveEventBattlefieldNode(
         select: { id: true, eventParticipation: { select: { eventId: true } } },
       });
       if (atomicUnit === null || atomicUnit.eventParticipation.eventId !== normalizedEventId) {
-        throw new EventCommandGroupError("Atomic Event-unit must belong to the same Event.");
+        throw new EventCommandGroupError("Company must belong to the same Event.");
       }
       if (targetGroup !== null) {
         await transaction.eventCommandGroupAtomicUnit.upsert({

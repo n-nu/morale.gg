@@ -16,7 +16,7 @@ morale.gg is a working information and statistics system for organized multiplay
 
 ## MVP
 
-The MVP supports Google authentication, public Unit and Player records, hierarchical organization and roster management, Event creation and participation decisions, two-sided battlefield organization, atomic Event units and Event Command Groups, Audit drafting/finalization, Event Battle results, and Player/Unit/Ranker/Commander/General/attendance statistics. Public statistics are derived at query time from effective finalized Audits.
+The MVP supports Google authentication, public Unit and Player records, hierarchical organization and roster management, Event creation and participation decisions, two-sided battlefield organization, Companies and Event Command Groups, Audit drafting/finalization, Event Battle results, and Player/Unit/Ranker/Commander/General/attendance statistics. Public statistics are derived at query time from effective finalized Audits.
 
 The canonical [MVP requirements](docs/MVP_REQUIREMENTS.md) distinguish implemented behavior from deferred work. The design decisions and domain flow are in [docs/architecture.md](docs/architecture.md).
 
@@ -126,4 +126,3 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). For the guided 5-10 minute walkthrough, see [MVP Demonstration](docs/MVP_DEMO.md). Setup and verification commands are listed in [docs/VERIFICATION.md](docs/VERIFICATION.md).
-

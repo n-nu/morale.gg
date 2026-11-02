@@ -52,10 +52,10 @@ export default async function AuditsPage({
       <PageHeader category="Records and administration" title="Audits" description="Finalized event records and authorized submissions." />
 
       {viewerUserId === null ? (
-        <p className="mt-8 border-y border-edge py-5 text-sm text-muted">Sign in to discover Atomic Event-units claimed through your authorized Units.</p>
+        <p className="mt-8 border-y border-edge py-5 text-sm text-muted">Sign in to discover companies associated with your authorized Units.</p>
       ) : contexts.length === 0 ? (
           <p className="mt-8 border-y border-edge py-5 text-sm text-muted">
-            No Atomic Event-units are available for your Unit Audit authority.
+            No companies are available for your Unit Audit authority.
           </p>
       ) : (
         <section className="mt-8 space-y-6" aria-labelledby="participations-heading">
@@ -76,15 +76,15 @@ export default async function AuditsPage({
                     className="text-xs font-semibold text-gold underline"
                     href={`/audits?participation=${context.id}`}
                   >
-                    {context.id === selectedParticipationId ? "Selected" : "Open atomic units"}
+                    {context.id === selectedParticipationId ? "Selected" : "Open companies"}
                   </Link>
                 </div>
                 {context.id === selectedParticipationId ? (
                   <div className="mt-4 space-y-4">
                     <div>
-                      <h3 className="font-semibold">Atomic Event-units</h3>
+                      <h3 className="font-semibold">Companies</h3>
                       {atomicUnits.length === 0 ? (
-                        <p className="mt-2 text-sm text-muted">No atomic units created yet.</p>
+                        <p className="mt-2 text-sm text-muted">No companies created yet.</p>
                       ) : (
                         <ul className="mt-2 divide-y divide-edge border-y border-edge">
                           {atomicUnits.map((atomicUnit) => (
@@ -105,7 +105,7 @@ export default async function AuditsPage({
                                     <form action={deleteAtomicEventUnitAction}>
                                       <input type="hidden" name="atomicEventUnitId" value={atomicUnit.id} />
                                       <button className="text-sm font-semibold text-red-300 underline" type="submit">
-                                        Delete unused unit
+                                        Delete unused company
                                       </button>
                                     </form>
                                   </div>

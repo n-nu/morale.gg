@@ -96,7 +96,7 @@ export async function createEventAtomicEventUnit(
   return prisma.atomicEventUnit.create({
     data: {
       eventParticipationId: context.participationId,
-      name: requiredText(input.name, "Atomic Event-unit name"),
+      name: requiredText(input.name, "Company name"),
       side: requiredSide(input.side),
       auditUnitType: requiredAuditUnitType(input.auditUnitType),
       isMandatory: input.isMandatory,
@@ -119,7 +119,7 @@ export async function updateEventAtomicEventUnit(
   input: UpdateEventAtomicEventUnitInput,
 ): Promise<AtomicEventUnit> {
   if (userId.trim() === "" || input.eventId.trim() === "" || input.atomicEventUnitId.trim() === "") {
-    throw new AtomicEventUnitError("User, Event, and atomic Event-unit are required.");
+    throw new AtomicEventUnitError("User, Event, and Company are required.");
   }
   if (!(await canManageEvent(userId, input.eventId))) {
     throw new AtomicEventUnitError("Unauthorized: user cannot manage this Event.");
@@ -133,12 +133,12 @@ export async function updateEventAtomicEventUnit(
     select: { id: true, eventParticipation: { select: { eventId: true } } },
   });
   if (existing === null || existing.eventParticipation.eventId !== input.eventId) {
-    throw new AtomicEventUnitError("Atomic Event-unit must belong to this Event.");
+    throw new AtomicEventUnitError("Company must belong to this Event.");
   }
   return prisma.atomicEventUnit.update({
     where: { id: input.atomicEventUnitId },
     data: {
-      name: requiredText(input.name, "Atomic Event-unit name"),
+      name: requiredText(input.name, "Company name"),
       auditUnitType: requiredAuditUnitType(input.auditUnitType),
       eventParticipationId: context.participationId,
       isMandatory: input.isMandatory,
@@ -155,10 +155,10 @@ export async function deleteEventAtomicEventUnit(userId: string, eventId: string
     include: { eventParticipation: { select: { eventId: true } }, audit: { select: { id: true } }, commandGroupMembership: { select: { atomicEventUnitId: true } } },
   });
   if (atomicUnit === null || atomicUnit.eventParticipation.eventId !== eventId) {
-    throw new AtomicEventUnitError("Atomic Event-unit must belong to this Event.");
+    throw new AtomicEventUnitError("Company must belong to this Event.");
   }
   if (atomicUnit.audit !== null || atomicUnit.commandGroupMembership !== null) {
-    throw new AtomicEventUnitError("Atomic Event-unit cannot be removed after Audit or structure history exists.");
+    throw new AtomicEventUnitError("Company cannot be removed after Audit or structure history exists.");
   }
   return prisma.atomicEventUnit.delete({ where: { id: atomicEventUnitId } });
 }
@@ -201,16 +201,16 @@ export async function deleteAtomicEventUnit(
   atomicEventUnitId: string,
 ): Promise<AtomicEventUnit> {
   if (userId.trim() === "" || atomicEventUnitId.trim() === "") {
-    throw new Error("User and atomic Event-unit are required.");
+    throw new Error("User and Company are required.");
   }
 
   const atomicUnit = await prisma.atomicEventUnit.findUnique({
     where: { id: atomicEventUnitId },
     include: { eventParticipation: { select: { unitId: true } } },
   });
-  if (atomicUnit === null) throw new Error("Atomic Event-unit not found.");
+  if (atomicUnit === null) throw new Error("Company not found.");
   if (!(await canSubmitAudit(userId, atomicUnit.eventParticipation.unitId))) {
-    throw new Error("Unauthorized: user cannot delete this atomic Event-unit.");
+    throw new Error("Unauthorized: user cannot delete this company.");
   }
 
   return prisma.atomicEventUnit.delete({ where: { id: atomicEventUnitId } });

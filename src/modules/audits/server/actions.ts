@@ -42,7 +42,7 @@ function numericFormValue(data: FormData, name: string): number {
 
 export async function createAtomicEventUnitAction(data: FormData) {
   const userId = await getAuthenticatedUserId();
-  if (userId === null) throw new Error("Sign in to manage atomic Event-units.");
+  if (userId === null) throw new Error("Sign in to manage companies.");
 
   await createAtomicEventUnit({
     userId,
@@ -95,7 +95,7 @@ export async function deleteEventAtomicEventUnitAction(data: FormData) {
 
 export async function deleteAtomicEventUnitAction(data: FormData) {
   const userId = await getAuthenticatedUserId();
-  if (userId === null) throw new Error("Sign in to manage atomic Event-units.");
+  if (userId === null) throw new Error("Sign in to manage companies.");
 
   await deleteAtomicEventUnit(userId, String(data.get("atomicEventUnitId") ?? ""));
   revalidatePath("/audits");

@@ -21,12 +21,12 @@ The reset is destructive to development application data and preserves the exist
 
 1. Browse [`/events`](http://localhost:3000/events), then open [`/events/demo-event-main-review`](http://localhost:3000/events/demo-event-main-review), “Austerlitz: The Pratzen Heights.”
 2. Point out approved participating Units, the effective Defender win, and the separate ATTACKER/DEFENDER Battle Structure.
-3. Expand an Atomic Event Unit's Battle details to inspect finalized or pending status, Player rows, roles, K/D/A, and Unit results. Event Command Groups organize the atomic battlefield leaves; they are not persistent Unit hierarchy.
-4. Signed in as Demo Root Commander (the Event owner), open [`/events/demo-event-main-review/manage`](http://localhost:3000/events/demo-event-main-review/manage) for participation decisions and the battlefield organizer.
+3. Expand a Company's Battle details to inspect finalized or pending status, Player rows, roles, K/D/A, and Unit results. Event Command Groups organize the Companies; they are not persistent Unit hierarchy.
+4. Signed in as Demo Root Commander (the Event owner), open [`/events/demo-event-main-review/manage`](http://localhost:3000/events/demo-event-main-review/manage) for participation decisions and the battlefield organizer. In the organizer, drag nodes by their bodies or open a node's actions for edit, move, and remove controls; group and Company labels distinguish the hierarchy.
 
 ## D. Audit
 
-The main Event contains seeded finalized Audits, so the public Battle details are the no-mutation Audit demonstration. [`/audits`](http://localhost:3000/audits) is the authenticated Unit-authorized discovery and editing surface. Signed in as Demo Root Commander (or a French/Coalition Audit Submitter for a narrower scope), it lists eligible atomic units and their draft or finalized Audits. Finalizing an Audit is irreversible until the next `npm run demo:reset`.
+The main Event contains seeded finalized Audits, so the public Battle details are the no-mutation Audit demonstration. [`/audits`](http://localhost:3000/audits) is the authenticated Unit-authorized discovery and editing surface. Signed in as Demo Root Commander (or a French/Coalition Audit Submitter for a narrower scope), it lists eligible companies and their draft or finalized Audits. Finalizing an Audit is irreversible until the next `npm run demo:reset`.
 
 ## E. Statistics
 
