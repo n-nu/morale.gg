@@ -27,7 +27,22 @@ export function safeRobloxAvatarUrl(value: unknown): string | null {
 
 export function playerIdentityLabel(identity: PlayerIdentityPresentation): string {
   const username = identity.robloxUsername?.trim();
-  return username ? `@${username}` : `Roblox ID ${identity.playerId}`;
+  if (username) return `@${username}`;
+  const mercenary = /^demo-player-merc-(\d+)$/u.exec(identity.playerId);
+  if (mercenary) return `Demo Mercenary ${mercenary[1]}`;
+  const synthetic = /^demo-player-(\d+)$/u.exec(identity.playerId);
+  if (synthetic) return `Demo Player ${synthetic[1]}`;
+  const roster = /^demo-player-roster-(.+)-(\d+)$/u.exec(identity.playerId);
+  if (roster) return `Demo Player ${roster[1]} ${roster[2]}`;
+  return /^\d+$/u.test(identity.playerId)
+    ? `Roblox ID ${identity.playerId}`
+    : `Demo Player ${identity.playerId}`;
+}
+
+export function playerIdDescription(playerId: string): string {
+  return /^\d+$/u.test(playerId)
+    ? `Roblox ID: ${playerId}`
+    : `Synthetic demo ID: ${playerId}`;
 }
 
 export function robloxProfileUrl(playerId: string): string | null {

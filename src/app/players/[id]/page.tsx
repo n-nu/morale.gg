@@ -92,7 +92,7 @@ export default async function PlayerPage({
       <PageHeader
         category="Player record"
         title={playerIdentityLabel(identity)}
-        description={<>Roblox ID: <span className="break-all font-mono text-xs">{player.playerId}</span></>}
+        description={<>{/^\d+$/u.test(player.playerId) ? "Roblox ID" : "Synthetic demo ID"}: <span className="break-all font-mono text-xs">{player.playerId}</span></>}
         actions={<StatisticsWindowSelector value={selectedWindow} />}
       />
       <div className="mt-4 flex flex-wrap items-center gap-4 border-b border-edge pb-5">

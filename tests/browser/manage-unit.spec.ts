@@ -16,18 +16,18 @@ test.describe("Manage Unit presentation", () => {
       await managerForm.getByRole("button", { name: "Sign in" }).click();
       await page.waitForURL("**/units");
 
-      const response = await page.goto("/units/demo-unit-french-line-brigade/manage");
+      const response = await page.goto("/units/demo-unit-french-guard/manage");
       expect(response?.status()).toBe(200);
-      await expect(page.getByRole("heading", { name: "1st Line Brigade", level: 1 })).toBeVisible();
-      await expect(page.locator('dl[aria-label="Unit summary"]')).toContainText("Members1");
+      await expect(page.getByRole("heading", { name: /Königliches Gardek/, level: 1 })).toBeVisible();
+      await expect(page.locator('dl[aria-label="Unit summary"]')).toContainText("Members4");
       await expect(page.getByRole("link", { name: "Manage roster" })).toHaveAttribute(
         "href",
-        "/units/demo-unit-french-line-brigade#roster-heading",
+        "/units/demo-unit-french-guard#roster-heading",
       );
       await expect(page.getByRole("heading", { name: "Public Profile" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Organization" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Permissions" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "1st Line Regiment" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Garde-Jäger Brigade" })).toBeVisible();
 
       for (const width of [390, 768, 1024, 1440, 1920]) {
         await page.setViewportSize({ width, height: 900 });
@@ -47,7 +47,7 @@ test.describe("Manage Unit presentation", () => {
 
       await page.getByText("Edit profile", { exact: true }).click();
       const profile = page.getByRole("region", { name: "Public Profile" });
-      await expect(profile.getByLabel("Unit name")).toHaveValue("1st Line Brigade");
+      await expect(profile.getByLabel("Unit name")).toHaveValue("Königliches Gardekоrps");
       await expect(profile.getByLabel("Description")).toBeVisible();
       await expect(profile.getByLabel("Discord invite")).toBeVisible();
       await expect(profile.getByLabel("External group link")).toBeVisible();
@@ -59,7 +59,7 @@ test.describe("Manage Unit presentation", () => {
 
       await page.getByRole("link", { name: "Manage roster" }).click();
       await expect(page.getByRole("heading", { name: "Roster" })).toBeVisible();
-      await expect(page.getByText("1 active", { exact: true })).toBeVisible();
+      await expect(page.getByText("4 active", { exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Add an existing Player" })).toBeVisible();
     } finally {
       const signOut = page.getByRole("button", { name: /sign out/i });

@@ -10,7 +10,7 @@ async function signIn(page: Page, userId: string) {
 }
 
 const publicRoutes = ["/", "/units", "/units/demo-unit-french-line-1", "/players",
-  "/players/demo-player-001", "/events", "/events/demo-event-main-review", "/statistics"];
+  "/players/demo-player-001", "/players/4213669967", "/events", "/events/demo-event-main-review", "/statistics"];
 const managerRoutes = ["/units/demo-unit-french-army/manage", "/events/demo-event-main-review/manage",
   "/events/create", "/audits"];
 
@@ -28,6 +28,11 @@ test.describe("M1 development baseline", () => {
           const response = await page.goto(route);
           expect.soft(response?.status(), `${role} ${route}: HTTP`).toBe(200);
           await expect(page.locator("h1").first()).toBeVisible();
+          if (route === "/players/4213669967") {
+            await expect(page.getByRole("heading", { name: "@NapoleonicWar_s" })).toBeVisible();
+            await expect(page.getByRole("link", { name: "View Roblox Profile" }))
+              .toHaveAttribute("href", "https://www.roblox.com/users/4213669967/profile");
+          }
           const dimensions = await page.evaluate(() => ({
             viewport: window.innerWidth,
             document: document.documentElement.scrollWidth,

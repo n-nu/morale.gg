@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { AddMembershipForm, EndMembershipForm } from "./forms";
 import { PlayerIdentity } from "./player-identity";
-import { playerIdentityLabel } from "../identity";
+import { playerIdDescription, playerIdentityLabel } from "../identity";
 
 const unitTypes = ["REGULAR", "RIFLES", "CAVALRY", "ARTILLERY"] as const;
 type UnitType = (typeof unitTypes)[number];
@@ -107,7 +107,7 @@ export function Roster({
                       <Link href={`/players/${entry.player.playerId}`} className="roster-player-link">
                         <PlayerIdentity identity={entry.player} size={28} />
                       </Link>
-                      <span className="roster-player-id">Roblox ID: {entry.player.playerId}</span>
+                      <span className="roster-player-id">{playerIdDescription(entry.player.playerId)}</span>
                     </th>
                     <td className="numeric">{stats?.kills ?? "—"}</td>
                     <td className="numeric">{stats?.deaths ?? "—"}</td>

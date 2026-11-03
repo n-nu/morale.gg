@@ -3,7 +3,12 @@
 import Image from "next/image";
 import { useState } from "react";
 
-import { playerIdentityLabel, safeRobloxAvatarUrl, type PlayerIdentityPresentation } from "../identity";
+import {
+  playerIdDescription,
+  playerIdentityLabel,
+  safeRobloxAvatarUrl,
+  type PlayerIdentityPresentation,
+} from "../identity";
 
 export function PlayerIdentity({
   identity,
@@ -54,7 +59,7 @@ export function PlayerIdentity({
       <span className="min-w-0">
         <span className="block truncate">{playerIdentityLabel(identity)}</span>
         {showPlayerId && username ? (
-          <span className="block break-all font-mono text-[11px] text-muted">Roblox ID: {identity.playerId}</span>
+          <span className="block break-all font-mono text-[11px] text-muted">{playerIdDescription(identity.playerId)}</span>
         ) : null}
       </span>
     </span>

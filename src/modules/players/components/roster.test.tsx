@@ -21,6 +21,18 @@ test("public roster links Players and hides mutation controls", async () => {
   assert.doesNotMatch(html, /End membership|Add to roster/);
 });
 
+test("synthetic roster Players are not presented as Roblox IDs", async () => {
+  const { Roster } = await import("./roster");
+  const playerId = "demo-player-roster-us-baltimore-hussars-01";
+  const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage={false} entries={[
+    { membershipId: "roster-membership", startedAt: new Date(), player: { playerId, robloxUsername: null, robloxAvatarUrl: null } },
+  ]} />);
+
+  assert.match(html, /Demo Player us-baltimore-hussars 01/);
+  assert.match(html, new RegExp(`Synthetic demo ID: ${playerId}`));
+  assert.doesNotMatch(html, new RegExp(`Roblox ID: ${playerId}`));
+});
+
 test("manager sees add and end controls with membership and Unit targets", async () => {
   const { Roster } = await import("./roster");
   const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage entries={[

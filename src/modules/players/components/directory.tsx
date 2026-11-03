@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PlayerIdentity } from "./player-identity";
-import type { PlayerIdentityPresentation } from "../identity";
+import { playerIdDescription, type PlayerIdentityPresentation } from "../identity";
 
 export type PlayerDirectoryEntry = PlayerIdentityPresentation;
 
@@ -12,7 +12,9 @@ export function PlayerDirectory({ players }: { players: PlayerDirectoryEntry[] }
           <Link className="font-semibold text-foreground underline decoration-edge-strong underline-offset-4 hover:text-gold" href={`/players/${player.playerId}`}>
             <PlayerIdentity identity={player} />
           </Link>
-          <p className="mt-1 break-all font-mono text-sm text-muted">Roblox ID: {player.playerId}</p>
+          <p className="mt-1 break-all font-mono text-sm text-muted">
+            {playerIdDescription(player.playerId)}
+          </p>
         </li>
       ))}
     </ul>

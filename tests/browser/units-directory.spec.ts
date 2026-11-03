@@ -76,10 +76,7 @@ test.describe("Public Units directory and detail", () => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/units");
-    const expandableRoot = page.locator(".unit-directory-node:has(.unit-directory-expand)").first();
-    const rootHref = await expandableRoot.locator(".unit-directory-card").getAttribute("href");
-    if (!rootHref) throw new Error("Expected an expandable public root Unit");
+    const rootHref = "/units/demo-unit-coalition-command";
 
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
@@ -90,8 +87,9 @@ test.describe("Public Units directory and detail", () => {
       await expect(tree).toBeVisible();
       const nodeLinks = tree.locator(".unit-org-node-link");
       const rootNode = nodeLinks.first();
-      await expect(rootNode).toHaveAttribute("href", rootHref);
-      await expect(rootNode).toHaveAttribute("aria-current", "page");
+      await expect(rootNode).toHaveAttribute("data-root", "true");
+      const selectedNode = tree.locator('.unit-org-node-link[aria-current="page"]');
+      await expect(selectedNode).toHaveAttribute("href", rootHref);
       const connectors = tree.locator(".unit-org-connectors > path");
       await expect(connectors.first()).toBeAttached();
       expect(await connectors.count()).toBe((await nodeLinks.count()) - 1);
@@ -110,7 +108,7 @@ test.describe("Public Units directory and detail", () => {
         );
       }).toBeLessThan(3);
 
-      const siblings = tree.locator('.unit-org-node-link[aria-level="2"]');
+      const siblings = tree.locator('.unit-org-node-link[aria-level="3"]');
       const siblingBoxes = await siblings.evaluateAll((elements) =>
         elements.map((element) => {
           const box = element.getBoundingClientRect();

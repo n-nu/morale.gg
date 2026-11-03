@@ -1,5 +1,15 @@
 # Changelog: morale.gg
 
+## 2026-11-03
+
+- Date: 2026-11-03
+- Ticket ID: TKT-20261103-000052-001
+- Change: Replaced the demo's placeholder organization with 42 source-dated Roblox Units and 10 verified public Roblox profiles. Kept all memberships, Events, participation, Audits, results, and statistics synthetic and labeled Event activity accordingly. Added a per-run `--confirm-demo-reset` requirement while retaining the local database and RootUnit safeguards; updated the demo guides and source ledger.
+- Follow-up: Expanded the source fixture to 178 distinct Units after reviewing affiliate and subgroup descriptions, and added three synthetic roster-only Players to every source Unit and the preserved RootUnit. Roster-only Players are excluded from Event-specific assignments; verified public profiles remain excluded from fabricated activity.
+- Reason: Provide a realistic, reproducible Napoleonic community fixture without implying real players took part in fictional gameplay, and make destructive resets explicit.
+- Affected contracts/modules: Demo reset, Players/Units seed data, demo documentation. No schema, migration, contract, or ownership change.
+- Commit reference: N/A
+
 ## 2026-10-31
 
 - Date: 2026-10-31

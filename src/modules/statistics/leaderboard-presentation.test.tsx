@@ -51,12 +51,12 @@ test("the initial view states the ranking, branch, window, and population", () =
   assert.match(html, /How rankings work/);
 });
 
-test("rows link to public Player routes with encoded IDs and present cached Roblox usernames", () => {
+test("rows link to public Player routes and distinguish synthetic IDs from cached Roblox usernames", () => {
   const html = render({});
   assert.match(html, /href="\/players\/game%2F1"/);
   assert.match(html, />@Marshal Ney</);
-  assert.match(html, /font-mono[^>]*>Roblox ID: game\/1</);
-  assert.match(html, />Roblox ID game-2</);
+  assert.match(html, /font-mono[^>]*>Synthetic demo ID: game\/1</);
+  assert.match(html, />Demo Player game-2</);
   assert.doesNotMatch(html, />Ney</, "manually managed Player.name is not used");
 });
 
