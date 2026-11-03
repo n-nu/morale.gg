@@ -168,8 +168,12 @@ Users. For local development only (`next dev` with `DEV_SIGN_IN_ENABLED="true"`)
 `/dev/sign-in` creates an ordinary database session for a fixed seeded demo
 identity; it grants no authority and is unavailable in production builds
 (ADR-20260930-009). A game Player is a separate domain identity: `Player.id` is the internal
-database key and `Player.playerId` is the stable public/game identity. No
-automatic User-to-Player relationship is assumed.
+database key and `Player.playerId` is the stable public/game identity. No automatic User-to-Player relationship is assumed. The stable
+`Player.playerId` remains the canonical game identity; a cached Roblox username
+and headshot are optional presentation metadata, refreshed only by explicit
+server workflows and never required to render pages. A Player's Auth.js/Google
+name or image and the legacy `Player.name` field are not substitutes for Roblox
+identity or global Player presentation.
 
 ---
 

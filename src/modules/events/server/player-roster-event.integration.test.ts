@@ -96,10 +96,24 @@ test("Player roster and Event participation integrate through their real authori
       db: prisma,
       getUserId: async () => unit.commanderUserId,
       authorize: canManageRoster,
+      resolvePlayers: async (playerIds) => Promise.all(playerIds.map(async (value) => {
+        const playerId = String(value).trim();
+        return prisma.player.upsert({
+          where: { playerId },
+          create: {
+            playerId,
+            name: null,
+            robloxUsername: null,
+            robloxAvatarUrl: null,
+            robloxSyncedAt: null,
+          },
+          update: {},
+          select: { id: true, playerId: true },
+        });
+      })),
     });
     const player = await authorizedPlayerWorkflows.registerPlayer({
       playerId: `integration-${suffix}`,
-      name: "Integration Player",
     });
     createdPlayerId = player.id;
 

@@ -2,9 +2,9 @@
 module_id: units
 path: src/modules/units
 status: active
-version: 0.2
-last_reviewed: 2026-11-02
-updated_by_ticket: TKT-20261102-000050-001
+version: 0.3
+last_reviewed: 2026-11-03
+updated_by_ticket: TKT-20261103-000051-001
 ---
 
 # Units
@@ -93,13 +93,16 @@ empty/not-found/error states. Management reads include authorized-user periods,
 authority levels, grant/scope/revocation history, RootUnit catalogs, and valid
 move destinations. The Unit detail route composes the Players-owned roster
 view; public Award reads provide current Player Awards by stable Player ID.
+Roster Player rows present the stable Roblox ID with cached Roblox username
+and validated headshot metadata from Players; Units does not query Roblox.
 Demo fixtures remain read-only and have no management workflows.
 
 ## Dependencies
 Shared server-only `src/lib/prisma.ts` and Prisma persistence; Next.js route
 rendering. Players and Events consume only their approved Units capabilities
 without transferring Unit identity, roster, Event, or authority ownership.
-Units consumes `players-units-roster-read` for active Player Unit IDs, and
+Units consumes `players-units-roster-read` for active roster rows and
+`players-player-identity-presentation` for other Player presentation reads, and
 Players consumes `units-players-awards` for public Player Award presentation.
 
 ## Invariants
@@ -189,6 +192,7 @@ server-only and has no public UI.
 
 ## Related Contracts
 - `docs/contracts/players-units-roster-read.md` (stable).
+- `docs/contracts/players-player-identity-presentation.md` (stable).
 - `docs/contracts/units-players-awards.md` (stable).
 - `docs/contracts/units-statistics-hierarchy-read.md` (stable).
 - `events-units-event-creation-authorization` (stable).
@@ -207,6 +211,7 @@ server-only and has no public UI.
 ## Related BCRs
 - BCR-20261102-010 (approved; RootUnit Awards, grants, scoped management, and
   cross-module reads).
+- BCR-20261103-011 (approved; cached Roblox identity presentation).
 
 ## AI Working Rules
 GREEN local changes and logged YELLOW internal changes may proceed within an

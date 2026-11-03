@@ -7,8 +7,8 @@ import { LeaderboardView } from "./leaderboard-presentation";
 import { deriveRatio } from "./ratios";
 
 function playersData(): LeaderboardData {
-  const row = (gamePlayerId: string, displayName: string, kills: number, deaths: number) => ({
-    subject: { kind: "player" as const, gamePlayerId, displayName },
+  const row = (gamePlayerId: string, robloxUsername: string | null, kills: number, deaths: number) => ({
+    subject: { kind: "player" as const, gamePlayerId, robloxUsername, robloxAvatarUrl: null },
     metrics: {
       audits: { kind: "count" as const, value: 2 },
       kills: { kind: "count" as const, value: kills },
@@ -27,7 +27,7 @@ function playersData(): LeaderboardData {
         unitType: "REGULAR",
         rows: [
           row("game/1", "Marshal Ney", 31, 15),
-          row("game-2", "game-2", 18, 0),
+          row("game-2", null, 18, 0),
           row("game-3", "Kellermann", 9, 4),
           row("game-4", "Murat", 2, 6),
         ],
@@ -51,12 +51,13 @@ test("the initial view states the ranking, branch, window, and population", () =
   assert.match(html, /How rankings work/);
 });
 
-test("rows link to public Player routes with encoded game IDs and show the ID only beside a real name", () => {
+test("rows link to public Player routes with encoded IDs and present cached Roblox usernames", () => {
   const html = render({});
   assert.match(html, /href="\/players\/game%2F1"/);
-  assert.match(html, />Marshal Ney</);
-  assert.match(html, /font-mono[^>]*>game\/1</);
-  assert.equal((html.match(/>game-2</g) ?? []).length, 1, "the fallback name is not repeated as a second line");
+  assert.match(html, />@Marshal Ney</);
+  assert.match(html, /font-mono[^>]*>Roblox ID: game\/1</);
+  assert.match(html, />Roblox ID game-2</);
+  assert.doesNotMatch(html, />Ney</, "manually managed Player.name is not used");
 });
 
 test("ratios render rounded with raw totals, and zero deaths keep the approved form", () => {
@@ -104,10 +105,10 @@ test("Generals have no branch filter and Units link to the public Unit route", (
   const generals = render({ board: "generals", sort: "commands", unitType: null }, {
     window: "14d",
     board: "generals",
-    partitions: [{ unitType: null, rows: [{ subject: { kind: "player", gamePlayerId: "g-1", displayName: "Davout" }, metrics: { commands: { kind: "count", value: 3 } } }] }],
+    partitions: [{ unitType: null, rows: [{ subject: { kind: "player", gamePlayerId: "g-1", robloxUsername: "Davout", robloxAvatarUrl: null }, metrics: { commands: { kind: "count", value: 3 } } }] }],
   });
   assert.doesNotMatch(generals, /aria-label="Branch"/);
-  assert.match(generals, />Davout</);
+  assert.match(generals, />@Davout</);
 
   const units = render({ board: "units", sort: "kd" }, {
     window: "14d",

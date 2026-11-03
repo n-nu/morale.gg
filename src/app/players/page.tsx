@@ -11,13 +11,17 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 128) : "";
   const [matches, exact, userId] = await Promise.all([listPlayers(query), query ? findPlayerByGameId(query) : null, getAuthenticatedUserId()]);
   const players = exact
-    ? [{ playerId: exact.playerId, name: exact.name }, ...matches.filter((player) => player.playerId !== exact.playerId)]
+    ? [{
+        playerId: exact.playerId,
+        robloxUsername: exact.robloxUsername,
+        robloxAvatarUrl: exact.robloxAvatarUrl,
+      }, ...matches.filter((player) => player.playerId !== exact.playerId)]
     : matches;
   return <>
     <Breadcrumbs items={[{ label: "Community", href: "/events" }, { label: "Players" }]} />
     <PageHeader category="Records" title="Players" count={players.length} description="Find a persistent game identity and public record." />
     <form className="my-6 flex flex-wrap items-end gap-3 border-b border-edge pb-6" action="/players">
-      <label className="min-w-0 flex-1 text-sm font-semibold text-foreground">Name or game Player ID<input name="q" defaultValue={query} maxLength={128} className="mt-1 block min-h-10 w-full rounded-md border border-edge-strong bg-background px-3 py-2 font-normal text-foreground outline-none focus-visible:ring-2 focus-visible:ring-gold" /></label>
+      <label className="min-w-0 flex-1 text-sm font-semibold text-foreground">Roblox username or User ID<input name="q" defaultValue={query} maxLength={128} className="mt-1 block min-h-10 w-full rounded-md border border-edge-strong bg-background px-3 py-2 font-normal text-foreground outline-none focus-visible:ring-2 focus-visible:ring-gold" /></label>
       <button className="min-h-10 rounded-md bg-gold px-4 py-2 text-sm font-bold text-gold-ink transition-colors hover:bg-gold-bright">Search</button>
     </form>
     <section aria-labelledby="players-heading">

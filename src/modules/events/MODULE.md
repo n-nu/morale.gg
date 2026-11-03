@@ -2,9 +2,9 @@
 module_id: events
 path: src/modules/events
 status: active
-version: 0.3
-last_reviewed: 2026-11-02
-updated_by_ticket: TKT-20261102-000049-001
+version: 0.4
+last_reviewed: 2026-11-03
+updated_by_ticket: TKT-20261103-000051-001
 ---
 
 # Events
@@ -62,6 +62,9 @@ Audit work builds on approved Event participation through the
   null-side manager configuration nodes are not returned to public readers.
   Unit leaderboard and side summaries consume the Statistics-owned Event
   Battle DTO; Event result styling uses only the effective Event result.
+  Player and commander references use cached Roblox username/headshot metadata
+  supplied by Statistics; they do not query Roblox or use manually managed
+  Player names.
 - Route `/events/calendar`: public, unauthenticated month-calendar view of
   the same Event data.
 - Route `/events/manage`: authenticated list of Events the User owns or

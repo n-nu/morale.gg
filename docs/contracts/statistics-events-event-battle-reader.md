@@ -3,9 +3,9 @@ contract_id: statistics-events-event-battle-reader
 path: docs/contracts/statistics-events-event-battle-reader.md
 documentation_path: src/modules/statistics/MODULE.md
 status: stable
-version: 0.2
-last_reviewed: 2026-11-02
-updated_by_ticket: TKT-20261102-000049-001
+version: 0.3
+last_reviewed: 2026-11-03
+updated_by_ticket: TKT-20261103-000051-001
 ---
 
 # Statistics -> Events Event Battle Reader
@@ -38,8 +38,11 @@ An Event Battle DTO containing:
   display, Audit Unit type, finalized/pending result state, effective Audit
   Commander, K/D/A, approved zero-death KDR, Tickets, Flag Captures, Flag
   Losses, and Stars;
-- expanded Player rows with Audit position/role, Unit-local alias when safely
-  resolvable, otherwise stable PlayerID, and K/D/A/KDR;
+- expanded Player rows with Audit position/role, stable `playerId`, cached
+  Roblox username/headshot metadata, a presentation label (`@username` or
+  `Roblox ID {playerId}`), and K/D/A/KDR;
+- Audit and command-group commander Player references with stable ID and
+  cached Roblox username/headshot metadata;
 - per-Company Player count and average Kills/Deaths/Assists per finalized
   Player appearance, including zero-valued appearances;
 - finalized side summaries with Tickets and Flag Captures totals and pooled
@@ -47,7 +50,8 @@ An Event Battle DTO containing:
 - optional raw group aggregates only when unique flattened atomic descendants
   can be used without recursive ratios or type merging.
 
-Rank is intentionally absent.
+Rank is intentionally absent. Roblox metadata is optional and is never
+replaced by Auth.js identity or a manually managed global Player name.
 
 ## Semantics
 
@@ -63,9 +67,10 @@ individual Player K/D ratios.
 
 ## Guarantees
 
-The reader is public, query-time, and derived from authoritative source facts.
-It excludes private authorization details and does not expose unrelated Event
-or Audit records.
+The reader is public, query-time, and derived from authoritative source facts
+plus the Players-owned batch identity read. It excludes private authorization
+details and does not expose unrelated Event or Audit records. Roblox APIs are
+never called by the reader.
 
 ## Constraints
 
@@ -79,6 +84,8 @@ or Audit records.
 - No historical Rank-at-Event or current Rank substitute is returned.
 - Result outcome is read from the authoritative Event result history, not
   calculated by Statistics.
+- Player identity remains the stable game ID; username and avatar are cached
+  optional presentation metadata only.
 
 ## Compatibility Expectations
 
@@ -90,9 +97,11 @@ existing fields and calculations remain unchanged under BCR-20261102-009.
 ## Stability
 
 Stable; approved by BCR-20260928-006 and ADR-20260928-008. The additive 0.2
-extension is approved by BCR-20261102-009.
+extension is approved by BCR-20261102-009; cached Player identity presentation
+is approved by BCR-20261103-011.
 
 ## Related Tickets
 
 - TKT-20260928-000033-001
 - TKT-20260928-000035-001
+- TKT-20261103-000051-001

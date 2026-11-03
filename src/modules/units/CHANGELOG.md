@@ -1,5 +1,12 @@
 # Changelog: Units
 
+## 2026-11-03 — TKT-20261103-000051-001
+
+- Updated Player roster presentation to use cached Roblox username/headshot
+  metadata while preserving stable Player IDs and membership history.
+- Consumed the Players-owned identity-presentation read; no Roblox requests
+  occur during Unit page rendering.
+
 ## 2026-11-02 — TKT-20261102-000050-001
 
 - Replaced Medal definitions with RootUnit-scoped Player and Unit Award

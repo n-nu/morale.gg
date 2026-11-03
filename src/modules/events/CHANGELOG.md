@@ -1,5 +1,12 @@
 # Events — Changelog
 
+## 0.6 — 2026-11-03 — TKT-20261103-000051-001
+
+- Event Battle Player and commander references now render cached Roblox
+  usernames/headshots with stable Player ID routes and neutral fallbacks.
+- The Statistics-owned batch read supplies identity metadata; public Event
+  rendering performs no Roblox requests and does not use `Player.name`.
+
 ## 0.5 — 2026-11-02 — TKT-20261102-000049-001
 
 - Added a standalone public Event Unit leaderboard with the requested metric

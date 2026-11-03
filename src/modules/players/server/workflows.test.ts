@@ -7,15 +7,12 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { playerWorkflows } from "./workflows";
 import { findPlayerByGameId, getCurrentRoster, getPlayer, getPlayerMemberships, listPlayers } from "./queries";
-import { validatePlayer } from "../validation";
+import { normalizeStablePlayerId } from "./identity";
 
-test("validates opaque stable identity and display name", () => {
-  assert.deepEqual(validatePlayer({ playerId: " 00123 ", name: " Player " }), { playerId: "00123", name: "Player" });
+test("preserves stable existing Player IDs and rejects malformed identifiers", () => {
+  assert.equal(normalizeStablePlayerId(" 00123 "), "00123");
   for (const playerId of [null, "", "a b", "a\nb", "x".repeat(129)]) {
-    assert.throws(() => validatePlayer({ playerId, name: "Player" }));
-  }
-  for (const name of [null, " ", "x".repeat(101), "a\u0000b"]) {
-    assert.throws(() => validatePlayer({ playerId: "123", name }));
+    assert.throws(() => normalizeStablePlayerId(playerId));
   }
 });
 
@@ -36,6 +33,21 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
       decisions.push([userId, unitId]);
       return allowed;
     },
+    resolvePlayers: async (playerIds) => Promise.all(playerIds.map(async (value) => {
+      const playerId = String(value).trim();
+      return db.player.upsert({
+        where: { playerId },
+        create: {
+          playerId,
+          name: null,
+          robloxUsername: null,
+          robloxAvatarUrl: null,
+          robloxSyncedAt: null,
+        },
+        update: {},
+        select: { id: true, playerId: true },
+      });
+    })),
   });
   try {
     await client.query(`CREATE SCHEMA "${schema}"`);
@@ -44,14 +56,21 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
     await client.query('CREATE TABLE "Unit" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL)');
     await client.query('INSERT INTO "Unit" VALUES ($1, $2), ($3, $4), ($5, $6)', ["unit-a", "Unit A", "unit-b", "Unit B", "unit-identity", "Identity Fixture Unit"]);
     await client.query(await readFile(new URL("../../../../prisma/migrations/20260925120000_players_memberships/migration.sql", import.meta.url), "utf8"));
+    await client.query(await readFile(new URL("../../../../prisma/migrations/20261103120000_roblox_player_identity/migration.sql", import.meta.url), "utf8"));
+    await client.query(await readFile(new URL("../../../../prisma/migrations/20261103130000_player_name_nullable/migration.sql", import.meta.url), "utf8"));
 
-    await t.test("register, locate and safely reject duplicate stable identity", async () => {
-      const player = await workflow.registerPlayer({ playerId: "00123", name: "Player One" });
+    await t.test("register and reuse stable identity without requiring a manual name", async () => {
+      const player = await workflow.registerPlayer({ playerId: "00123" });
       assert.notEqual(player.id, player.playerId);
       assert.equal((await findPlayerByGameId(" 00123 ", db))?.id, player.id);
-      assert.equal((await getPlayer(player.id, db))?.name, "Player One");
-      assert.equal((await listPlayers("One", db)).length, 1);
-      await assert.rejects(workflow.registerPlayer({ playerId: "00123", name: "Duplicate" }), /already registered/);
+      assert.equal((await getPlayer(player.id, db))?.name, null);
+      assert.equal((await listPlayers("One", db)).length, 0);
+      assert.deepEqual(await listPlayers("00123", db), [{
+        playerId: "00123",
+        robloxUsername: null,
+        robloxAvatarUrl: null,
+      }]);
+      assert.deepEqual(await workflow.registerPlayer({ playerId: "00123" }), player);
       assert.equal(await db.player.count(), 1);
     });
 
@@ -62,7 +81,11 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
       assert.notEqual(fixture.id, fixture.playerId);
       assert.equal((await findPlayerByGameId("demo-player-001", db))?.id, "player-row-uuid-123");
       assert.equal(await findPlayerByGameId("player-row-uuid-123", db), null);
-      assert.deepEqual(await listPlayers("demo-player-001", db), [{ playerId: "demo-player-001", name: "Identity Player" }]);
+      assert.deepEqual(await listPlayers("demo-player-001", db), [{
+        playerId: "demo-player-001",
+        robloxUsername: null,
+        robloxAvatarUrl: null,
+      }]);
 
       const membership = await workflow.addMembership({ playerId: fixture.id, unitId: "unit-identity" });
       const persistedMembership = await db.unitMembership.findUnique({
@@ -74,7 +97,11 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
       const roster = await getCurrentRoster("unit-identity", db);
       assert.equal(roster.length, 1);
       assert.equal(roster[0].membershipId, membership.id);
-      assert.deepEqual(roster[0].player, { playerId: "demo-player-001", name: "Identity Player" });
+      assert.deepEqual(roster[0].player, {
+        playerId: "demo-player-001",
+        robloxUsername: null,
+        robloxAvatarUrl: null,
+      });
       assert.equal("id" in roster[0].player, false);
       await db.unitMembership.delete({ where: { id: membership.id } });
       await db.player.delete({ where: { id: fixture.id } });
@@ -101,7 +128,7 @@ test("Player workflows preserve history with real PostgreSQL constraints", async
 
     await t.test("deny unauthenticated and unauthorized writes without side effects", async () => {
       signedIn = null;
-      await assert.rejects(workflow.registerPlayer({ playerId: "denied", name: "Denied" }), /Sign in/);
+      await assert.rejects(workflow.registerPlayer({ playerId: "denied" }), /Sign in/);
       await assert.rejects(workflow.addMembership({ playerId: player.id, unitId: "unit-a" }), /Sign in/);
       await assert.rejects(workflow.endMembership({ membershipId: firstMembershipId, unitId: "unit-a" }), /Sign in/);
       signedIn = "session-user";

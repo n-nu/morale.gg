@@ -4,15 +4,23 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { canManageRoster } from "@/modules/units/server/authorization";
-import { PlayerWorkflowError, requiredText, validatePlayer } from "../validation";
+import { PlayerWorkflowError, requiredText } from "../validation";
+import { resolveOrCreatePlayersByGameIds } from "./identity";
+
+type PlayerWorkflowDependencies = {
+  db?: typeof prisma;
+  getUserId?: typeof getAuthenticatedUserId;
+  authorize?: typeof canManageRoster;
+  resolvePlayers?: (playerIds: unknown[]) => Promise<Array<{ id: string; playerId: string }>>;
+};
 
 // Server-only dependency seam for focused tests; never a Server Action argument.
-export function playerWorkflows(dependencies = {
-  db: prisma,
-  getUserId: getAuthenticatedUserId,
-  authorize: canManageRoster,
-}) {
-  const { db, getUserId, authorize } = dependencies;
+export function playerWorkflows(dependencies: PlayerWorkflowDependencies = {}) {
+  const db = dependencies.db ?? prisma;
+  const getUserId = dependencies.getUserId ?? getAuthenticatedUserId;
+  const authorize = dependencies.authorize ?? canManageRoster;
+  const resolvePlayers = dependencies.resolvePlayers
+    ?? ((playerIds: unknown[]) => resolveOrCreatePlayersByGameIds(playerIds, db));
 
   async function authenticated() {
     const userId = await getUserId();
@@ -27,17 +35,11 @@ export function playerWorkflows(dependencies = {
   }
 
   return {
-    async registerPlayer(input: { playerId: unknown; name: unknown }) {
+    async registerPlayer(input: { playerId: unknown }) {
       await authenticated();
-      const data = validatePlayer(input);
-      try {
-        return await db.player.create({ data });
-      } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-          throw new PlayerWorkflowError("That game Player ID is already registered. Look it up and reuse the existing Player.");
-        }
-        throw error;
-      }
+      const [player] = await resolvePlayers([input.playerId]);
+      if (!player) throw new PlayerWorkflowError("Roblox could not verify this Player ID.");
+      return player;
     },
 
     async addMembership(input: { playerId: unknown; unitId: unknown }) {

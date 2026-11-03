@@ -21,12 +21,10 @@ import {
 } from "@/modules/statistics/presentation";
 import { PlayerStatisticsSections } from "@/modules/statistics/player-presentation";
 import { StatisticsWindowSelector } from "@/modules/statistics/window-selector";
+import { PlayerIdentity } from "@/modules/players/components/player-identity";
+import { playerIdentityLabel, robloxProfileUrl } from "@/modules/players/identity";
 
 export const dynamic = "force-dynamic";
-
-function playerName(player: { name: string | null; playerId: string }) {
-  return player.name?.trim() || player.playerId;
-}
 
 function queryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -43,6 +41,12 @@ export default async function PlayerPage({
   const { window, notice, error } = await searchParams;
   const player = await findPlayerByGameId(playerId);
   if (!player) notFound();
+  const identity = {
+    playerId: player.playerId,
+    robloxUsername: player.robloxUsername,
+    robloxAvatarUrl: player.robloxAvatarUrl,
+  };
+  const profileUrl = robloxProfileUrl(player.playerId);
 
   const selectedWindow = resolveStatisticsWindow(window);
   const [memberships, ranker, commander, general, userId] = await Promise.all([
@@ -83,14 +87,27 @@ export default async function PlayerPage({
       <Breadcrumbs items={[
         { label: "Community", href: "/events" },
         { label: "Players", href: "/players" },
-        { label: playerName(player) },
+        { label: playerIdentityLabel(identity) },
       ]} />
       <PageHeader
         category="Player record"
-        title={playerName(player)}
-        description={<>Game Player ID: <span className="break-all font-mono text-xs">{player.playerId}</span></>}
+        title={playerIdentityLabel(identity)}
+        description={<>Roblox ID: <span className="break-all font-mono text-xs">{player.playerId}</span></>}
         actions={<StatisticsWindowSelector value={selectedWindow} />}
       />
+      <div className="mt-4 flex flex-wrap items-center gap-4 border-b border-edge pb-5">
+        <PlayerIdentity identity={identity} size={96} showPlayerId />
+        {profileUrl ? (
+          <a
+            href={profileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-gold underline decoration-edge-strong underline-offset-4 hover:text-gold-bright"
+          >
+            View Roblox Profile ↗
+          </a>
+        ) : null}
+      </div>
 
       <PlayerStatisticsSections
         ranker={rankerEntry}

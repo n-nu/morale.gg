@@ -10,6 +10,7 @@ import {
   parseLeaderboardQuery,
   rankLeaderboardRows,
   resolveLeaderboardUnitType,
+  subjectName,
   type LeaderboardMetric,
   type LeaderboardPartition,
   type LeaderboardRow,
@@ -21,8 +22,11 @@ const ratio = (numerator: number, denominator: number): LeaderboardMetric => ({
   ratio: deriveRatio(numerator, denominator, "K"),
 });
 
-function playerRow(gamePlayerId: string, displayName: string, metrics: LeaderboardRow["metrics"]): LeaderboardRow {
-  return { subject: { kind: "player", gamePlayerId, displayName }, metrics };
+function playerRow(gamePlayerId: string, robloxUsername: string, metrics: LeaderboardRow["metrics"]): LeaderboardRow {
+  return {
+    subject: { kind: "player", gamePlayerId, robloxUsername, robloxAvatarUrl: null },
+    metrics,
+  };
 }
 
 test("query parsing falls back to safe defaults for every unknown value", () => {
@@ -96,16 +100,16 @@ test("ranking uses competition ranks with a stable name tie-break in both direct
     playerRow("p-d", "Delta", { kills: { kind: "count", value: 3 } }),
   ];
   const desc = rankLeaderboardRows(rows, "kills", "desc");
-  assert.deepEqual(desc.map((row) => [row.rank, row.subject.kind === "player" ? row.subject.displayName : ""]), [
-    [1, "Alpha"],
-    [2, "Bravo"],
-    [2, "Charlie"],
-    [4, "Delta"],
+  assert.deepEqual(desc.map((row) => [row.rank, subjectName(row.subject)]), [
+    [1, "@Alpha"],
+    [2, "@Bravo"],
+    [2, "@Charlie"],
+    [4, "@Delta"],
   ]);
   const asc = rankLeaderboardRows(rows, "kills", "asc");
   assert.deepEqual(asc.map((row) => row.rank), [1, 2, 2, 4]);
-  assert.equal(asc[0].subject.kind === "player" && asc[0].subject.displayName, "Delta");
-  assert.equal(rows[0].subject.kind === "player" && rows[0].subject.displayName, "Charlie", "input order is not mutated");
+  assert.equal(subjectName(asc[0].subject), "@Delta");
+  assert.equal(subjectName(rows[0].subject), "@Charlie", "input order is not mutated");
 });
 
 test("ranking by a ratio places a zero-death player first without averaging anything", () => {

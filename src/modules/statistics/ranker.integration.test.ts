@@ -212,7 +212,8 @@ test("finalized Audit data flows through Ranker into public Leaderboard rows by 
     assert.deepEqual(recentRegularLeaderboardRow.subject, {
       kind: "player",
       gamePlayerId: rosteredPlayer.playerId,
-      displayName: rosteredPlayer.playerId,
+      robloxUsername: null,
+      robloxAvatarUrl: null,
     });
     assert.deepEqual(recentRegularLeaderboardRow.metrics.kills, { kind: "count", value: 14 });
     assert.deepEqual(recentRegularLeaderboardRow.metrics.deaths, { kind: "count", value: 4 });
@@ -247,7 +248,7 @@ test("finalized Audit data flows through Ranker into public Leaderboard rows by 
       ?.rows.find((row) => row.subject.kind === "player" && row.subject.gamePlayerId === rosteredPlayer.playerId);
     assert.ok(allTimeCavalryLeaderboardRow);
     assert.deepEqual(allTimeCavalryLeaderboardRow.metrics.kills, { kind: "count", value: 2 });
-    assert.deepEqual(Object.keys(recentRegularLeaderboardRow.subject).sort(), ["displayName", "gamePlayerId", "kind"]);
+    assert.deepEqual(Object.keys(recentRegularLeaderboardRow.subject).sort(), ["gamePlayerId", "kind", "robloxAvatarUrl", "robloxUsername"]);
     assert.notEqual(recentRegularLeaderboardRow.subject.gamePlayerId, rosteredPlayer.id);
 
     const rifles = rosteredDefault.unitTypes.find(({ unitType }) => unitType === "RIFLES");

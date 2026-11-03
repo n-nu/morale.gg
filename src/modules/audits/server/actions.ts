@@ -3,6 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
+import { prisma } from "@/lib/prisma";
+import { canSubmitAudit } from "@/modules/units/server/authorization";
+import {
+  AuditPlayerResolutionError,
+  previewAuditPlayerIdentities,
+} from "@/modules/players/server/audit-resolution";
+import type { AuditPlayerIdentityPreview } from "@/modules/players/server/audit-resolution";
 
 import {
   createAtomicEventUnit,
@@ -21,7 +28,16 @@ import {
   reparentEventCommandGroup,
   updateEventCommandGroup,
 } from "./command-groups";
-import { createAuditDraftForAtomicUnit, submitAudit } from "./submission";
+import { AuditSubmissionError, createAuditDraftForAtomicUnit, parseAuditRows, submitAudit } from "./submission";
+
+export type AuditActionState = {
+  ok: boolean;
+  message: string;
+  auditId?: string;
+  rawData?: string;
+  players?: AuditPlayerIdentityPreview[];
+  invalidIds?: string[];
+};
 
 async function requireAuthenticatedUser(message: string) {
   const userId = await getAuthenticatedUserId();
@@ -112,31 +128,108 @@ export async function createAuditDraftAction(data: FormData) {
   revalidatePath("/audits");
 }
 
-export async function submitAuditAction(data: FormData) {
-  const userId = await getAuthenticatedUserId();
-  if (userId === null) throw new Error("Sign in to submit an Audit.");
+async function auditActionResult(
+  operation: () => Promise<AuditActionState>,
+): Promise<AuditActionState> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof AuditSubmissionError) return { ok: false, message: error.message };
+    if (error instanceof AuditPlayerResolutionError) return { ok: false, message: error.message };
+    console.error("Audit Player identity operation failed", error);
+    return { ok: false, message: "Unable to verify or submit this Audit right now. Please retry." };
+  }
+}
 
-  const unitType = String(data.get("unitType") ?? "").toUpperCase() as "REGULAR" | "RIFLES" | "CAVALRY" | "ARTILLERY";
-  const commanderPlayerId = String(data.get("commanderPlayerId") ?? "").trim();
-  const flagBearerPlayerId = String(data.get("flagBearerPlayerId") ?? "").trim();
+export async function previewAuditPlayersAction(
+  _previous: AuditActionState,
+  data: FormData,
+) {
+  return auditActionResult(async () => {
+    const userId = await getAuthenticatedUserId();
+    if (userId === null) throw new AuditSubmissionError("Sign in to verify Audit Players.");
 
-  await submitAudit({
-    userId,
-    auditId: String(data.get("auditId") ?? ""),
-    submission: {
-      rawData: String(data.get("rawData") ?? ""),
-      unitType,
-      tickets: numericFormValue(data, "tickets"),
-      flagCaptures: numericFormValue(data, "flagCaptures"),
-      flagLosses: numericFormValue(data, "flagLosses"),
-      stars: numericFormValue(data, "stars"),
-      roles: [
-        { playerId: commanderPlayerId, role: "COMMANDER" },
-        ...(flagBearerPlayerId ? [{ playerId: flagBearerPlayerId, role: "FLAG_BEARER" as const }] : []),
-      ],
-    },
+    const auditId = String(data.get("auditId") ?? "").trim();
+    const rawData = String(data.get("rawData") ?? "");
+    const audit = await prisma.audit.findUnique({
+      where: { id: auditId },
+      select: {
+        id: true,
+        lifecycle: true,
+        createdByUserId: true,
+        atomicEventUnit: {
+          select: { eventParticipation: { select: { unitId: true, status: true } } },
+        },
+      },
+    });
+    if (!audit || audit.lifecycle !== "DRAFT" || !audit.atomicEventUnit?.eventParticipation) {
+      throw new AuditSubmissionError("Audit draft not found.");
+    }
+    if (audit.createdByUserId !== userId) {
+      throw new AuditSubmissionError("Only the creator may verify and edit this Audit draft.");
+    }
+    const participation = audit.atomicEventUnit.eventParticipation;
+    if (participation.status !== "APPROVED" || !(await canSubmitAudit(userId, participation.unitId))) {
+      throw new AuditSubmissionError("Unauthorized: user cannot submit an Audit for this Unit.");
+    }
+
+    const rows = parseAuditRows(rawData);
+    const preview = await previewAuditPlayerIdentities(rows.map((row) => row.playerId));
+    const message = preview.invalidIds.length > 0
+      ? `Roblox could not find Player ID${preview.invalidIds.length === 1 ? "" : "s"}: ${preview.invalidIds.join(", ")}. Correct the ID${preview.invalidIds.length === 1 ? "" : "s"} before finalizing.`
+      : preview.unavailable
+        ? "Roblox is unavailable. Existing Players remain usable from cache; new Player IDs must be retried."
+        : "Review the Roblox identities before finalizing this Audit.";
+    return {
+      ok: preview.invalidIds.length === 0,
+      message,
+      auditId,
+      rawData,
+      players: preview.players,
+      invalidIds: preview.invalidIds,
+    };
   });
-  revalidatePath("/audits");
+}
+
+export async function submitAuditAction(
+  _previous: AuditActionState,
+  data: FormData,
+) {
+  return auditActionResult(async () => {
+    const userId = await getAuthenticatedUserId();
+    if (userId === null) throw new AuditSubmissionError("Sign in to submit an Audit.");
+
+    const rawData = String(data.get("rawData") ?? "");
+    if (
+      String(data.get("verifiedRawData") ?? "") !== rawData ||
+      String(data.get("verifiedAuditId") ?? "") !== String(data.get("auditId") ?? "")
+    ) {
+      throw new AuditSubmissionError("Preview and confirm the current Roblox identities before finalizing.");
+    }
+
+    const unitType = String(data.get("unitType") ?? "").toUpperCase() as "REGULAR" | "RIFLES" | "CAVALRY" | "ARTILLERY";
+    const commanderPlayerId = String(data.get("commanderPlayerId") ?? "").trim();
+    const flagBearerPlayerId = String(data.get("flagBearerPlayerId") ?? "").trim();
+
+    await submitAudit({
+      userId,
+      auditId: String(data.get("auditId") ?? ""),
+      submission: {
+        rawData,
+        unitType,
+        tickets: numericFormValue(data, "tickets"),
+        flagCaptures: numericFormValue(data, "flagCaptures"),
+        flagLosses: numericFormValue(data, "flagLosses"),
+        stars: numericFormValue(data, "stars"),
+        roles: [
+          { playerId: commanderPlayerId, role: "COMMANDER" },
+          ...(flagBearerPlayerId ? [{ playerId: flagBearerPlayerId, role: "FLAG_BEARER" as const }] : []),
+        ],
+      },
+    });
+    revalidatePath("/audits");
+    return { ok: true, message: "Audit finalized." };
+  });
 }
 
 export async function createEventCommandGroupAction(data: FormData) {

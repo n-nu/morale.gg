@@ -5,6 +5,7 @@
  */
 
 import type { RatioMetric } from "./ratios";
+import { playerIdentityLabel } from "@/modules/players/identity";
 import {
   DEFAULT_STATISTICS_WINDOW,
   type StatisticsWindow,
@@ -42,7 +43,12 @@ export type LeaderboardMetric =
   | { kind: "ratio"; ratio: RatioMetric };
 
 export type LeaderboardSubject =
-  | { kind: "player"; gamePlayerId: string; displayName: string }
+  | {
+      kind: "player";
+      gamePlayerId: string;
+      robloxUsername: string | null;
+      robloxAvatarUrl: string | null;
+    }
   | { kind: "unit"; unitId: string; unitName: string };
 
 export type LeaderboardRow = {
@@ -246,7 +252,13 @@ function compareKeys(left: [number, number], right: [number, number]): number {
 }
 
 export function subjectName(subject: LeaderboardSubject): string {
-  return subject.kind === "player" ? subject.displayName : subject.unitName;
+  return subject.kind === "player"
+    ? playerIdentityLabel({
+        playerId: subject.gamePlayerId,
+        robloxUsername: subject.robloxUsername,
+        robloxAvatarUrl: subject.robloxAvatarUrl,
+      })
+    : subject.unitName;
 }
 
 function subjectKey(subject: LeaderboardSubject): string {

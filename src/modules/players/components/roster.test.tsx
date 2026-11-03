@@ -11,7 +11,7 @@ require.cache[require.resolve("server-only")] = { exports: {} } as NodeModule;
 test("public roster links Players and hides mutation controls", async () => {
   const { Roster } = await import("./roster");
   const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage={false} entries={[
-    { membershipId: "membership", startedAt: new Date("2026-09-25T12:00:00Z"), player: { playerId: "demo-player-001", name: "Player One" } },
+    { membershipId: "membership", startedAt: new Date("2026-09-25T12:00:00Z"), player: { playerId: "demo-player-001", robloxUsername: "PlayerOne", robloxAvatarUrl: null } },
   ]} />);
   assert.match(html, /href="\/players\/demo-player-001"/);
   assert.doesNotMatch(html, /player-row-uuid-123/);
@@ -24,12 +24,12 @@ test("public roster links Players and hides mutation controls", async () => {
 test("manager sees add and end controls with membership and Unit targets", async () => {
   const { Roster } = await import("./roster");
   const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage entries={[
-    { membershipId: "membership", startedAt: new Date(), player: { playerId: "demo-player-001", name: "Player One" } },
+    { membershipId: "membership", startedAt: new Date(), player: { playerId: "demo-player-001", robloxUsername: "PlayerOne", robloxAvatarUrl: null } },
   ]} />);
-  assert.match(html, /End membership for Player One/);
+  assert.match(html, /End membership for @PlayerOne/);
   assert.match(html, /name="membershipId" value="membership"/);
   assert.match(html, /name="unitId" value="unit-a"/);
-  assert.match(html, /Add to roster/);
+  assert.match(html, /Look up Roblox account/);
 });
 
 test("empty roster and registration form provide a usable starting point", async () => {
@@ -37,9 +37,9 @@ test("empty roster and registration form provide a usable starting point", async
   const { RegisterPlayerForm } = await import("./forms");
   assert.match(renderToStaticMarkup(<Roster unitId="unit-a" canManage entries={[]} />), /No active memberships/);
   const html = renderToStaticMarkup(<RegisterPlayerForm />);
-  assert.match(html, /Game Player ID/);
-  assert.match(html, /Player name/);
-  assert.match(html, /Register Player/);
+  assert.match(html, /Roblox User ID/);
+  assert.match(html, /Look up Roblox account/);
+  assert.doesNotMatch(html, /Player name/);
   assert.doesNotMatch(html, /name="userId"/);
 });
 
@@ -48,7 +48,7 @@ test("roster labels player-combat values as overall and preserves selected windo
   const html = renderToStaticMarkup(<Roster unitId="unit-a" canManage={false} window="all-time" entries={[{
     membershipId: "membership",
     startedAt: new Date("2026-09-25T12:00:00Z"),
-    player: { playerId: "demo-player-001", name: "Player One" },
+    player: { playerId: "demo-player-001", robloxUsername: "PlayerOne", robloxAvatarUrl: null },
     ranker: {
       distinctEvents: 3,
       unitTypes: {

@@ -182,16 +182,21 @@ model Unit {
 }
 
 model Player {
-  id          String           @id @default(cuid())
-  playerId    String           @unique
-  name        String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  memberships UnitMembership[]
-  auditResults AuditPlayerResult[]
-  auditRoles AuditRoleAssignment[]
+  id               String           @id @default(cuid())
+  playerId         String           @unique
+  name             String?
+  robloxUsername   String?
+  robloxAvatarUrl  String?
+  robloxSyncedAt   DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  memberships      UnitMembership[]
+  auditResults     AuditPlayerResult[]
+  auditRoles       AuditRoleAssignment[]
   commandedEventGroups EventCommandGroup[] @relation("EventGroupCommander")
-  awardGrants PlayerAwardGrant[]
+  awardGrants      PlayerAwardGrant[]
+
+  @@index([robloxSyncedAt])
 }
 
 enum AuditLifecycle {

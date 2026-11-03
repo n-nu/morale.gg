@@ -1,7 +1,6 @@
 import "server-only";
 
-import { getEffectiveFinalizedAuditObservations } from "@/modules/audits/server/statistics-source";
-import { getCanonicalEventTimes } from "@/modules/events/server/statistics-source";
+import { getPlayerIdentityPresentationBatch } from "@/modules/players/server/queries";
 
 import { getCommanderStatistics } from "./commander";
 import { getGeneralStatistics } from "./general";
@@ -17,34 +16,16 @@ import { getRankerStatistics } from "./ranker";
 import { getDirectUnitPerformanceForAllUnits } from "./unit";
 import {
   DEFAULT_STATISTICS_WINDOW,
-  getStatisticsWindowRange,
-  isEventTimeInStatisticsWindow,
   type StatisticsWindow,
 } from "./windows";
 
-/**
- * Public Player names for every Player result in the window, from the
- * approved Audits source. Unknown names fall back to the stable game Player ID
- * exactly as the Event Battle reader does.
- */
-async function getPublicPlayerNames(window: StatisticsWindow, now: Date): Promise<Map<string, string>> {
-  const range = getStatisticsWindowRange(window, now);
-  const eventIds = (await getCanonicalEventTimes())
-    .filter(({ occurredAt }) => isEventTimeInStatisticsWindow(occurredAt, range))
-    .map(({ eventId }) => eventId);
-  const source = await getEffectiveFinalizedAuditObservations(eventIds);
-  const names = new Map<string, string>();
-  for (const observation of source.observations) {
-    for (const result of observation.playerResults) {
-      const name = result.publicName?.trim();
-      if (name && !names.has(result.gamePlayerId)) names.set(result.gamePlayerId, name);
-    }
-  }
-  return names;
-}
-
-function playerSubject(gamePlayerId: string, names: Map<string, string>): LeaderboardRow["subject"] {
-  return { kind: "player", gamePlayerId, displayName: names.get(gamePlayerId) ?? gamePlayerId };
+function playerSubject(gamePlayerId: string): LeaderboardRow["subject"] {
+  return {
+    kind: "player",
+    gamePlayerId,
+    robloxUsername: null,
+    robloxAvatarUrl: null,
+  };
 }
 
 function partitionByType(entries: Array<{ unitType: LeaderboardUnitType; row: LeaderboardRow }>): LeaderboardPartition[] {
@@ -55,13 +36,13 @@ function partitionByType(entries: Array<{ unitType: LeaderboardUnitType; row: Le
 }
 
 async function getPlayersBoard(window: StatisticsWindow, now: Date): Promise<LeaderboardPartition[]> {
-  const [ranker, names] = await Promise.all([getRankerStatistics(window, now), getPublicPlayerNames(window, now)]);
+  const ranker = await getRankerStatistics(window, now);
   return partitionByType(
     ranker.players.flatMap((player) =>
       player.unitTypes.map((stats) => ({
         unitType: stats.unitType,
         row: {
-          subject: playerSubject(player.gamePlayerId, names),
+          subject: playerSubject(player.gamePlayerId),
           metrics: {
             audits: { kind: "count", value: stats.auditAppearances },
             kills: { kind: "count", value: stats.totals.kills },
@@ -78,13 +59,13 @@ async function getPlayersBoard(window: StatisticsWindow, now: Date): Promise<Lea
 }
 
 async function getCommandersBoard(window: StatisticsWindow, now: Date): Promise<LeaderboardPartition[]> {
-  const [commander, names] = await Promise.all([getCommanderStatistics(window, now), getPublicPlayerNames(window, now)]);
+  const commander = await getCommanderStatistics(window, now);
   return partitionByType(
     commander.players.flatMap((player) =>
       player.unitTypes.map((stats) => ({
         unitType: stats.unitType,
         row: {
-          subject: playerSubject(player.gamePlayerId, names),
+          subject: playerSubject(player.gamePlayerId),
           metrics: {
             battles: { kind: "count", value: stats.battlesCommanded },
             kd: { kind: "ratio", ratio: stats.killDeathRatio },
@@ -102,11 +83,11 @@ async function getCommandersBoard(window: StatisticsWindow, now: Date): Promise<
 }
 
 async function getGeneralsBoard(window: StatisticsWindow, now: Date): Promise<LeaderboardPartition[]> {
-  const [general, names] = await Promise.all([getGeneralStatistics(window, now), getPublicPlayerNames(window, now)]);
+  const general = await getGeneralStatistics(window, now);
   return [{
     unitType: null,
     rows: general.players.map((player) => ({
-      subject: playerSubject(player.gamePlayerId, names),
+      subject: playerSubject(player.gamePlayerId),
       metrics: {
         commands: { kind: "count", value: player.qualifyingGroupsCommanded },
         events: { kind: "count", value: player.distinctEventsCommanded },
@@ -157,5 +138,33 @@ export async function getLeaderboard(
   window: StatisticsWindow = DEFAULT_STATISTICS_WINDOW,
   now: Date = new Date(),
 ): Promise<LeaderboardData> {
-  return { window, board, partitions: await BOARD_READERS[board](window, now) };
+  const partitions = await BOARD_READERS[board](window, now);
+  const playerIds = [...new Set(
+    partitions.flatMap(({ rows }) => rows.flatMap((row) =>
+      row.subject.kind === "player" ? [row.subject.gamePlayerId] : [],
+    )),
+  )];
+  const identities = await getPlayerIdentityPresentationBatch(playerIds);
+  const identityById = new Map(identities.map((identity) => [identity.playerId, identity]));
+
+  return {
+    window,
+    board,
+    partitions: partitions.map((partition) => ({
+      ...partition,
+      rows: partition.rows.map((row) => {
+        if (row.subject.kind !== "player") return row;
+        const identity = identityById.get(row.subject.gamePlayerId);
+        if (!identity) throw new Error(`Missing Player identity presentation for ${row.subject.gamePlayerId}`);
+        return {
+          ...row,
+          subject: {
+            ...row.subject,
+            robloxUsername: identity.robloxUsername,
+            robloxAvatarUrl: identity.robloxAvatarUrl,
+          },
+        };
+      }),
+    })),
+  };
 }

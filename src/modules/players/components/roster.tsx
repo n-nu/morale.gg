@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { AddMembershipForm, EndMembershipForm } from "./forms";
+import { PlayerIdentity } from "./player-identity";
+import { playerIdentityLabel } from "../identity";
 
 const unitTypes = ["REGULAR", "RIFLES", "CAVALRY", "ARTILLERY"] as const;
 type UnitType = (typeof unitTypes)[number];
@@ -11,7 +13,7 @@ type UnitType = (typeof unitTypes)[number];
 export type RosterEntry = {
   membershipId: string;
   startedAt: Date;
-  player: { playerId: string; name: string | null };
+  player: { playerId: string; robloxUsername: string | null; robloxAvatarUrl: string | null };
   ranker?: {
     distinctEvents: number;
     unitTypes: Partial<Record<UnitType, {
@@ -103,9 +105,9 @@ export function Roster({
                   <tr key={entry.membershipId}>
                     <th scope="row">
                       <Link href={`/players/${entry.player.playerId}`} className="roster-player-link">
-                        {entry.player.name?.trim() || entry.player.playerId}
+                        <PlayerIdentity identity={entry.player} size={28} />
                       </Link>
-                      <span className="roster-player-id">{entry.player.playerId}</span>
+                      <span className="roster-player-id">Roblox ID: {entry.player.playerId}</span>
                     </th>
                     <td className="numeric">{stats?.kills ?? "—"}</td>
                     <td className="numeric">{stats?.deaths ?? "—"}</td>
@@ -113,7 +115,7 @@ export function Roster({
                     <td className="numeric">{stats?.kdr ?? "—"}</td>
                     <td className="numeric">{entry.ranker?.distinctEvents ?? "—"}</td>
                     <td>{attendanceLabel(entry.attendance)}</td>
-                    {canManage ? <td><EndMembershipForm unitId={unitId} membershipId={entry.membershipId} playerName={entry.player.name ?? entry.player.playerId} /></td> : null}
+                    {canManage ? <td><EndMembershipForm unitId={unitId} membershipId={entry.membershipId} playerName={playerIdentityLabel(entry.player)} /></td> : null}
                   </tr>
                 );
               })}

@@ -2,9 +2,9 @@
 module_id: statistics
 path: src/modules/statistics
 status: active
-version: 0.2
-last_reviewed: 2026-11-02
-updated_by_ticket: TKT-20261102-000049-001
+version: 0.3
+last_reviewed: 2026-11-03
+updated_by_ticket: TKT-20261103-000051-001
 ---
 
 # Statistics
@@ -34,11 +34,11 @@ reads. `getDirectUnitPerformanceForAllUnits` returns Direct Unit Performance for
 every represented Unit in one source read, identical per Unit to
 `getDirectUnitPerformance`. `getLeaderboard` assembles the public Leaderboard
 (`/leaderboard`) from the Ranker, Commander, General, and all-Units Direct
-readers; Player rows carry only the stable game Player ID and the public-name
-fallback used by Event Battle, and Unit rows only the identifier of the public
-`/units/[unitId]` route. Event Battle reads return presentation-safe atomic and Player result DTOs,
-use stable public game identity when no safe Unit-local alias exists, and never
-include historical Rank-at-Event.
+readers; Player rows carry stable game identity and cached Roblox username and
+headshot metadata from the Players batch presentation read, and Unit rows only
+the identifier of the public `/units/[unitId]` route. Event Battle reads return
+presentation-safe atomic and Player result DTOs with cached Roblox identity
+metadata, and never include historical Rank-at-Event.
 Event Battle also returns finalized side summaries and per-Company average
 Kills/Deaths/Assists per finalized Player appearance, as defined by its public
 read contract.
@@ -83,8 +83,9 @@ preserves raw numerator/denominator and zero-death state. `event-battle.ts`,
 `ranker.ts`,
 `commander.ts`, `general.ts`, `unit.ts`, and `attendance.ts` consume the
 Audits/Events sources and relevant Players/Units semantic operations to derive
-public query-time results. `leaderboard.ts` (server) builds Leaderboard rows from
-those readers; `leaderboard-model.ts` (client-safe) holds board/column
+public query-time results. `leaderboard.ts` (server) builds Leaderboard rows
+from those readers and enriches Player rows in one Players-owned cached identity
+read; `leaderboard-model.ts` (client-safe) holds board/column
 definitions, query parsing, ranking, and display formatting, including the
 shared two-decimal ratio display that keeps the zero-denominator form.
 `event-battle.ts` aggregates finalized Company values into side summaries and
@@ -111,6 +112,7 @@ Organizational or Average Unit performance.
 - `players-statistics-membership-history`
 - `units-statistics-hierarchy-read`
 - `statistics-events-event-battle-reader`
+- `players-player-identity-presentation`
 
 ## Related ADRs
 - ADR-20260927-007 (accepted)
