@@ -2,9 +2,9 @@
 module_id: audits
 path: src/modules/audits
 status: active
-version: 0.1
-last_reviewed: 2026-09-28
-updated_by_ticket: TKT-20260928-000034-001
+version: 0.2
+last_reviewed: 2026-11-03
+updated_by_ticket: TKT-20261103-000051-001
 ---
 
 # Audits
@@ -38,8 +38,9 @@ statistics aggregation.
 
 Server-only workflows create and configure atomic Event units through the
 Events-owned manager seam or existing Audit workflow, create/edit
-creator-owned drafts, parse PlayerID results, finalize Audits, and manage
-Event command groups. Finalized Audit results and assigned-side Event
+creator-owned drafts, parse PlayerID results, preview Roblox identities for
+manager confirmation, finalize Audits after verifying all new Player IDs, and
+manage Event command groups. Finalized Audit results and assigned-side Event
 structures are publicly readable. The manager structure reader requires
 Events-owned `canManageEvent` and is the only read that returns Unsorted nodes.
 `getEffectiveFinalizedAuditObservations` exposes the approved
@@ -52,7 +53,8 @@ these guarantees.
 
 Authenticated website User identity, Event and approved EventParticipation
 identifiers, persistent Unit identifiers, raw `playerId,kills,deaths,assists`
-rows, Unit statistics, Unit type, role assignments, and command-tree edges.
+rows, verified Roblox identities for new Players, Unit statistics, Unit type,
+role assignments, and command-tree edges.
 
 ## Outputs
 
@@ -66,7 +68,9 @@ the submitting Auth.js User identity.
 - `events-audits-event-participation-management` for approved participation
   validation and Events-owned `canManageEvent`;
 - `units-audits-submission-authorization` for `canSubmitAudit`;
-- `players-audits-player-resolution` for stable PlayerID resolve-or-create;
+- `players-audits-player-resolution` for batch preview and verified
+  resolve-or-create;
+- `players-player-identity-presentation` for cached Roblox identity display;
 - Auth.js server session resolution; and
 - shared server-only Prisma persistence.
 
@@ -84,7 +88,10 @@ the submitting Auth.js User identity.
 - Only the creator edits an unfinished draft. Submission finalizes atomically;
   finalized Audit data, Player results, and roles cannot be edited or deleted.
 - A Player result references persistent Player identity, never UnitMembership.
-  Player resolution never creates or changes roster membership or aliases.
+  New Player creation requires Roblox verification after manager confirmation;
+  existing Players remain resolvable if Roblox is unavailable. Player resolution
+  never creates or changes roster membership or aliases, and legacy
+  `Player.name` is not used for presentation.
 - Unit type is retained on the atomic result and remains partitionable for
   future Ranker, Commander, and General statistics.
 - Every finalized Audit has exactly one Commander; Regular also has exactly
@@ -134,6 +141,7 @@ replacement workflows and Event-manager Audit approval are not MVP behavior.
 - `events-audits-event-participation-management`
 - `units-audits-submission-authorization`
 - `players-audits-player-resolution`
+- `players-player-identity-presentation`
 - `audits-statistics-effective-finalized-audit`
 - `events-audits-event-battlefield-management`
 - `audits-events-public-battlefield-structure`
@@ -145,7 +153,6 @@ replacement workflows and Event-manager Audit approval are not MVP behavior.
 - ADR-20260928-008 (accepted Event Battlefield sides, results, and reads)
 
 ## AI Working Rules
-
 Local Audit validation and presentation may proceed under an active authorized
 implementation ticket. Persistence, authorization, contract, ownership,
 immutability, and cross-module changes require the approved Ticket 20 boundary

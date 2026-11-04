@@ -3,6 +3,7 @@ import {
   PrismaClient,
   type AuditUnitType,
   type BattlefieldSide,
+  type EventInvitePolicy,
   type EventParticipationStatus,
   type Permission,
   type PermissionScope,
@@ -15,10 +16,19 @@ import {
   DEMO_ROOT_UNIT_ID,
   DEMO_USER_IDS,
 } from "../src/lib/demo-identities";
+import {
+  DEMO_UNIT_IDS as UNIT,
+  ROBLOX_PLAYER_FIXTURES,
+  ROBLOX_UNIT_FIXTURES,
+  demoUnitId,
+} from "./fixtures/roblox-community";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PLAYER_COUNT = 120;
 const MERCENARY_COUNT = 12;
+const ROSTER_PLAYERS_PER_UNIT = 3;
+const ROSTER_PLAYER_COUNT = (ROBLOX_UNIT_FIXTURES.length + 1) * ROSTER_PLAYERS_PER_UNIT;
+export const DEMO_RESET_CONFIRMATION_FLAG = "--confirm-demo-reset";
 const ROOT_UNIT_SELECT = {
   id: true,
   name: true,
@@ -46,9 +56,16 @@ type SafetyEnvironment = {
   POSTGRES_PORT?: string;
 };
 
-export function assertSafeDatabaseTarget(environment: SafetyEnvironment): SafeDatabaseTarget {
-  if (environment.NODE_ENV?.trim().toLowerCase() === "production") {
+export function assertSafeDatabaseTarget(
+  environment: SafetyEnvironment,
+  acknowledged: boolean,
+): SafeDatabaseTarget {
+  const nodeEnvironment = environment.NODE_ENV?.trim().toLowerCase();
+  if (nodeEnvironment === "production") {
     throw new Error("Demo database reset is disabled when NODE_ENV is production.");
+  }
+  if (!acknowledged) {
+    throw new Error(`Demo database reset is destructive. Re-run with ${DEMO_RESET_CONFIRMATION_FLAG} to acknowledge deletion.`);
   }
 
   const connectionString = environment.DATABASE_URL;
@@ -104,8 +121,31 @@ export function requireSingleRootUnit(roots: RootUnitIdentity[]): RootUnitIdenti
   return roots[0];
 }
 
-type UnitSeed = { id: string; name: string; parentId: string | null };
-type MembershipSeed = { id: string; playerId: string; gamePlayerId: string; unitId: string; startedAt: Date; endedAt: Date | null };
+export function isDemoResetConfirmed(args: readonly string[]): boolean {
+  const unknownArgs = args.filter((argument) => argument !== DEMO_RESET_CONFIRMATION_FLAG);
+  if (unknownArgs.length > 0) {
+    throw new Error(`Unrecognized demo reset argument(s): ${unknownArgs.join(", ")}.`);
+  }
+  return args.includes(DEMO_RESET_CONFIRMATION_FLAG);
+}
+
+type UnitSeed = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  description: string;
+  groupLink: string | null;
+  imageRef: string | null;
+};
+type MembershipSeed = {
+  id: string;
+  playerId: string;
+  gamePlayerId: string;
+  unitId: string;
+  startedAt: Date;
+  endedAt: Date | null;
+  eventEligible?: boolean;
+};
 type ParticipationSeed = { unitId: string; status: EventParticipationStatus };
 type AuditState = "FINAL" | "DRAFT" | "NONE";
 type AtomicSeed = {
@@ -133,7 +173,12 @@ type EventSeed = {
   scheduledOffsetDays: number;
   eventType: string;
   description: string;
-  opponent: string;
+  opponent: string | null;
+  attackerName?: string;
+  defenderName?: string;
+  rallyMinutesBeforeStart?: number;
+  durationMinutes?: number;
+  invitePolicy?: EventInvitePolicy;
   map: string;
   defenderFlagRef: string | null;
   attackerFlagRef: string | null;
@@ -143,100 +188,42 @@ type EventSeed = {
 };
 type TxClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
-const UNIT = {
-  frenchArmy: "demo-unit-french-army",
-  frenchCorps: "demo-unit-french-i-corps",
-  frenchBrigade: "demo-unit-french-line-brigade",
-  frenchLine1: "demo-unit-french-line-1",
-  frenchLine2: "demo-unit-french-line-2",
-  frenchRifles: "demo-unit-french-rifles",
-  frenchGuard: "demo-unit-french-guard",
-  frenchOldGuard: "demo-unit-french-old-guard",
-  frenchYoungGuard: "demo-unit-french-young-guard",
-  frenchCavalry: "demo-unit-french-cavalry",
-  frenchHussars: "demo-unit-french-hussars",
-  frenchDragoons: "demo-unit-french-dragoons",
-  frenchArtillery: "demo-unit-french-artillery",
-  frenchBattery: "demo-unit-french-battery",
-  coalition: "demo-unit-coalition-command",
-  coalitionBattery: "demo-unit-coalition-battery",
-  britishDivision: "demo-unit-british-division",
-  britishBrigade: "demo-unit-british-line-brigade",
-  britishLine1: "demo-unit-british-line-1",
-  britishLine2: "demo-unit-british-line-2",
-  britishRifles: "demo-unit-british-rifles",
-  austrianCorps: "demo-unit-austrian-corps",
-  austrianGrenadiers: "demo-unit-austrian-grenadiers",
-  austrianLandwehr: "demo-unit-austrian-landwehr",
-  alliedCavalry: "demo-unit-allied-cavalry",
-  russianArmy: "demo-unit-russian-army",
-  russianGuard: "demo-unit-russian-guard-corps",
-  russianGrenadiers: "demo-unit-russian-grenadiers",
-  russianCorps: "demo-unit-russian-corps",
-  russianMusketeers: "demo-unit-russian-musketeers",
-  russianJagers: "demo-unit-russian-jagers",
-  cossackBrigade: "demo-unit-cossack-brigade",
-  cossackRegiment: "demo-unit-cossack-regiment",
-  iberian: "demo-unit-iberian-command",
-  spanishDivision: "demo-unit-spanish-division",
-  spanishLine: "demo-unit-spanish-line",
-  spanishVolunteers: "demo-unit-spanish-volunteers",
-  portugueseBrigade: "demo-unit-portuguese-brigade",
-  cacadores: "demo-unit-cacadores",
-  portugueseLancers: "demo-unit-portuguese-lancers",
-} as const;
+const unitSeeds: UnitSeed[] = ROBLOX_UNIT_FIXTURES.map((unit) => ({
+  id: demoUnitId(unit.key),
+  name: unit.name,
+  parentId: unit.parentKey === null ? null : demoUnitId(unit.parentKey),
+  description: unit.description,
+  groupLink: unit.groupUrl,
+  imageRef: unit.imageRef,
+}));
+const unitSeedById = new Map(unitSeeds.map((unit) => [unit.id, unit]));
+const leafUnitIds: string[] = unitSeeds
+  .filter((unit) => !unitSeeds.some((candidate) => candidate.parentId === unit.id))
+  .map(({ id }) => id);
 
-const unitSeeds: UnitSeed[] = [
-  { id: UNIT.frenchArmy, name: "French Imperial Army", parentId: null },
-  { id: UNIT.frenchCorps, name: "I Corps", parentId: UNIT.frenchArmy },
-  { id: UNIT.frenchBrigade, name: "1st Line Brigade", parentId: UNIT.frenchCorps },
-  { id: UNIT.frenchLine1, name: "1st Line Regiment", parentId: UNIT.frenchBrigade },
-  { id: UNIT.frenchLine2, name: "2nd Line Regiment", parentId: UNIT.frenchBrigade },
-  { id: UNIT.frenchRifles, name: "Voltigeur Battalion", parentId: UNIT.frenchCorps },
-  { id: UNIT.frenchGuard, name: "Imperial Guard", parentId: UNIT.frenchArmy },
-  { id: UNIT.frenchOldGuard, name: "Old Guard Grenadiers", parentId: UNIT.frenchGuard },
-  { id: UNIT.frenchYoungGuard, name: "Young Guard Chasseurs", parentId: UNIT.frenchGuard },
-  { id: UNIT.frenchCavalry, name: "Guard Cavalry Brigade", parentId: UNIT.frenchArmy },
-  { id: UNIT.frenchHussars, name: "7th Hussars", parentId: UNIT.frenchCavalry },
-  { id: UNIT.frenchDragoons, name: "3rd Dragoons", parentId: UNIT.frenchCavalry },
-  { id: UNIT.frenchArtillery, name: "Artillery Reserve", parentId: UNIT.frenchArmy },
-  { id: UNIT.frenchBattery, name: "Horse Battery No. 2", parentId: UNIT.frenchArtillery },
-  { id: UNIT.coalition, name: "Allied Coalition Army", parentId: null },
-  { id: UNIT.coalitionBattery, name: "Coalition Reserve Battery", parentId: UNIT.coalition },
-  { id: UNIT.britishDivision, name: "British Division", parentId: UNIT.coalition },
-  { id: UNIT.britishBrigade, name: "1st Line Brigade", parentId: UNIT.britishDivision },
-  { id: UNIT.britishLine1, name: "42nd Highland Regiment", parentId: UNIT.britishBrigade },
-  { id: UNIT.britishLine2, name: "95th Rifles", parentId: UNIT.britishBrigade },
-  { id: UNIT.britishRifles, name: "Light Infantry Battalion", parentId: UNIT.britishDivision },
-  { id: UNIT.austrianCorps, name: "Austrian Corps", parentId: UNIT.coalition },
-  { id: UNIT.austrianGrenadiers, name: "Grenadier Regiment", parentId: UNIT.austrianCorps },
-  { id: UNIT.austrianLandwehr, name: "Landwehr Regiment", parentId: UNIT.austrianCorps },
-  { id: UNIT.alliedCavalry, name: "Coalition Cavalry Brigade", parentId: UNIT.coalition },
-  { id: UNIT.russianArmy, name: "Russian Imperial Army", parentId: null },
-  { id: UNIT.russianGuard, name: "Guard Corps", parentId: UNIT.russianArmy },
-  { id: UNIT.russianGrenadiers, name: "Pavlov Grenadiers", parentId: UNIT.russianGuard },
-  { id: UNIT.russianCorps, name: "I Infantry Corps", parentId: UNIT.russianArmy },
-  { id: UNIT.russianMusketeers, name: "Musketeer Regiment", parentId: UNIT.russianCorps },
-  { id: UNIT.russianJagers, name: "Jager Battalion", parentId: UNIT.russianCorps },
-  { id: UNIT.cossackBrigade, name: "Cossack Brigade", parentId: UNIT.russianArmy },
-  { id: UNIT.cossackRegiment, name: "Don Cossack Regiment", parentId: UNIT.cossackBrigade },
-  { id: UNIT.iberian, name: "Iberian Allied Corps", parentId: null },
-  { id: UNIT.spanishDivision, name: "Army of the Centre", parentId: UNIT.iberian },
-  { id: UNIT.spanishLine, name: "Spanish Line Regiment", parentId: UNIT.spanishDivision },
-  { id: UNIT.spanishVolunteers, name: "Provincial Volunteers", parentId: UNIT.spanishDivision },
-  { id: UNIT.portugueseBrigade, name: "Portuguese Light Brigade", parentId: UNIT.iberian },
-  { id: UNIT.cacadores, name: "Caçadores Battalion", parentId: UNIT.portugueseBrigade },
-  { id: UNIT.portugueseLancers, name: "Lancer Squadron", parentId: UNIT.portugueseBrigade },
-];
+function unitIsInSubtree(unitId: string, ancestorId: string): boolean {
+  let currentId: string | null = unitId;
+  const visited = new Set<string>();
+  while (currentId !== null) {
+    if (visited.has(currentId)) throw new Error(`Unit fixture contains a hierarchy cycle at ${currentId}.`);
+    visited.add(currentId);
+    if (currentId === ancestorId) return true;
+    currentId = unitSeedById.get(currentId)?.parentId ?? null;
+  }
+  return false;
+}
 
-const leafUnitIds: string[] = [
-  UNIT.frenchLine1, UNIT.frenchLine2, UNIT.frenchRifles, UNIT.frenchOldGuard,
-  UNIT.frenchYoungGuard, UNIT.frenchHussars, UNIT.frenchDragoons, UNIT.frenchBattery,
-  UNIT.coalitionBattery, UNIT.britishLine1, UNIT.britishLine2, UNIT.britishRifles, UNIT.austrianGrenadiers,
-  UNIT.austrianLandwehr, UNIT.russianGrenadiers, UNIT.russianMusketeers,
-  UNIT.russianJagers, UNIT.cossackRegiment, UNIT.spanishLine, UNIT.spanishVolunteers,
-  UNIT.cacadores, UNIT.portugueseLancers,
-];
+function unitCommander(unitId: string, rootCommanderUserId: string): string {
+  if (unitIsInSubtree(unitId, UNIT.frenchArmy)) return DEMO_USER_IDS.managerFrench;
+  if (unitIsInSubtree(unitId, UNIT.cossackBrigade)) return DEMO_USER_IDS.managerCoalition;
+  return rootCommanderUserId;
+}
+
+function auditSubmitterForUnit(unitId: string, rootCommanderUserId: string): string {
+  if (unitIsInSubtree(unitId, UNIT.frenchArmy)) return DEMO_USER_IDS.auditFrench;
+  if (unitIsInSubtree(unitId, UNIT.cossackBrigade)) return DEMO_USER_IDS.auditCoalition;
+  return rootCommanderUserId;
+}
 
 const PLAYER_UNIT_OVERRIDES: Record<number, string> = {
   ...Object.fromEntries(Array.from({ length: 8 }, (_, index) => [index, UNIT.britishLine1])),
@@ -251,9 +238,30 @@ const PLAYER_UNIT_OVERRIDES: Record<number, string> = {
   ...Object.fromEntries(Array.from({ length: 8 }, (_, index) => [index + 72, UNIT.spanishLine])),
   ...Object.fromEntries(Array.from({ length: 8 }, (_, index) => [index + 80, UNIT.cacadores])),
   ...Object.fromEntries(Array.from({ length: 8 }, (_, index) => [index + 88, UNIT.cossackRegiment])),
-  104: UNIT.frenchLine2,
+  96: UNIT.russianJagers,
+  97: UNIT.portugueseBrigade,
+  98: UNIT.frenchGuard,
+  99: UNIT.frenchYoungGuard,
   100: UNIT.portugueseLancers,
+  101: UNIT.spanishVolunteers,
+  102: UNIT.spanishHussars,
+  103: UNIT.spanishArtillery,
+  104: UNIT.frenchLine2,
+  105: UNIT.frenchCorps,
+  106: UNIT.frenchCavalry,
+  107: UNIT.austrianCorps,
+  108: UNIT.austrianLandwehr,
+  109: UNIT.britishDivision,
+  110: UNIT.britishBrigade,
+  111: UNIT.britishLine2,
   112: UNIT.britishRifles,
+  113: UNIT.frenchGuard,
+  114: UNIT.frenchBattery,
+  115: UNIT.russianCorps,
+  116: UNIT.russianArmy,
+  117: UNIT.spanishDivision,
+  118: UNIT.cossackBrigade,
+  119: UNIT.coalitionBattery,
 };
 
 const atomicId = (suffix: string) => `demo-atomic-${suffix}`;
@@ -292,9 +300,14 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-main-review",
     name: "Austerlitz: The Pratzen Heights",
     scheduledOffsetDays: -2,
-    eventType: "grand battle",
+    eventType: "Grand Battle",
     description: "Main visual-review fixture with a layered battlefield, finalized results, and pending placeholders.",
     opponent: "Coalition Army",
+    attackerName: "French Empire",
+    defenderName: "Coalition Forces",
+    rallyMinutesBeforeStart: 30,
+    durationMinutes: 35,
+    invitePolicy: "OPEN",
     map: "Austerlitz",
     defenderFlagRef: "/maps/borodino.jpg",
     attackerFlagRef: "/maps/barraux.png",
@@ -331,9 +344,14 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-waterloo-review",
     name: "Waterloo: The Allied Centre",
     scheduledOffsetDays: -18,
-    eventType: "battle",
+    eventType: "Grand Battle",
     description: "Recent past Event with a defender image and a distinct corps-and-reserve structure.",
     opponent: "Imperial Guard",
+    attackerName: "French Imperial Army",
+    defenderName: "United Kingdom & Prussia",
+    rallyMinutesBeforeStart: 45,
+    durationMinutes: 60,
+    invitePolicy: "CLOSED",
     map: "Waterloo",
     defenderFlagRef: "/maps/austerlitz.jpg",
     attackerFlagRef: null,
@@ -365,9 +383,13 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-borodino-review",
     name: "Borodino: The Great Redoubt",
     scheduledOffsetDays: -28,
-    eventType: "battle",
+    eventType: "Grand Battle",
     description: "Historical fixture without custom side images; both sides use the existing fallback presentation.",
     opponent: "French Imperial Army",
+    attackerName: "French Empire",
+    defenderName: "Russian Empire",
+    rallyMinutesBeforeStart: 20,
+    durationMinutes: 35,
     map: "Borodino",
     defenderFlagRef: null,
     attackerFlagRef: null,
@@ -399,7 +421,7 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-iberian-campaign",
     name: "Iberian Campaign: The Mountain Pass",
     scheduledOffsetDays: -48,
-    eventType: "campaign",
+    eventType: "External",
     description: "Older finalized Event with a mixed light-infantry and line structure.",
     opponent: "French Column",
     map: "Barraux",
@@ -428,7 +450,7 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-wagram",
     name: "Wagram: Danube Crossing",
     scheduledOffsetDays: -72,
-    eventType: "battle",
+    eventType: "Grand Battle",
     description: "Older battle with an artillery-free line and cavalry reserve.",
     opponent: "French Imperial Army",
     map: "Austerlitz",
@@ -455,7 +477,7 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-training-recent",
     name: "Recent Staff Training Engagement",
     scheduledOffsetDays: -9,
-    eventType: "training",
+    eventType: "Internal",
     description: "Recent Statistics-window fixture with a pending result correction and mixed audit states.",
     opponent: "Coalition Cadre",
     map: "Barraux",
@@ -481,7 +503,7 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-organizer-review",
     name: "Staff Exercise: Unsorted Organizer Review",
     scheduledOffsetDays: 4,
-    eventType: "training",
+    eventType: "Internal",
     description: "Low-risk organizer fixture with assigned sides, nested groups, and manager-only Unsorted nodes.",
     opponent: "Training Staff",
     map: "Barraux",
@@ -511,7 +533,7 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-autumn-muster",
     name: "Autumn Coalition Muster",
     scheduledOffsetDays: -4,
-    eventType: "muster",
+    eventType: "Internal",
     description: "Recent event with a denied participation request and no battlefield configuration.",
     opponent: "Independent Companies",
     map: "Borodino",
@@ -525,7 +547,7 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-winter-maneuvers",
     name: "Winter Coalition Maneuvers",
     scheduledOffsetDays: 16,
-    eventType: "campaign",
+    eventType: "Mixed",
     description: "Future Event with accepted and requested participation and no Battle Structure yet.",
     opponent: "Imperial Army",
     map: "Winter Countryside",
@@ -542,9 +564,14 @@ const eventSeeds: EventSeed[] = [
     id: "demo-event-spring-review",
     name: "Spring Corps Review",
     scheduledOffsetDays: 34,
-    eventType: "review",
+    eventType: "Internal",
     description: "Future planning fixture with outstanding participation requests.",
     opponent: "Allied Staff",
+    attackerName: "Coalition Forces",
+    defenderName: "Empire Français",
+    rallyMinutesBeforeStart: 15,
+    durationMinutes: 55,
+    invitePolicy: "CLOSED",
     map: "Austerlitz",
     defenderFlagRef: null,
     attackerFlagRef: null,
@@ -552,16 +579,41 @@ const eventSeeds: EventSeed[] = [
     atomics: [],
     groups: [],
   },
+  {
+    id: "demo-event-ceremony",
+    name: "Armistice Commemoration",
+    scheduledOffsetDays: 8,
+    eventType: "Ceremony",
+    description: "Ceremony fixture without battle sides or battlefield structure.",
+    opponent: null,
+    map: "St. Cloud",
+    defenderFlagRef: null,
+    attackerFlagRef: null,
+    rallyMinutesBeforeStart: 15,
+    durationMinutes: 60,
+    invitePolicy: "CLOSED",
+    participations: [],
+    atomics: [],
+    groups: [],
+  },
+  {
+    id: "demo-event-other",
+    name: "Community Briefing",
+    scheduledOffsetDays: 12,
+    eventType: "Other",
+    description: "Open community fixture with no battle-side requirements.",
+    opponent: null,
+    map: "",
+    defenderFlagRef: null,
+    attackerFlagRef: null,
+    rallyMinutesBeforeStart: 0,
+    durationMinutes: 35,
+    invitePolicy: "OPEN",
+    participations: [],
+    atomics: [],
+    groups: [],
+  },
 ];
-
-const unitCommander = (unitId: string): string => {
-  if (unitId.startsWith("demo-unit-french")) return DEMO_USER_IDS.managerFrench;
-  if (unitId.startsWith("demo-unit-coalition") || unitId.startsWith("demo-unit-british") || unitId.startsWith("demo-unit-austrian") || unitId.startsWith("demo-unit-allied")) {
-    return DEMO_USER_IDS.managerCoalition;
-  }
-  if (unitId.startsWith("demo-unit-russian") || unitId.startsWith("demo-unit-cossack")) return DEMO_USER_IDS.managerFrench;
-  return DEMO_USER_IDS.managerCoalition;
-};
 
 function daysFromNow(offset: number): Date {
   return new Date(Date.now() + offset * DAY_MS);
@@ -581,6 +633,14 @@ export function demoPlayerIdentity(index: number): { id: string; playerId: strin
 export function demoMercenaryIdentity(index: number): { id: string; playerId: string } {
   const suffix = String(index + 1).padStart(3, "0");
   return { id: `player-row-merc-${suffix}`, playerId: `demo-player-merc-${suffix}` };
+}
+
+function demoRosterIdentity(unitKey: string, index: number): { id: string; playerId: string } {
+  const suffix = String(index + 1).padStart(2, "0");
+  return {
+    id: `player-row-demo-roster-${unitKey}-${suffix}`,
+    playerId: `demo-player-roster-${unitKey}-${suffix}`,
+  };
 }
 
 function groupPermissionGrants(membershipId: string, createdByUserId: string, permissions: Array<{ permission: Permission; scope: PermissionScope | null }>, prefix: string) {
@@ -715,11 +775,11 @@ function expectedCommanderGrants(): Array<{ permission: Permission; scope: Permi
 
 async function seedDemoUsers(tx: TxClient): Promise<void> {
   const users = [
-    { id: DEMO_USER_IDS.managerFrench, name: "French Branch Manager", email: "manager-french@demo.invalid" },
-    { id: DEMO_USER_IDS.managerCoalition, name: "Coalition Branch Manager", email: "manager-coalition@demo.invalid" },
-    { id: DEMO_USER_IDS.auditFrench, name: "French Audit Submitter", email: "audit-french@demo.invalid" },
-    { id: DEMO_USER_IDS.auditCoalition, name: "Coalition Audit Submitter", email: "audit-coalition@demo.invalid" },
-    { id: DEMO_USER_IDS.limited, name: "Limited Roster Manager", email: "limited-roster@demo.invalid" },
+    { id: DEMO_USER_IDS.managerFrench, name: "Prussian Branch Manager", email: "manager-prussian@demo.invalid" },
+    { id: DEMO_USER_IDS.managerCoalition, name: "British Branch Manager", email: "manager-british@demo.invalid" },
+    { id: DEMO_USER_IDS.auditFrench, name: "Prussian Audit Submitter", email: "audit-prussian@demo.invalid" },
+    { id: DEMO_USER_IDS.auditCoalition, name: "British Audit Submitter", email: "audit-british@demo.invalid" },
+    { id: DEMO_USER_IDS.limited, name: "Limited Spanish Roster Manager", email: "limited-spanish-roster@demo.invalid" },
     { id: DEMO_USER_IDS.eventManager, name: "Event-only Manager", email: "event-manager@demo.invalid" },
   ];
   await tx.user.createMany({ data: users });
@@ -729,14 +789,14 @@ async function seedAuthorization(tx: TxClient, rootUnitId: string, rootCommander
   const commanderMemberships = unitSeeds.map((unit) => ({
     id: `demo-auth-commander-${unit.id}`,
     unitId: unit.id,
-    userId: unitCommander(unit.id),
+    userId: unitCommander(unit.id, rootCommanderUserId),
     authorityLevel: 0,
     createdByUserId: rootCommanderUserId,
   }));
   const additionalMemberships = [
     { id: "demo-auth-audit-french", unitId: UNIT.frenchArmy, userId: DEMO_USER_IDS.auditFrench, authorityLevel: 2, createdByUserId: rootCommanderUserId },
-    { id: "demo-auth-audit-coalition", unitId: UNIT.coalition, userId: DEMO_USER_IDS.auditCoalition, authorityLevel: 2, createdByUserId: rootCommanderUserId },
-    { id: "demo-auth-limited", unitId: UNIT.spanishLine, userId: DEMO_USER_IDS.limited, authorityLevel: 2, createdByUserId: rootCommanderUserId },
+    { id: "demo-auth-audit-coalition", unitId: UNIT.cossackBrigade, userId: DEMO_USER_IDS.auditCoalition, authorityLevel: 2, createdByUserId: rootCommanderUserId },
+    { id: "demo-auth-limited", unitId: UNIT.frenchDragoons, userId: DEMO_USER_IDS.limited, authorityLevel: 2, createdByUserId: rootCommanderUserId },
   ];
   await tx.authorizedUserMembership.createMany({ data: [...commanderMemberships, ...additionalMemberships] });
 
@@ -747,7 +807,7 @@ async function seedAuthorization(tx: TxClient, rootUnitId: string, rootCommander
   const grants = [
     ...groupPermissionGrants(rootMembership.id, rootCommanderUserId, expectedCommanderGrants(), "demo-grant-root"),
     ...groupPermissionGrants(`demo-auth-commander-${UNIT.frenchArmy}`, rootCommanderUserId, expectedCommanderGrants(), "demo-grant-french"),
-    ...groupPermissionGrants(`demo-auth-commander-${UNIT.coalition}`, rootCommanderUserId, expectedCommanderGrants(), "demo-grant-coalition"),
+    ...groupPermissionGrants(`demo-auth-commander-${UNIT.cossackBrigade}`, rootCommanderUserId, expectedCommanderGrants(), "demo-grant-coalition"),
     ...groupPermissionGrants("demo-auth-audit-french", rootCommanderUserId, [
       { permission: "SUBMIT_AUDITS", scope: "SELF_AND_DESCENDANTS" },
     ], "demo-grant-audit-french"),
@@ -761,15 +821,18 @@ async function seedAuthorization(tx: TxClient, rootUnitId: string, rootCommander
   await tx.permissionGrant.createMany({ data: grants });
 }
 
-async function seedUnits(tx: TxClient, rootUnitId: string): Promise<void> {
+async function seedUnits(tx: TxClient, rootUnitId: string, rootCommanderUserId: string): Promise<void> {
   for (const unit of unitSeeds) {
     await tx.unit.create({
       data: {
         id: unit.id,
         name: unit.name,
+        description: unit.description,
+        imageRef: unit.imageRef,
+        groupLink: unit.groupLink,
         parentId: unit.parentId ?? rootUnitId,
         rootUnitId,
-        commanderUserId: unitCommander(unit.id),
+        commanderUserId: unitCommander(unit.id, rootCommanderUserId),
       },
     });
   }
@@ -801,7 +864,11 @@ function primaryUnitForPlayer(index: number): string {
   return PLAYER_UNIT_OVERRIDES[index] ?? leafUnitIds[index % leafUnitIds.length];
 }
 
-async function seedPlayers(tx: TxClient): Promise<MembershipSeed[]> {
+async function seedPlayers(tx: TxClient, rootUnitId: string): Promise<MembershipSeed[]> {
+  const rosterUnits = [
+    { key: "root", unitId: rootUnitId },
+    ...ROBLOX_UNIT_FIXTURES.map(({ key }) => ({ key, unitId: demoUnitId(key) })),
+  ];
   const playerRows = Array.from({ length: PLAYER_COUNT }, (_, index) => ({
     ...demoPlayerIdentity(index),
     name: null,
@@ -810,7 +877,20 @@ async function seedPlayers(tx: TxClient): Promise<MembershipSeed[]> {
     ...demoMercenaryIdentity(index),
     name: null,
   }));
-  await tx.player.createMany({ data: [...playerRows, ...mercenaries] });
+  const rosterPlayers = rosterUnits.flatMap(({ key }) =>
+    Array.from({ length: ROSTER_PLAYERS_PER_UNIT }, (_, index) => ({
+      ...demoRosterIdentity(key, index),
+      name: null,
+    })));
+  const publicProfiles = ROBLOX_PLAYER_FIXTURES.map((profile) => ({
+    id: `player-row-roblox-${profile.playerId}`,
+    playerId: profile.playerId,
+    name: null,
+    robloxUsername: profile.robloxUsername,
+    robloxAvatarUrl: profile.robloxAvatarUrl,
+    robloxSyncedAt: new Date(`${profile.verifiedOn}T00:00:00.000Z`),
+  }));
+  await tx.player.createMany({ data: [...playerRows, ...mercenaries, ...rosterPlayers, ...publicProfiles] });
 
   const memberships: MembershipSeed[] = [];
   for (let index = 0; index < PLAYER_COUNT; index += 1) {
@@ -845,6 +925,20 @@ async function seedPlayers(tx: TxClient): Promise<MembershipSeed[]> {
       });
     }
   }
+  for (const { key, unitId } of rosterUnits) {
+    for (let index = 0; index < ROSTER_PLAYERS_PER_UNIT; index += 1) {
+      const { id: player, playerId: gamePlayerId } = demoRosterIdentity(key, index);
+      memberships.push({
+        id: `demo-membership-roster-${key}-${String(index + 1).padStart(2, "0")}`,
+        playerId: player,
+        gamePlayerId,
+        unitId,
+        startedAt: daysFromNow(-180),
+        endedAt: null,
+        eventEligible: false,
+      });
+    }
+  }
   await tx.unitMembership.createMany({
     data: memberships.map(({ id, playerId, unitId, startedAt, endedAt }) => ({ id, playerId, unitId, startedAt, endedAt })),
   });
@@ -854,6 +948,7 @@ async function seedPlayers(tx: TxClient): Promise<MembershipSeed[]> {
 function activePlayersForUnit(memberships: MembershipSeed[], unitId: string, eventDate: Date): MembershipSeed[] {
   return memberships
     .filter((membership) => membership.unitId === unitId
+      && membership.eventEligible !== false
       && membership.startedAt <= eventDate
       && (membership.endedAt === null || membership.endedAt > eventDate))
     .sort((left, right) => left.gamePlayerId.localeCompare(right.gamePlayerId));
@@ -868,9 +963,14 @@ async function seedEvents(tx: TxClient, rootCommanderUserId: string): Promise<Ma
         id: event.id,
         name: event.name,
         scheduledAt,
+        rallyMinutesBeforeStart: event.rallyMinutesBeforeStart ?? 0,
+        durationMinutes: event.durationMinutes ?? 35,
         eventType: event.eventType,
-        description: event.description,
+        description: `SYNTHETIC DEMO ACTIVITY — not a claim that real Roblox members participated.\n\n${event.description}`,
         opponent: event.opponent,
+        attackerName: event.attackerName ?? null,
+        defenderName: event.defenderName ?? null,
+        invitePolicy: event.invitePolicy ?? "OPEN",
         map: event.map,
         defenderFlagRef: event.defenderFlagRef,
         attackerFlagRef: event.attackerFlagRef,
@@ -947,11 +1047,7 @@ async function seedBattleStructures(
         data: {
           id: auditId,
           atomicEventUnitId: atomic.id,
-          createdByUserId: atomic.unitId.startsWith("demo-unit-french")
-            ? DEMO_USER_IDS.auditFrench
-            : atomic.unitId.startsWith("demo-unit-british") || atomic.unitId.startsWith("demo-unit-austrian")
-              ? DEMO_USER_IDS.auditCoalition
-              : rootCommanderUserId,
+          createdByUserId: auditSubmitterForUnit(atomic.unitId, rootCommanderUserId),
           lifecycle: "DRAFT",
           unitType: atomic.unitType,
           tickets: 80 + (auditIndex * 7) % 91,
@@ -1056,10 +1152,10 @@ async function seedEventResults(tx: TxClient, rootCommanderUserId: string): Prom
 
 async function seedDemoWorld(tx: TxClient, rootUnitId: string, rootCommanderUserId: string): Promise<MembershipSeed[]> {
   await seedDemoUsers(tx);
-  await seedUnits(tx, rootUnitId);
+  await seedUnits(tx, rootUnitId, rootCommanderUserId);
   await seedAuthorization(tx, rootUnitId, rootCommanderUserId);
   await seedCatalogs(tx, rootUnitId);
-  const memberships = await seedPlayers(tx);
+  const memberships = await seedPlayers(tx, rootUnitId);
   const firstActiveMembership = memberships.find(({ endedAt }) => endedAt === null);
   if (firstActiveMembership) {
     await tx.playerAwardGrant.create({
@@ -1082,13 +1178,21 @@ function assertRootUnchanged(before: { identity: string; designation: string }, 
 }
 
 async function verifySeededData(tx: TxClient, rootUnitId: string): Promise<void> {
+  const rosterUnits = [
+    { key: "root", unitId: rootUnitId },
+    ...ROBLOX_UNIT_FIXTURES.map(({ key }) => ({ key, unitId: demoUnitId(key) })),
+  ];
   const rootUnits = await tx.rootUnit.count();
-  const units = await tx.unit.findMany({ select: { id: true, parentId: true, rootUnitId: true } });
-  const playerRows = await tx.player.findMany({ select: { id: true, playerId: true } });
+  const units = await tx.unit.findMany({
+    select: { id: true, name: true, description: true, imageRef: true, groupLink: true, parentId: true, rootUnitId: true },
+  });
+  const playerRows = await tx.player.findMany({
+    select: { id: true, playerId: true, robloxUsername: true, robloxAvatarUrl: true, robloxSyncedAt: true },
+  });
   const players = playerRows.length;
   const users = await tx.user.findMany({ select: { id: true } });
   const membershipLinks = await tx.unitMembership.findMany({
-    select: { playerId: true, player: { select: { id: true, playerId: true } } },
+    select: { playerId: true, unitId: true, endedAt: true, player: { select: { id: true, playerId: true } } },
   });
   const memberships = membershipLinks.length;
   const auditPlayerLinks = await tx.auditPlayerResult.findMany({
@@ -1097,7 +1201,16 @@ async function verifySeededData(tx: TxClient, rootUnitId: string): Promise<void>
   const auditRoleLinks = await tx.auditRoleAssignment.findMany({
     select: { playerId: true, player: { select: { id: true, playerId: true } } },
   });
-  const events = await tx.event.count();
+  const events = await tx.event.findMany({
+    select: {
+      id: true,
+      eventType: true,
+      description: true,
+      rallyMinutesBeforeStart: true,
+      durationMinutes: true,
+      invitePolicy: true,
+    },
+  });
   const participations = await tx.eventParticipation.findMany({ select: { id: true, status: true } });
   const atomics = await tx.atomicEventUnit.findMany({
     include: {
@@ -1140,30 +1253,73 @@ async function verifySeededData(tx: TxClient, rootUnitId: string): Promise<void>
     }
     assert.equal(parentId, rootUnitId, `Unit ${unit.id} does not descend from the preserved RootUnit.`);
   }
-  assert.ok(units.length >= 26 && units.length <= 41, `Unexpected Unit count ${units.length}.`);
-  assert.ok(players >= 100 && players <= 150, `Unexpected Player count ${players}.`);
+  assert.equal(units.length, unitSeeds.length + 1, `Unexpected Unit count ${units.length}.`);
+  assert.equal(players, PLAYER_COUNT + MERCENARY_COUNT + ROSTER_PLAYER_COUNT + ROBLOX_PLAYER_FIXTURES.length, `Unexpected Player count ${players}.`);
   assert.equal(new Set(playerRows.map(({ playerId }) => playerId)).size, players, "Seed contains duplicate public PlayerIDs.");
   assert.ok(playerRows.every(({ id, playerId }) => id !== playerId), "Seeded Players must not equate internal and public IDs.");
   const identityFixture = playerRows.find(({ playerId: gamePlayerId }) => gamePlayerId === playerId(0));
-  assert.deepEqual(identityFixture, { id: "player-row-uuid-123", playerId: "demo-player-001" });
+  assert.ok(identityFixture, "Missing deterministic synthetic Player fixture.");
+  assert.deepEqual(
+    { id: identityFixture.id, playerId: identityFixture.playerId },
+    { id: "player-row-uuid-123", playerId: "demo-player-001" },
+  );
+  for (const fixture of ROBLOX_PLAYER_FIXTURES) {
+    const profile = playerRows.find(({ playerId: gamePlayerId }) => gamePlayerId === fixture.playerId);
+    assert.ok(profile, `Missing verified Roblox Player ${fixture.playerId}.`);
+    assert.equal(profile.id, `player-row-roblox-${fixture.playerId}`);
+    assert.equal(profile.robloxUsername, fixture.robloxUsername);
+    assert.equal(profile.robloxAvatarUrl, fixture.robloxAvatarUrl);
+    assert.equal(profile.robloxSyncedAt?.toISOString(), `${fixture.verifiedOn}T00:00:00.000Z`);
+  }
+  for (const fixture of unitSeeds) {
+    const unit = units.find(({ id }) => id === fixture.id);
+    assert.ok(unit, `Missing source-derived Unit ${fixture.id}.`);
+    assert.equal(unit.name, fixture.name);
+    assert.equal(unit.description, fixture.description);
+    assert.equal(unit.imageRef, fixture.imageRef);
+    assert.equal(unit.groupLink, fixture.groupLink);
+    assert.equal(unit.parentId, fixture.parentId ?? rootUnitId);
+  }
+  const rosterMemberships = membershipLinks.filter(({ player, endedAt }) =>
+    player.playerId.startsWith("demo-player-roster-") && endedAt === null);
+  assert.equal(rosterMemberships.length, ROSTER_PLAYER_COUNT, "Each source Unit and the preserved RootUnit must receive exactly three active synthetic roster Players.");
+  for (const { key, unitId } of rosterUnits) {
+    assert.equal(
+      rosterMemberships.filter((membership) => membership.unitId === (key === "root" ? rootUnitId : unitId)).length,
+      ROSTER_PLAYERS_PER_UNIT,
+      `Unit ${key} does not have the expected active synthetic roster.`,
+    );
+  }
   const internalPlayerIds = new Set(playerRows.map(({ id }) => id));
+  const verifiedPlayerRowIds = new Set(ROBLOX_PLAYER_FIXTURES.map(({ playerId: gamePlayerId }) => `player-row-roblox-${gamePlayerId}`));
   for (const membership of membershipLinks) {
     assert.equal(membership.playerId, membership.player.id, "UnitMembership must reference Player.id.");
     assert.ok(internalPlayerIds.has(membership.playerId));
+    assert.ok(!verifiedPlayerRowIds.has(membership.playerId), "Verified public identities must not receive synthetic membership history.");
   }
   for (const result of auditPlayerLinks) {
     assert.equal(result.playerId, result.player.id, "AuditPlayerResult must reference Player.id.");
     assert.ok(internalPlayerIds.has(result.playerId));
+    assert.ok(!verifiedPlayerRowIds.has(result.playerId), "Verified public identities must not receive synthetic Event results.");
   }
   for (const role of auditRoleLinks) {
     assert.equal(role.playerId, role.player.id, "AuditRoleAssignment must reference Player.id.");
     assert.ok(internalPlayerIds.has(role.playerId));
+    assert.ok(!verifiedPlayerRowIds.has(role.playerId), "Verified public identities must not receive synthetic Audit roles.");
   }
   assert.ok(membershipLinks.some(({ playerId }) => playerId === identityFixture.id));
   assert.ok(auditPlayerLinks.some(({ playerId }) => playerId === identityFixture.id));
   assert.ok(auditRoleLinks.some(({ playerId }) => playerId === identityFixture.id));
   assert.ok(users.filter((user) => user.id !== root.designatedUnit.commanderUserId).length >= 6);
-  assert.equal(events, 10);
+  assert.equal(events.length, 12);
+  assert.ok(events.every(({ description }) => description?.startsWith("SYNTHETIC DEMO ACTIVITY —")), "Every seeded Event must identify its activity as synthetic.");
+  assert.ok(events.every(({ eventType }) => ["Internal", "External", "Mixed", "Grand Battle", "Ceremony", "Other"].includes(eventType)), "Unexpected Event type suggestion.");
+  assert.ok(events.some(({ eventType }) => eventType === "Ceremony"));
+  assert.ok(events.some(({ eventType }) => eventType === "Other"));
+  assert.ok(events.some(({ invitePolicy }) => invitePolicy === "OPEN"));
+  assert.ok(events.some(({ invitePolicy }) => invitePolicy === "CLOSED"));
+  assert.ok(events.every(({ rallyMinutesBeforeStart }) => Number.isInteger(rallyMinutesBeforeStart) && rallyMinutesBeforeStart >= 0));
+  assert.ok(events.every(({ durationMinutes }) => durationMinutes !== null && Number.isInteger(durationMinutes) && durationMinutes >= 1));
   assert.ok(memberships >= 120);
   assert.ok(participations.some(({ status }) => status === "APPROVED"));
   assert.ok(participations.some(({ status }) => status === "REQUESTED"));
@@ -1250,7 +1406,7 @@ async function smokeReaders(ids: { rootUnitId: string; rootCommanderUserId: stri
   const eligibleAudits = await atomicUnits.listAuthorizedAtomicEventUnits(DEMO_USER_IDS.auditFrench);
   const unrelatedAudits = await atomicUnits.listAuthorizedAtomicEventUnits(DEMO_USER_IDS.limited);
   assert.ok(eligibleAudits.length > 0, "/audits discovery returned no companies for an eligible Unit user.");
-  assert.ok(eligibleAudits.every((unit) => unit.eventParticipation.unitId.startsWith("demo-unit-french")));
+  assert.ok(eligibleAudits.every((unit) => unitIsInSubtree(unit.eventParticipation.unitId, UNIT.frenchArmy)));
   assert.equal(unrelatedAudits.length, 0, "/audits discovery exposed units to an unrelated user.");
 
   const ranker14 = await statistics.getRankerStatistics("14d");
@@ -1316,9 +1472,9 @@ async function printSummary(prisma: PrismaClient, rootUnitId: string, rootName: 
   console.log(`Preserved RootUnit: ${rootUnitId} (${rootName}); Commander User: ${rootCommanderUserId}.`);
   console.log("Demo identities (no passwords; with DEV_SIGN_IN_ENABLED=\"true\" under `npm run dev`, sign in at http://localhost:3000/dev/sign-in):");
   console.log(`- Root Commander / Event owner: ${rootCommanderUserId}`);
-  console.log(`- French branch manager: ${DEMO_USER_IDS.managerFrench}; Audit submitter: ${DEMO_USER_IDS.auditFrench}`);
-  console.log(`- Coalition branch manager: ${DEMO_USER_IDS.managerCoalition}; Audit submitter: ${DEMO_USER_IDS.auditCoalition}`);
-  console.log(`- Limited roster manager: ${DEMO_USER_IDS.limited}; Event-only manager: ${DEMO_USER_IDS.eventManager}`);
+  console.log(`- Prussian branch manager: ${DEMO_USER_IDS.managerFrench}; Audit submitter: ${DEMO_USER_IDS.auditFrench}`);
+  console.log(`- British Army manager: ${DEMO_USER_IDS.managerCoalition}; Audit submitter: ${DEMO_USER_IDS.auditCoalition}`);
+  console.log(`- Limited Aragón roster manager: ${DEMO_USER_IDS.limited}; Event-only manager: ${DEMO_USER_IDS.eventManager}`);
   console.log("Main visual-review Event: demo-event-main-review (/events/demo-event-main-review).");
   console.log("Organizer-review Event: demo-event-organizer-review (/events/demo-event-organizer-review).");
 }
@@ -1353,8 +1509,8 @@ async function bootstrapDevelopmentRootUnit(prisma: PrismaClient): Promise<void>
   console.log(`No RootUnit found; bootstrapped development RootUnit ${DEMO_ROOT_UNIT_ID} with Commander ${DEMO_ROOT_COMMANDER_USER_ID}.`);
 }
 
-export async function runDemoReset(): Promise<void> {
-  const target = assertSafeDatabaseTarget(process.env);
+export async function runDemoReset(args: readonly string[] = process.argv.slice(2)): Promise<void> {
+  const target = assertSafeDatabaseTarget(process.env, isDemoResetConfirmed(args));
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
   });

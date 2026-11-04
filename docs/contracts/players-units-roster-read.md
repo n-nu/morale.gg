@@ -3,9 +3,9 @@ contract_id: players-units-roster-read
 path: docs/contracts/players-units-roster-read.md
 documentation_path: src/modules/players/MODULE.md
 status: stable
-version: 0.3
-last_reviewed: 2026-11-02
-updated_by_ticket: TKT-20261102-000050-001
+version: 0.4
+last_reviewed: 2026-11-03
+updated_by_ticket: TKT-20261103-000051-001
 ---
 
 # Players -> Units Public Roster Read
@@ -47,8 +47,9 @@ one aggregate row per distinct requested Unit ID without roster identities.
 | Name | Type/shape | Required | Meaning |
 |---|---|---|---|
 | `membershipId` | opaque internal membership identifier | yes | Identifies the membership action target; it is not a Player identity and does not authorize mutation. |
-| `playerId` | stable game Player identifier | yes | Public Player identity for roster display, search, and profile navigation. |
-| `displayName` | string or null | yes | Existing optional compatibility display value; when null/blank, presentation falls back to `playerId`. |
+| `player.playerId` | stable game Player identifier | yes | Public Player identity for roster display, search, and profile navigation. |
+| `player.robloxUsername` | string or null | yes | Cached mutable Roblox username; presentation metadata, not identity. |
+| `player.robloxAvatarUrl` | HTTPS URL or null | yes | Cached validated Roblox headshot URL; presentation metadata, not identity. |
 | `startedAt` | timestamp | yes | Start of this active membership period. |
 | `getCurrentRosterCounts(unitIds)` | array of `{ unitId, memberCount }` | yes | Count-only batch read for the active roster of each distinct requested Unit ID. |
 | `getCurrentUnitIdsForPlayer(playerId)` | array of Unit ID strings | yes | Minimal server-side authorization read of the Player's current active Unit memberships. |
@@ -59,8 +60,9 @@ available only inside the Players-owned persistence/read boundary.
 ## Semantics
 
 Only active membership periods are returned. Player identity is the stable,
-case-sensitive game `playerId`; current roster membership does not define or
-change Player identity. The public profile path is `/players/[playerId]`.
+canonical Roblox `playerId`; current roster membership does not define or
+change Player identity. `Player.name` is not a global presentation source.
+The public profile path is `/players/[playerId]`.
 Mercenary or never-rostered Players are not excluded from other public Player
 reads by this roster-specific contract.
 
@@ -76,6 +78,8 @@ authorization; it does not expose a membership ID or the internal Player key.
 ## Guarantees
 
 - The DTO does not expose the internal `Player.id`.
+- A Roblox username or avatar URL never becomes a Player key.
+- No Auth.js/Google name or image is used as Player presentation.
 - A `playerId` identifies the same persistent Player in all public Player
   routes and links.
 - The membership reference is an opaque action target only. The server must
@@ -99,12 +103,11 @@ authorization; it does not expose a membership ID or the internal Player key.
 
 ## Compatibility Expectations
 
-The existing Unit roster layout and supported membership actions remain
-available. The route value used for Player navigation changes to stable
-`playerId`; internal Player database IDs are not accepted as a compatibility
-route alias. The count-only batch operation and current-Unit-ID authorization read are
-additive and do not change existing roster readers or roster mutation
-semantics.
+The existing Unit roster membership actions remain available. The route value
+used for Player navigation remains stable `playerId`; internal Player database
+IDs are not accepted as a compatibility route alias. Cached Roblox identity
+fields are additive, and the count-only batch operation and current-Unit-ID
+authorization read do not change roster mutation semantics.
 
 ## Stability
 
@@ -117,9 +120,11 @@ BCR-20261102-008.
 - TKT-20260928-000037-001
 - TKT-20261102-000048-001
 - TKT-20261102-000050-001
+- TKT-20261103-000051-001
 
 ## Related BCRs
 
 - BCR-20260928-007
 - BCR-20261102-008
 - BCR-20261102-010
+- BCR-20261103-011

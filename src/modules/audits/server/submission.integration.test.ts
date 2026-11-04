@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import test from "node:test";
 
 import { prisma } from "@/lib/prisma";
@@ -14,7 +14,7 @@ test("Audit submission persists identity-only Players, results, roles, and immut
 
   const suffix = randomUUID();
   const existingGamePlayerId = `existing-${suffix}`;
-  const mercenaryGamePlayerId = `mercenary-${suffix}`;
+  const mercenaryGamePlayerId = String(randomInt(1_000_000_000, 2_000_000_000));
   const unit = await prisma.unit.findFirst({
     where: { parentId: null, rootUnitId: { not: null } },
     select: { id: true, commanderUserId: true },
@@ -47,6 +47,23 @@ test("Audit submission persists identity-only Players, results, roles, and immut
     data: { playerId: existingGamePlayerId, name: "Preserve this name" },
     select: { id: true },
   });
+  const resolveVerifiedPlayers = async (playerIds: string[]) => Promise.all(playerIds.map(async (playerId) => {
+    const existing = await prisma.player.findUnique({
+      where: { playerId },
+      select: { id: true, playerId: true },
+    });
+    if (existing) return existing;
+    return prisma.player.create({
+      data: {
+        playerId,
+        name: null,
+        robloxUsername: "VerifiedIntegrationPlayer",
+        robloxAvatarUrl: null,
+        robloxSyncedAt: new Date(),
+      },
+      select: { id: true, playerId: true },
+    });
+  }));
 
   try {
     await assert.rejects(createAuditDraftForAtomicUnit({
@@ -105,6 +122,7 @@ test("Audit submission persists identity-only Players, results, roles, and immut
           { playerId: existingGamePlayerId, role: "FLAG_BEARER" },
         ],
       },
+      resolvePlayersByGameIds: resolveVerifiedPlayers,
     });
     assert.equal(result.lifecycle, "FINAL");
     const statistics = (await getRankerStatistics("all-time", statisticsTime)).players.find(

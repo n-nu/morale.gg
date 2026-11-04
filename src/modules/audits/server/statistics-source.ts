@@ -23,7 +23,6 @@ export type EffectiveFinalizedAuditObservation = {
   };
   playerResults: Array<{
     gamePlayerId: string;
-    publicName: string | null;
     kills: number;
     deaths: number;
     assists: number;
@@ -149,7 +148,7 @@ export async function getEffectiveFinalizedAuditObservations(
             kills: true,
             deaths: true,
             assists: true,
-            player: { select: { playerId: true, name: true } },
+            player: { select: { playerId: true } },
           },
         },
         roles: {
@@ -246,7 +245,6 @@ export async function getEffectiveFinalizedAuditObservations(
         },
         playerResults: audit.playerResults.map(({ player, kills, deaths, assists }) => ({
           gamePlayerId: player.playerId,
-          publicName: player.name ?? null,
           kills,
           deaths,
           assists,

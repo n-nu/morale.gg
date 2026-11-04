@@ -18,6 +18,7 @@ test("public Battle Structure keeps Company structure compact and Player results
       participationId: "participation",
       representedUnit: { id: "unit", name: "1st Regiment" },
       commanderPlayerId: "group-commander",
+      commanderIdentity: { playerId: "group-commander", robloxUsername: null, robloxAvatarUrl: null },
       children: [],
       atomicUnits: [{
         id: "atomic",
@@ -32,6 +33,8 @@ test("public Battle Structure keeps Company structure compact and Player results
         representedUnitId: "unit",
         representedUnitName: "1st Regiment",
         resultState: "FINALIZED",
+        commanderPlayerId: "player-1",
+        commanderIdentity: { playerId: "player-1", robloxUsername: "Adler", robloxAvatarUrl: null },
         commander: "Cmdr. Adler",
         summary: {
           kills: 10,
@@ -45,7 +48,7 @@ test("public Battle Structure keeps Company structure compact and Player results
           flagLosses: 0,
           stars: 2,
         },
-        players: [{ position: 1, playerId: "player-1", displayName: "Adler", role: "COMMANDER", kills: 10, deaths: 0, assists: 2, kdr: ratio }],
+        players: [{ position: 1, playerId: "player-1", robloxUsername: "Adler", robloxAvatarUrl: null, role: "COMMANDER", kills: 10, deaths: 0, assists: 2, kdr: ratio }],
       }],
     }]}
     ungroupedAtomicUnits={[]}

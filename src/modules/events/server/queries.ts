@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Event } from "@prisma/client";
+import type { EventInvitePolicy } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -19,6 +20,64 @@ export async function listEvents(): Promise<Event[]> {
 export async function getEventById(eventId: string): Promise<Event | null> {
   return prisma.event.findUnique({
     where: { id: eventId },
+  });
+}
+
+export type PublicEventPresentation = {
+  eventId: string;
+  name: string;
+  eventType: string;
+  scheduledAt: Date;
+  map: string | null;
+  opponent: string | null;
+  attackerName: string | null;
+  defenderName: string | null;
+  rallyMinutesBeforeStart: number;
+  durationMinutes: number | null;
+  invitePolicy: EventInvitePolicy;
+};
+
+export async function getPublicEventPresentationBatch(
+  eventIds: readonly string[],
+): Promise<PublicEventPresentation[]> {
+  const selectedIds = [...new Set(eventIds.map((eventId) => eventId.trim()).filter(Boolean))];
+  if (selectedIds.length === 0) return [];
+
+  const events = await prisma.event.findMany({
+    where: { id: { in: selectedIds } },
+    select: {
+      id: true,
+      name: true,
+      eventType: true,
+      scheduledAt: true,
+      map: true,
+      opponent: true,
+      attackerName: true,
+      defenderName: true,
+      rallyMinutesBeforeStart: true,
+      durationMinutes: true,
+      invitePolicy: true,
+    },
+  });
+  const eventsById = new Map(events.map((event) => [event.id, event]));
+
+  return selectedIds.flatMap((eventId) => {
+    const event = eventsById.get(eventId);
+    return event
+      ? [{
+          eventId: event.id,
+          name: event.name,
+          eventType: event.eventType,
+          scheduledAt: new Date(event.scheduledAt.getTime()),
+          map: event.map,
+          opponent: event.opponent,
+          attackerName: event.attackerName,
+          defenderName: event.defenderName,
+          rallyMinutesBeforeStart: event.rallyMinutesBeforeStart,
+          durationMinutes: event.durationMinutes,
+          invitePolicy: event.invitePolicy,
+        }]
+      : [];
   });
 }
 

@@ -75,8 +75,9 @@ test("Award catalogs and public Player/Unit Awards fit supported viewports", asy
     }]);
 
     await page.goto(`/units/${rootUnitId}/manage#structure`);
-    const playerCatalog = page.getByRole("region", { name: "Player Awards", exact: true });
-    const unitCatalog = page.getByRole("region", { name: "Unit Awards", exact: true });
+    const structureCatalogs = page.locator("#structure");
+    const playerCatalog = structureCatalogs.getByRole("region", { name: "Player Awards", exact: true });
+    const unitCatalog = structureCatalogs.getByRole("region", { name: "Unit Awards", exact: true });
     const playerRow = playerCatalog.locator(".units-award-row").filter({
       has: page.locator(`input[name="awardId"][value="${playerAwardId}"]`),
     });
@@ -126,8 +127,25 @@ test("Award catalogs and public Player/Unit Awards fit supported viewports", asy
 
     await page.goto(`/players/${encodeURIComponent(playerId)}`);
     await expect(page.getByRole("heading", { name: "Player Awards" })).toBeVisible();
+    const playerMedal = page.getByRole("button", { name: `${playerAwardName} medal details` });
+    await expect(playerMedal).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("heading", { name: playerAwardName })).toBeHidden();
+    const performance = page.getByRole("region", { name: "Performance", exact: true });
+    const performanceTop = await performance.evaluate((element) => element.getBoundingClientRect().top);
+    await playerMedal.hover();
+    await expect(playerMedal).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("heading", { name: playerAwardName })).toBeVisible();
-    await expect(page.getByText("Accessible Player Award description.")).toHaveCount(1);
+    await expect(page.getByText("Accessible Player Award description.")).toBeVisible();
+    await page.waitForTimeout(600);
+    expect(await performance.evaluate((element) => element.getBoundingClientRect().top))
+      .toBe(performanceTop);
+    await page.getByText("Accessible Player Award description.").hover();
+    await expect(playerMedal).toHaveAttribute("aria-expanded", "true");
+    await page.mouse.move(0, 0);
+    await expect(playerMedal).toHaveAttribute("aria-expanded", "false");
+    await playerMedal.focus();
+    await expect(playerMedal).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByText("Accessible Player Award description.")).toBeVisible();
     await page.goto(`/units/${rootUnitId}`);
     await expect(page.getByRole("heading", { name: "Unit Awards" })).toBeVisible();
     await expect(page.getByRole("heading", { name: unitAwardName })).toBeVisible();

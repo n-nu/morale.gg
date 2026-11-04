@@ -6,6 +6,7 @@ import {
   removePlayerAwardAction,
   removeUnitAwardAction,
 } from "../server/actions";
+import { PlayerAwardMedal } from "./player-award-medal";
 
 export type AwardView = {
   id: string;
@@ -91,7 +92,7 @@ export function PlayerAwardsSection({
 }) {
   const manageableIds = new Set(manageableAwardIds);
   return (
-    <section className="mt-8 border-t border-edge pt-4" aria-labelledby="player-awards-heading">
+    <section className="mt-4" aria-labelledby="player-awards-heading">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="player-awards-heading" className="text-xl font-bold text-foreground">Player Awards</h2>
         <span className="text-xs text-muted">{awards.length} {awards.length === 1 ? "Award" : "Awards"}</span>
@@ -101,22 +102,17 @@ export function PlayerAwardsSection({
       {awards.length === 0 ? (
         <p className="py-3 text-sm text-muted">No Awards have been granted to this Player.</p>
       ) : (
-        <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul aria-label="Player medals" className="relative z-10 mt-3 flex flex-wrap items-start justify-center gap-y-2 px-12 py-2">
           {awards.map((award) => (
-            <li key={award.id} className="flex min-w-0 items-start gap-3 border border-edge bg-surface p-3">
-              <AwardImage award={award} />
-              <div className="min-w-0 flex-1">
-                <h3 className="break-words text-sm font-semibold text-foreground">{award.name}</h3>
-                <AwardDescription award={award} label={`About ${award.name}`} />
-                {manageableIds.has(award.id) ? (
-                  <form action={removePlayerAwardAction} className="mt-2">
-                    <input type="hidden" name="playerId" value={playerId} />
-                    <input type="hidden" name="awardId" value={award.id} />
-                    <button className="units-management-text-button" type="submit">Remove Award</button>
-                  </form>
-                ) : null}
-              </div>
-            </li>
+            <PlayerAwardMedal key={award.id} award={award}>
+              {manageableIds.has(award.id) ? (
+                <form action={removePlayerAwardAction} className="mt-2">
+                  <input type="hidden" name="playerId" value={playerId} />
+                  <input type="hidden" name="awardId" value={award.id} />
+                  <button className="units-management-text-button" type="submit">Remove Award</button>
+                </form>
+              ) : null}
+            </PlayerAwardMedal>
           ))}
         </ul>
       )}

@@ -3,9 +3,9 @@ contract_id: players-audits-player-resolution
 path: docs/contracts/players-audits-player-resolution.md
 documentation_path: docs/contracts/players-audits-player-resolution.md
 status: stable
-version: 0.1
-last_reviewed: 2026-09-27
-updated_by_ticket: TKT-20260927-000020-001
+version: 0.2
+last_reviewed: 2026-11-03
+updated_by_ticket: TKT-20261103-000051-001
 ---
 
 # Players-to-Audits Player Resolution
@@ -30,21 +30,26 @@ Validated stable game PlayerID from an authenticated Audit workflow.
 ## Outputs
 
 The persistent Player identifier and stable game PlayerID, whether reused or
-newly created. The optional legacy display-name field is not populated by this
-operation.
+newly created. Internal relational keys are only returned to Audits.
 
 ## Fields / Operations
 
 | Name | Type/shape | Required | Meaning |
 |---|---|---|---|
 | `resolveOrCreatePlayerByGameId` | `(playerId) => Promise<{ id, playerId }>` | yes | Reuses an existing Player or creates identity-only Player persistence |
+| `resolveOrCreatePlayersForAudit` | `(playerIds) => Promise<Array<{ id, playerId }>>` | yes | Batch reuses existing Players and verifies all new Roblox IDs before creating any |
+| `previewAuditPlayerIdentities` | `(playerIds) => Promise<Preview[]>` | yes | Resolves cached or Roblox presentation for Audit confirmation without creating Players |
 
 ## Semantics
 
-`Player.playerId` is the unique, trimmed, opaque game identity. Existing rows
-are reused. Missing rows are created with no canonical name and no alias.
-UnitMembership is never created, ended, or modified. Audit parsing does not
-change roster state and accepts mercenary and never-rostered Players.
+`Player.playerId` is the unique canonical Roblox User ID. Existing rows are
+reused without requiring Roblox availability. Every new ID is validated and
+resolved through Roblox in a batch before any new row is created; invalid IDs
+or unavailable Roblox block finalization with an identifying error. Audit
+drafts remain available without verification. After manager confirmation,
+finalization creates missing Players with cached username/headshot metadata.
+UnitMembership is never created, ended, or modified. Mercenary and
+never-rostered Players remain supported.
 
 ## Guarantees
 
@@ -54,28 +59,29 @@ and does not create website User relationships.
 
 ## Constraints
 
-- Server-only; input validation follows Players' opaque game-ID rules.
+- Server-only; new input IDs must be positive numeric Roblox User IDs.
 - No Unit ID, membership, alias, or Auth.js User is accepted as an identity
   substitute.
-- The nullable legacy `Player.name` field is compatibility data only and is
-  not a canonical-name requirement.
+- The nullable legacy `Player.name` field is not emitted or used for Player
+  presentation.
 
 ## Compatibility Expectations
 
-Existing non-null Player names remain unchanged. `Player.name` becomes nullable
-through a forward migration so identity-only Players are valid. Future profile
-presentation may derive a preferred display alias from UnitMembership aliases;
-that behavior is outside this contract.
+Existing non-null `Player.name` values remain in storage during compatibility
+migration but are not used in Player presentation. Existing Audit rows,
+foreign keys, and history remain unchanged.
 
 ## Stability
 
-Stable boundary approved by ADR-20260927-006 and BCR-20260927-004;
-implementation remains pending the authorized Audit implementation ticket.
+Stable boundary approved by ADR-20260927-006 and BCR-20260927-004, extended by
+BCR-20261103-011.
 
 ## Related Tickets
 
 - TKT-20260927-000020-001
+- TKT-20261103-000051-001
 
 ## Related ADRs
 
 - ADR-20260927-006
+- BCR-20261103-011

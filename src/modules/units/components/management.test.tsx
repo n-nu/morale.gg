@@ -175,13 +175,40 @@ test("public Award sections render empty states, accessible descriptions, and sc
   assert.match(playerHtml, /Player Awards/);
   assert.match(playerHtml, /role="status"/);
   assert.match(playerHtml, /role="alert"/);
+  assert.match(playerHtml, /aria-label="Player medals"/);
+  assert.match(playerHtml, /aria-label="Valor medal details"/);
+  assert.match(playerHtml, /aria-expanded="false"/);
+  assert.match(playerHtml, /aria-hidden="true"/);
   assert.match(playerHtml, /src="\/awards\/valor.png"/);
-  assert.match(playerHtml, /About Valor/);
-  assert.match(playerHtml, /<details class="mt-1 text-xs text-muted">/);
+  assert.match(playerHtml, /class="player-award-medal__depth/);
+  assert.equal((playerHtml.match(/player-award-medal__depth player-award-medal__depth--/g) ?? []).length, 4);
+  assert.match(playerHtml, /class="player-award-medal__face/);
+  assert.match(playerHtml, /data-dimensional="false"/);
+  assert.match(playerHtml, /data-hovered="false"/);
+  assert.match(playerHtml, /data-focused="false"/);
+  assert.match(playerHtml, /h-14 w-10 shrink-0/);
+  assert.match(playerHtml, /data-\[open=true\]:scale-200/);
+  assert.match(playerHtml, /absolute left-1\/2 top-18/);
+  assert.doesNotMatch(playerHtml, /bg-surface shadow-lg/);
+  assert.match(playerHtml, /transition-transform duration-500 ease-in-out/);
+  assert.match(playerHtml, /transition-all duration-500 ease-in-out/);
+  assert.match(playerHtml, /<section class="mt-4" aria-labelledby="player-awards-heading"/);
+  assert.match(playerHtml, /bg-transparent/);
+  assert.doesNotMatch(playerHtml, /rounded-full border border-edge-strong/);
+  assert.match(playerHtml, /For bravery/);
   assert.match(playerHtml, /Remove Award/);
   assert.match(playerHtml, /Grant a Player Award/);
   assert.match(playerHtml, /name="playerId" value="player-stable-id"/);
   assert.match(playerHtml, /value="award-available"/);
+
+  const missingImageHtml = renderToStaticMarkup(<PlayerAwardsSection
+    playerId="player-stable-id"
+    awards={[{ ...assigned, imageRef: null }]}
+    available={[]}
+    manageableAwardIds={[]}
+  />);
+  assert.match(missingImageHtml, /aria-label="Valor medal details"/);
+  assert.match(missingImageHtml, /border border-edge bg-surface-2/);
 
   const orphanedPlayerHtml = renderToStaticMarkup(<PlayerAwardsSection
     playerId="former-player"

@@ -8,9 +8,13 @@ import {
 import {
   createAuditDraftAction,
   deleteAtomicEventUnitAction,
+  previewAuditPlayersAction,
   submitAuditAction,
 } from "@/modules/audits/server/actions";
 import { getAuditForAtomicUnit } from "@/modules/audits/server/reads";
+import { getPlayerIdentityPresentationBatch } from "@/modules/players/server/queries";
+import { PlayerIdentity } from "@/modules/players/components/player-identity";
+import { playerIdentityLabel } from "@/modules/players/identity";
 import { AuditEditor } from "./audit-editor";
 
 export const dynamic = "force-dynamic";
@@ -38,13 +42,24 @@ export default async function AuditsPage({
   const atomicUnits = selectedContext
     ? discoveredAtomicUnits.filter((atomicUnit) => atomicUnit.eventParticipation.id === selectedContext.id)
     : [];
-  const auditViews = await Promise.all(
+  const rawAuditViews = await Promise.all(
     atomicUnits.map(async (atomicUnit) => [
       atomicUnit.id,
       await getAuditForAtomicUnit(atomicUnit.id, viewerUserId),
     ] as const),
   );
-  const auditsByAtomicUnit = new Map(auditViews);
+  const identityRows = await getPlayerIdentityPresentationBatch(
+    rawAuditViews.flatMap(([, audit]) => audit?.lifecycle === "FINAL"
+      ? [...audit.results.map((result) => result.gamePlayerId), ...audit.roles.map((role) => role.gamePlayerId)]
+      : []),
+  );
+  const identityById = new Map(identityRows.map((identity) => [identity.playerId, identity]));
+  const identityFor = (playerId: string) => {
+    const identity = identityById.get(playerId);
+    if (!identity) throw new Error(`Missing Player identity presentation for ${playerId}`);
+    return identity;
+  };
+  const auditsByAtomicUnit = new Map(rawAuditViews);
 
   return (
     <main className="page-shell flex-1 pb-16">
@@ -119,7 +134,11 @@ export default async function AuditsPage({
                                     <div className="rounded border border-gold/40 bg-surface px-4 py-4">
                                       <p className="font-semibold text-gold-bright">Draft Audit</p>
                                       <p className="mt-1 text-sm text-muted">Only the creator can edit this draft. Submission finalizes it permanently.</p>
-                                      <AuditEditor auditId={audit.id} submitAction={submitAuditAction} />
+                                      <AuditEditor
+                                        auditId={audit.id}
+                                        submitAction={submitAuditAction}
+                                        previewAction={previewAuditPlayersAction}
+                                      />
                                     </div>
                                   );
                                 }
@@ -137,10 +156,10 @@ export default async function AuditsPage({
                                     <div className="mt-4 overflow-x-auto rounded border border-edge">
                                       <table className="w-full text-left text-sm">
                                         <thead className="bg-surface-2 text-xs uppercase text-muted"><tr><th className="px-3 py-2">Player</th><th className="px-3 py-2">K</th><th className="px-3 py-2">D</th><th className="px-3 py-2">A</th></tr></thead>
-                                        <tbody>{audit.results.map((result) => <tr key={result.playerId} className="border-t border-edge"><td className="px-3 py-2 font-mono">{result.gamePlayerId}</td><td className="px-3 py-2">{result.kills}</td><td className="px-3 py-2">{result.deaths}</td><td className="px-3 py-2">{result.assists}</td></tr>)}</tbody>
+                                        <tbody>{audit.results.map((result) => <tr key={result.playerId} className="border-t border-edge"><td className="px-3 py-2"><Link href={`/players/${encodeURIComponent(result.gamePlayerId)}`}><PlayerIdentity identity={identityFor(result.gamePlayerId)} size={24} /></Link></td><td className="px-3 py-2">{result.kills}</td><td className="px-3 py-2">{result.deaths}</td><td className="px-3 py-2">{result.assists}</td></tr>)}</tbody>
                                       </table>
                                     </div>
-                                    <p className="mt-3 text-sm text-muted">{audit.roles.map((role) => `${role.role === "FLAG_BEARER" ? "Flag Bearer" : "Commander"}: ${role.gamePlayerId}`).join(" · ")}</p>
+                                    <p className="mt-3 text-sm text-muted">{audit.roles.map((role) => `${role.role === "FLAG_BEARER" ? "Flag Bearer" : "Commander"}: ${playerIdentityLabel(identityFor(role.gamePlayerId))}`).join(" · ")}</p>
                                   </div>
                                 );
                               })()}

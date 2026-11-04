@@ -1,5 +1,17 @@
 # Players changelog
 
+## 2026-11-03 — TKT-20261103-000051-001
+
+- Added nullable cached Roblox username, validated headshot URL, and sync time
+  while preserving stable Player IDs, relational keys, memberships, and Audit
+  history.
+- Added server-only Roblox lookup/confirmation, cached batch presentation,
+  batched Audit preview/resolution, and a bounded manual metadata backfill.
+- Replaced global Player-name presentation with cached Roblox identity and
+  neutral ID/avatar fallbacks; no Roblox calls occur during page rendering.
+- Extended Players/Audits, Players/Units, and Statistics/Event Battle contracts
+  under BCR-20261103-011.
+
 ## 2026-11-02 — TKT-20261102-000050-001
 
 - Added the minimal current-Unit-ID read by stable Player ID for Units Award

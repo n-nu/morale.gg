@@ -12,12 +12,14 @@ const NOW = new Date("2026-10-31T00:00:00.000Z");
 const originalEventFindMany = prisma.event.findMany;
 const originalAuditFindMany = prisma.audit.findMany;
 const originalGroupFindMany = prisma.eventCommandGroup.findMany;
+const originalPlayerFindMany = prisma.player.findMany;
 const originalQueryRaw = prisma.$queryRaw;
 
 test.afterEach(() => {
   Object.defineProperty(prisma.event, "findMany", { configurable: true, value: originalEventFindMany });
   Object.defineProperty(prisma.audit, "findMany", { configurable: true, value: originalAuditFindMany });
   Object.defineProperty(prisma.eventCommandGroup, "findMany", { configurable: true, value: originalGroupFindMany });
+  Object.defineProperty(prisma.player, "findMany", { configurable: true, value: originalPlayerFindMany });
   Object.defineProperty(prisma, "$queryRaw", { configurable: true, value: originalQueryRaw });
 });
 
@@ -85,6 +87,14 @@ function rankerRows(eventIds: string[]) {
 }
 
 function installSource({ withEvents = true } = {}) {
+  Object.defineProperty(prisma.player, "findMany", {
+    configurable: true,
+    value: async ({ where }: { where: { playerId: { in: string[] } } }) => where.playerId.in.map((playerId) => ({
+      playerId,
+      robloxUsername: playerId === "p-named" ? "RobloxNey" : null,
+      robloxAvatarUrl: null,
+    })),
+  });
   Object.defineProperty(prisma.event, "findMany", {
     configurable: true,
     value: async () => withEvents
@@ -130,15 +140,25 @@ function playerRow(rows: LeaderboardRow[], gamePlayerId: string): LeaderboardRow
   return row;
 }
 
-test("Players board is branch-partitioned, windowed, and uses the public-name fallback", async () => {
+test("Players board is branch-partitioned and presents cached Roblox identity", async () => {
   installSource();
   const recent = await getLeaderboard("players", "14d", NOW);
 
   assert.deepEqual(recent.partitions.map(({ unitType }) => unitType), ["REGULAR", "RIFLES", "CAVALRY", "ARTILLERY"]);
   const regular = partition(recent, "REGULAR");
   assert.equal(regular.length, 2);
-  assert.deepEqual(playerRow(regular, "p-named").subject, { kind: "player", gamePlayerId: "p-named", displayName: "Ney" });
-  assert.deepEqual(playerRow(regular, "p-anon").subject, { kind: "player", gamePlayerId: "p-anon", displayName: "p-anon" }, "blank or missing names fall back to the game Player ID");
+  assert.deepEqual(playerRow(regular, "p-named").subject, {
+    kind: "player",
+    gamePlayerId: "p-named",
+    robloxUsername: "RobloxNey",
+    robloxAvatarUrl: null,
+  });
+  assert.deepEqual(playerRow(regular, "p-anon").subject, {
+    kind: "player",
+    gamePlayerId: "p-anon",
+    robloxUsername: null,
+    robloxAvatarUrl: null,
+  }, "missing Roblox metadata falls back to the stable Player ID in presentation");
 
   const named = playerRow(regular, "p-named").metrics;
   assert.deepEqual(named.kills, { kind: "count", value: 10 });
@@ -205,7 +225,7 @@ test("Leaderboard DTOs carry only public identity, never internal record IDs", a
   }
   const players = await getLeaderboard("players", "all-time", NOW);
   for (const row of players.partitions.flatMap(({ rows }) => rows)) {
-    assert.deepEqual(Object.keys(row.subject).sort(), ["displayName", "gamePlayerId", "kind"]);
+    assert.deepEqual(Object.keys(row.subject).sort(), ["gamePlayerId", "kind", "robloxAvatarUrl", "robloxUsername"]);
   }
 });
 

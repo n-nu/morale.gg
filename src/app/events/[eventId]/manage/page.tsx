@@ -4,7 +4,11 @@ import { notFound } from "next/navigation";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { KNOWN_MAP_NAMES } from "@/modules/events/map-art";
-import { EVENT_TYPE_NAMES, eventTypeStyle } from "@/modules/events/presentation";
+import {
+  EVENT_TYPE_NAMES,
+  eventTypeStyle,
+  isBattleEventType,
+} from "@/modules/events/presentation";
 import {
   getEventManagementView,
   type EventParticipationEntry,
@@ -13,6 +17,7 @@ import {
 import { LocalDateTime, TimezoneNote } from "../../local-time";
 import { SelectField } from "../../select-field";
 import { SuggestInput } from "../../suggest-input";
+import { EventScheduleFields } from "../../schedule-fields";
 import {
   addManagerAction,
   approveParticipationAction,
@@ -24,7 +29,6 @@ import {
   setInitialEventResultAction,
 } from "./actions";
 import { getEventResultState } from "@/modules/events/server/results";
-import { ScheduleInput } from "./schedule-input";
 import { BattleStructureManager } from "./battle-structure";
 
 export const dynamic = "force-dynamic";
@@ -102,7 +106,8 @@ export default async function ManageEventPage({
   }
 
   const { event, isOwner, managers, participations } = view;
-    const resultState = await getEventResultState(event.id);
+  const isBattleEvent = isBattleEventType(event.eventType);
+  const resultState = isBattleEvent ? await getEventResultState(event.id) : null;
   const type = eventTypeStyle(event.eventType);
   const pending = participations.filter((p) => p.status === "REQUESTED");
   const decided = participations.filter((p) => p.status !== "REQUESTED");
@@ -138,6 +143,15 @@ export default async function ManageEventPage({
         >
           {type.label}
         </span>
+        <span
+          className={`rounded border px-2.5 py-1 text-xs font-bold uppercase tracking-[0.06em] ${
+            event.invitePolicy === "OPEN"
+              ? "border-type-green bg-[#0b100f] text-green-bright"
+              : "border-gold bg-[#1a1810] text-gold"
+          }`}
+        >
+          {event.invitePolicy === "OPEN" ? "Open Invite" : "Closed Invite"}
+        </span>
         <span className="rounded border border-edge-strong px-2.5 py-1 text-xs font-bold text-foreground">
           {isOwner ? "You are the owner" : "You are a manager"}
         </span>
@@ -145,7 +159,9 @@ export default async function ManageEventPage({
 
       <Banner notice={notice} error={error} />
 
-      <BattleStructureManager eventId={event.id} userId={userId} />
+      {isBattleEvent ? (
+        <BattleStructureManager eventId={event.id} userId={userId} />
+      ) : null}
 
       <div className="mt-7 flex flex-col gap-7 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
@@ -156,63 +172,151 @@ export default async function ManageEventPage({
               </h2>
               <TimezoneNote />
             </div>
-            <form action={updateAction} autoComplete="off" className="flex flex-col gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className={labelClass}>
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                  <label className={labelClass}>
-                                    Defender flag image reference
-                                    <input name="defenderFlagRef" defaultValue={event.defenderFlagRef ?? ""} placeholder="/flags/defender.png or https://..." className={inputClass} />
-                                  </label>
-                                  <label className={labelClass}>
-                                    Attacker flag image reference
-                                    <input name="attackerFlagRef" defaultValue={event.attackerFlagRef ?? ""} placeholder="/flags/attacker.png or https://..." className={inputClass} />
-                                  </label>
-                                </div>
-                  Event name
+            <form action={updateAction} autoComplete="off" className="flex flex-col gap-5">
+              <section aria-labelledby="manage-event-details-heading">
+                <h3 id="manage-event-details-heading" className="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-muted">
+                  Event
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className={labelClass}>
+                    Event name
+                    <input
+                      name="name"
+                      required
+                      defaultValue={event.name}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className={labelClass}>
+                    Event type
+                    <SelectField
+                      name="eventType"
+                      options={
+                        EVENT_TYPE_NAMES.includes(event.eventType)
+                          ? EVENT_TYPE_NAMES
+                          : [...EVENT_TYPE_NAMES, event.eventType]
+                      }
+                      defaultValue={event.eventType}
+                      required
+                      ariaLabel="Event type"
+                    />
+                  </label>
+                  <label className={labelClass}>
+                    Map (optional)
+                    <SuggestInput
+                      name="map"
+                      options={KNOWN_MAP_NAMES}
+                      defaultValue={event.map ?? ""}
+                      ariaLabel="Map"
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section aria-labelledby="manage-event-schedule-heading">
+                <h3 id="manage-event-schedule-heading" className="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-muted">
+                  Schedule
+                </h3>
+                <EventScheduleFields
+                  initialIso={event.scheduledAt.toISOString()}
+                  initialRallyMinutes={event.rallyMinutesBeforeStart}
+                  initialDurationMinutes={event.durationMinutes}
+                />
+              </section>
+
+              <section aria-labelledby="manage-event-sides-heading">
+                <h3 id="manage-event-sides-heading" className="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-muted">
+                  Sides
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className={labelClass}>
+                    Attackers (optional)
+                    <input
+                      name="attackerName"
+                      maxLength={120}
+                      defaultValue={event.attackerName ?? ""}
+                      aria-describedby="manage-attacker-name-help"
+                      className={inputClass}
+                    />
+                    <span id="manage-attacker-name-help" className="text-[11px] font-medium normal-case tracking-normal text-faint">
+                      Name the attacking side; this may represent multiple Units or an alliance.
+                    </span>
+                  </label>
+                  <label className={labelClass}>
+                    Defenders (optional)
+                    <input
+                      name="defenderName"
+                      maxLength={120}
+                      defaultValue={event.defenderName ?? ""}
+                      aria-describedby="manage-defender-name-help"
+                      className={inputClass}
+                    />
+                    <span id="manage-defender-name-help" className="text-[11px] font-medium normal-case tracking-normal text-faint">
+                      Name the defending side; this may represent multiple Units or an alliance.
+                    </span>
+                  </label>
+                </div>
+              </section>
+
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1 text-[11px] font-bold uppercase tracking-[0.05em] text-faint">
+                  Participation
+                </legend>
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-edge-strong bg-background px-3.5 py-3 text-sm">
                   <input
-                    name="name"
-                    required
-                    defaultValue={event.name}
-                    className={inputClass}
+                    type="radio"
+                    name="invitePolicy"
+                    value="OPEN"
+                    defaultChecked={event.invitePolicy === "OPEN"}
+                    className="mt-1 accent-gold"
                   />
+                  <span>
+                    <span className="block font-semibold text-foreground">Open Invite</span>
+                    <span className="block text-xs text-muted">
+                      Other eligible Units may request to participate; managers review requests.
+                    </span>
+                  </span>
                 </label>
-                <label className={labelClass}>
-                  Event type
-                  <SelectField
-                    name="eventType"
-                    options={
-                      EVENT_TYPE_NAMES.includes(event.eventType)
-                        ? EVENT_TYPE_NAMES
-                        : [...EVENT_TYPE_NAMES, event.eventType]
-                    }
-                    defaultValue={event.eventType}
-                    required
-                    ariaLabel="Event type"
-                  />
-                </label>
-                <label className={labelClass} htmlFor="event-scheduled-at">
-                  Scheduled date &amp; time
-                  <ScheduleInput initialIso={event.scheduledAt.toISOString()} />
-                </label>
-                <label className={labelClass}>
-                  Opponent (optional)
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-edge-strong bg-background px-3.5 py-3 text-sm">
                   <input
-                    name="opponent"
-                    defaultValue={event.opponent ?? ""}
-                    className={inputClass}
+                    type="radio"
+                    name="invitePolicy"
+                    value="CLOSED"
+                    defaultChecked={event.invitePolicy === "CLOSED"}
+                    className="mt-1 accent-gold"
                   />
+                  <span>
+                    <span className="block font-semibold text-foreground">Closed Invite</span>
+                    <span className="block text-xs text-muted">
+                      Units may participate only through Event management.
+                    </span>
+                  </span>
                 </label>
-                <label className={labelClass}>
-                  Map (optional)
-                  <SuggestInput
-                    name="map"
-                    options={KNOWN_MAP_NAMES}
-                    defaultValue={event.map ?? ""}
-                    ariaLabel="Map"
-                  />
-                </label>
-              </div>
+              </fieldset>
+
+              {isBattleEvent ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className={labelClass}>
+                    Defender flag image reference
+                    <input
+                      name="defenderFlagRef"
+                      defaultValue={event.defenderFlagRef ?? ""}
+                      placeholder="/flags/defender.png or https://..."
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className={labelClass}>
+                    Attacker flag image reference
+                    <input
+                      name="attackerFlagRef"
+                      defaultValue={event.attackerFlagRef ?? ""}
+                      placeholder="/flags/attacker.png or https://..."
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
+              ) : null}
+
               <label className={labelClass}>
                 Description (optional)
                 <textarea
@@ -233,6 +337,7 @@ export default async function ManageEventPage({
             </form>
           </section>
 
+          {resultState ? (
           <section className="flex flex-col gap-4 rounded-[10px] border border-edge bg-surface px-6 py-5" aria-labelledby="event-result-heading">
             <div>
               <h2 id="event-result-heading" className="text-[17px] font-extrabold text-white">Event result</h2>
@@ -269,6 +374,7 @@ export default async function ManageEventPage({
               </form>
             )}
           </section>
+          ) : null}
 
           <section className="overflow-hidden rounded-[10px] border border-edge bg-surface">
             <div className="flex flex-wrap items-baseline justify-between gap-2 px-6 py-4">
@@ -276,14 +382,17 @@ export default async function ManageEventPage({
                 Participation requests
               </h2>
               <span className="text-[13px] text-faint">
-                Approving or denying a request is permanent.
+                {event.invitePolicy === "CLOSED"
+                  ? "Closed Invite blocks new requests; existing requests remain reviewable."
+                  : "Approving or denying a request is permanent."}
               </span>
             </div>
 
             {participations.length === 0 ? (
               <p className="border-t border-edge px-6 py-8 text-sm text-muted">
-                No units have requested to participate yet. Requests submitted
-                by unit managers will appear here.
+                {event.invitePolicy === "CLOSED"
+                  ? "Closed Invite is active. Units must be invited by Event management."
+                  : "No units have requested to participate yet. Requests submitted by unit managers will appear here."}
               </p>
             ) : (
               <>

@@ -19,8 +19,15 @@ contracts:
     producer: players
     consumer: units
     status: stable
-    version: 0.3
-    updated_by_ticket: TKT-20261102-000050-001
+    version: 0.4
+    updated_by_ticket: TKT-20261103-000051-001
+  - contract_id: players-player-identity-presentation
+    path: docs/contracts/players-player-identity-presentation.md
+    producer: players
+    consumer: "units, audits, statistics"
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20261103-000051-001
   - contract_id: units-players-awards
     path: docs/contracts/units-players-awards.md
     producer: units
@@ -47,8 +54,8 @@ contracts:
     producer: players
     consumer: audits
     status: stable
-    version: 0.1
-    updated_by_ticket: TKT-20260927-000020-001
+    version: 0.2
+    updated_by_ticket: TKT-20261103-000051-001
   - contract_id: audits-statistics-effective-finalized-audit
     path: docs/contracts/audits-statistics-effective-finalized-audit.md
     producer: audits
@@ -96,5 +103,26 @@ contracts:
     producer: statistics
     consumer: events
     status: stable
+    version: 0.3
+    updated_by_ticket: TKT-20261103-000051-001
+  - contract_id: statistics-player-profile-performance
+    path: docs/contracts/statistics-player-profile-performance.md
+    producer: statistics
+    consumer: public Player profile
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20261103-000053-001
+  - contract_id: events-public-presentation-batch
+    path: docs/contracts/events-public-presentation-batch.md
+    producer: events
+    consumer: public Player profile
+    status: stable
     version: 0.2
-    updated_by_ticket: TKT-20261102-000049-001
+    updated_by_ticket: TKT-20261103-000060-001
+  - contract_id: units-public-presentation-batch
+    path: docs/contracts/units-public-presentation-batch.md
+    producer: units
+    consumer: public Player profile
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20261103-000053-001

@@ -16,7 +16,13 @@ function toLocalInputValue(iso: string): string {
  * picker only renders on the client, where the local zone is known; the
  * hidden ISO value is always present so submits stay valid either way.
  */
-export function ScheduleInput({ initialIso }: { initialIso: string }) {
+export function ScheduleInput({
+  initialIso,
+  onIsoChange,
+}: {
+  initialIso: string;
+  onIsoChange?: (iso: string) => void;
+}) {
   const isClient = useIsClient();
   const [iso, setIso] = useState(initialIso);
 
@@ -32,7 +38,9 @@ export function ScheduleInput({ initialIso }: { initialIso: string }) {
           onChange={(changeEvent) => {
             const next = new Date(changeEvent.target.value);
             if (!Number.isNaN(next.getTime())) {
-              setIso(next.toISOString());
+              const nextIso = next.toISOString();
+              setIso(nextIso);
+              onIsoChange?.(nextIso);
             }
           }}
           className="rounded-lg border border-edge-strong bg-background px-3.5 py-2.5 text-sm font-semibold text-foreground [color-scheme:dark]"

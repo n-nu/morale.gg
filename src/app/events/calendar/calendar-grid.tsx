@@ -6,7 +6,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { bannerArtFor } from "@/modules/events/map-art";
-import { eventTypeStyle } from "@/modules/events/presentation";
+import {
+  eventTypeStyle,
+  formatEventScheduleSummary,
+} from "@/modules/events/presentation";
 
 import { useIsClient } from "../use-is-client";
 
@@ -15,7 +18,10 @@ export interface CalendarEvent {
   name: string;
   iso: string;
   eventType: string;
-  opponent: string | null;
+  attackerName: string | null;
+  defenderName: string | null;
+  rallyMinutesBeforeStart: number;
+  durationMinutes: number | null;
   map: string | null;
 }
 
@@ -174,14 +180,25 @@ export function CalendarGrid({
                     {date.getDate()}
                   </div>
                   <div
-                    className={`text-[11px] font-bold tracking-[0.1em] ${style.badgeClass.split(" ").pop()}`}
+                    className={`text-[11px] font-bold tracking-[0.1em] ${style.key === "ceremony" ? "text-[#c0c0c0]" : style.badgeClass.split(" ").pop()}`}
                   >
                     {monthAbbrev}
                   </div>
                 </div>
               );
 
-              const meta = [time, event.opponent ? `vs ${event.opponent}` : null, event.map]
+              const sides = [event.attackerName, event.defenderName]
+                .filter((name): name is string => name !== null)
+                .join(" vs ");
+              const meta = [
+                time,
+                formatEventScheduleSummary(
+                  event.rallyMinutesBeforeStart,
+                  event.durationMinutes,
+                ),
+                sides || null,
+                event.map,
+              ]
                 .filter(Boolean)
                 .join(" · ");
 

@@ -2,8 +2,8 @@
 module_id: units
 path: src/modules/units
 status: active
-version: 0.2
-last_reviewed: 2026-11-02
+version: 0.5
+last_reviewed: 2026-11-03
 updated_by_ticket: TKT-20261102-000050-001
 ---
 
@@ -37,13 +37,19 @@ generalized site-wide RBAC are outside this module boundary. Units may compose t
 Players-owned roster read-side but must not modify or own it.
 
 ## Public Interface
-Public pages: `/units` displays minimal Unit cards with profile imagery,
-commander identity, and hover/focus details for active roster and total
-descendant counts; compact cards and tree nodes omit audit-derived
-performance. `/units/[unitId]` displays public profile metadata, an ancestor
-path, the Players-owned roster, full Statistics sections, and the complete
-hierarchy rendered as a centered, pannable family tree with sibling branches
-and explicit directional connectors.
+Public pages: `/units` displays visual cards for top-level navigable branches,
+following single-child wrappers to the first branching level. Cards include
+profile imagery, commander identity, direct subunit counts, and hover/focus
+details for active roster and total descendant counts. `/units/[unitId]`
+displays public profile metadata, clickable ancestor breadcrumbs, the
+Players-owned roster, full Statistics sections, and a progressively expanded
+tree rooted at the selected Unit. Deeper branches start collapsed, sibling
+groups wrap within the page, and the server read is bounded to the selected
+subtree and its ancestors. Compact cards and tree nodes omit audit-derived
+performance.
+`getPublicUnitPresentationBatch` provides only Unit ID, public name, and image
+reference for a batch of profile/history links; it does not expose authority,
+Commander, or membership data.
 Authenticated management lives at `/units/[unitId]/manage`. It provides
 Units-owned profile, authorized-user/grant, structural create/move, and
 RootUnit Rank/Award catalog and Unit Award grant workflows. The structural delete workflow hard-deletes only
@@ -93,13 +99,41 @@ empty/not-found/error states. Management reads include authorized-user periods,
 authority levels, grant/scope/revocation history, RootUnit catalogs, and valid
 move destinations. The Unit detail route composes the Players-owned roster
 view; public Award reads provide current Player Awards by stable Player ID.
+Player Awards appear as compact, square, transparent image-only medals at rest,
+slightly overlapped to keep the gallery tight. Hover, focus, or activation
+smoothly enlarges and spaces the active medal while revealing the Award title
+and description; the transitions last 500ms and reduced-motion preferences are
+respected. Fine-pointer hover and keyboard focus progressively reveal a shallow
+alpha-preserving image extrusion, restrained perspective, and subtle shadow;
+image-backed medals slowly angle side to side only while hovered. Mouse clicks
+do not pin the disclosure open, and mouse focus does not count as hover.
+Keyboard focus and touch activation still expose details without ambient motion.
+Pointer movement does
+not steer the medal unless the primary mouse or pen is held down: dragging
+tilts it up to 15 degrees horizontally and 12 degrees vertically, then release
+or cancellation eases it to center before idle motion resumes. Dragging does not
+toggle details or start the click animation; touch keeps normal scrolling and
+tap behavior. Activation while hovered plays a brief tilt that
+returns to center, then ambient motion resumes. Away from the
+pointer the medal is still and centered, except during an active held drag.
+The animation stops while the
+control is pressed and is disabled for reduced-motion preferences. The front
+artwork remains an unfiltered, full-opacity layer; four darkened silhouette
+layers provide shallow depth behind it. Missing images use a bordered
+placeholder.
+Medal slots keep a fixed size; enlargement and details overlay the page while
+neighbors move horizontally, avoiding vertical layout shifts. Player Awards
+have no divider above the gallery.
+Roster Player rows present the stable Roblox ID with cached Roblox username
+and validated headshot metadata from Players; Units does not query Roblox.
 Demo fixtures remain read-only and have no management workflows.
 
 ## Dependencies
 Shared server-only `src/lib/prisma.ts` and Prisma persistence; Next.js route
 rendering. Players and Events consume only their approved Units capabilities
 without transferring Unit identity, roster, Event, or authority ownership.
-Units consumes `players-units-roster-read` for active Player Unit IDs, and
+Units consumes `players-units-roster-read` for active roster rows and
+`players-player-identity-presentation` for other Player presentation reads, and
 Players consumes `units-players-awards` for public Player Award presentation.
 
 ## Invariants
@@ -155,6 +189,8 @@ loaded hierarchy, and current member counts use
 the Players-owned `getCurrentRosterCounts` operation; Unit performance uses the
 Statistics-owned all-Units Direct reader. Neither presentation path reads or
 mutates membership or statistics persistence directly.
+`server/public-presentation.ts` provides the small batched public Unit identity
+and image read used by Player history rows.
 `server/authorization.ts` resolves current Unit ancestry, RootUnit consistency,
 memberships, grants, revocation, delegation lineage, and scope at decision time;
 Commander status does not bypass operational grants. `components/unit-links.tsx`
@@ -162,8 +198,10 @@ renders reusable hierarchy links. Route adapters and route-specific states live
 in `src/app/units/`.
 `server/awards.ts` owns Award definitions, category-specific ordering, current
 Player/Unit grant reads and writes, derived recipient counts, and the
-Players-to-Units scope check. Player membership Unit IDs are read through the
-Players contract rather than by querying Players persistence directly.
+Players-to-Units scope check. `components/player-award-medal.tsx` provides the
+interactive Player medal presentation; Unit Award display and management stay
+unchanged. Player membership Unit IDs are read through the Players contract
+rather than by querying Players persistence directly.
 `server/statistics-source.ts` provides read-only direct Unit identity and
 deduplicated descendant subtree resolution for Statistics perspectives.
 
@@ -189,8 +227,10 @@ server-only and has no public UI.
 
 ## Related Contracts
 - `docs/contracts/players-units-roster-read.md` (stable).
+- `docs/contracts/players-player-identity-presentation.md` (stable).
 - `docs/contracts/units-players-awards.md` (stable).
 - `docs/contracts/units-statistics-hierarchy-read.md` (stable).
+- `docs/contracts/units-public-presentation-batch.md` (stable).
 - `events-units-event-creation-authorization` (stable).
 - `units-audits-submission-authorization` (stable).
 
@@ -207,6 +247,7 @@ server-only and has no public UI.
 ## Related BCRs
 - BCR-20261102-010 (approved; RootUnit Awards, grants, scoped management, and
   cross-module reads).
+- BCR-20261103-011 (approved; cached Roblox identity presentation).
 
 ## AI Working Rules
 GREEN local changes and logged YELLOW internal changes may proceed within an

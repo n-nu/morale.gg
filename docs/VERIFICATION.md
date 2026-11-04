@@ -69,7 +69,7 @@ git diff --check
 
 ## Demo Database and Browser Smoke Check
 
-`npm run demo:reset` destructively replaces local application data except for the preserved RootUnit and its Commander identity/session. Review its safeguards and preservation behavior in the [README](../README.md#reset-and-reseed-demo-data) before running it. Then start `npm run dev`, open `http://localhost:3000/dev/sign-in`, sign in as a demo identity, and follow [MVP_DEMO.md](MVP_DEMO.md). Development sign-in requires `npm run dev` and `DEV_SIGN_IN_ENABLED="true"`; it is unavailable in production builds.
+`npm run demo:reset -- --confirm-demo-reset` destructively replaces local application data except for the preserved RootUnit and its Commander identity/session. The explicit confirmation flag is required for every run. Review its safeguards and preservation behavior in the [README](../README.md#reset-and-reseed-demo-data) before running it. Source-based community facts and the synthetic activity boundary are documented in [DEMO_DATA_SOURCES.md](DEMO_DATA_SOURCES.md). Then start `npm run dev`, open `http://localhost:3000/dev/sign-in`, sign in as a demo identity, and follow [MVP_DEMO.md](MVP_DEMO.md). Development sign-in requires `npm run dev` and `DEV_SIGN_IN_ENABLED="true"`; it is unavailable in production builds.
 
 ## Submission Verification Results (2026-09-30)
 
@@ -121,7 +121,7 @@ npm run db:validate
 npm run db:generate
 npm run db:migrate:deploy
 npx prisma migrate status
-npm run demo:reset
+npm run demo:reset -- --confirm-demo-reset
 npm test
 npm run test:coverage
 npx next typegen
@@ -309,3 +309,75 @@ docker compose -p morale-qa -f tests/compose.qa.yaml down
   narrow Event-manager layout issue. QA42-UI1 remains a known, non-blocking
   mobile usability limitation; its current evidence is in
   [viewport evidence](security-evidence/viewports.md).
+
+## Source-Based Demo Fixture Verification (2026-11-03)
+
+- On the isolated PostgreSQL QA database, Prisma validation/generation,
+  migration deployment/status (24 migrations), and the confirmed demo reset
+  passed. The reset needed no Roblox network access and completed in 12.10s.
+  Final counts: 1 RootUnit, 43 Units, 142 Players, 7 Users, 136 memberships,
+  10 Events, 56 approved / 3 requested / 2 denied participations, 48
+  AtomicEventUnits, 34 EventCommandGroups, 29 FINAL / 7 DRAFT Audits, and 5
+  effective / 1 superseded / 1 pending Event results. Reader smoke passed for
+  Units, Event detail, public/manager Battle, Audits, Ranker (14-day, 30-day,
+  all-time), Commander, General, Unit, and attendance.
+- `npm test`: **217/217 passed** (167 server/domain, 50 presentation).
+  `npm run lint`, `npm run type-check`, `npm run build`, and
+  `git diff --check` passed. No schema or migration files changed.
+- Focused browser checks passed for the baseline, Manage Unit, Ticket 43, and
+  Units directory/detail routes, including 390px, 768px, and 1440px coverage;
+  two production-only baseline tests were skipped in development mode.
+- Full browser suite: **19 passed, 2 skipped, 2 failed**. The remaining failures
+  are Award-catalog column alignment (3.77px at 1440px) and Ticket 45 Event
+  battle-structure drag/drop restoration. Their relationship to this fixture
+  change is unconfirmed; neither failure concerns a changed demo identity or
+  source-based Unit assertion. Do not treat the full browser suite as passing.
+- Final QA reset restored the clean seed after browser tests. The temporary
+  browser server/app copy and disposable QA Compose project were stopped and
+  removed; the pre-existing server on port 3000 was left untouched.
+
+## Expanded Unit fixture follow-up (2026-11-03)
+
+- On the isolated PostgreSQL QA database, Prisma validation/generation,
+  deployment of all 24 migrations, migration status, and the confirmed demo
+  reset passed. Reader smoke passed. The fixture contains 178 source-based
+  Units plus the preserved RootUnit.
+- Final counts: 1 RootUnit, 179 Units, 679 Players, 7 Users, and 673
+  UnitMemberships. This includes three active synthetic roster-only Players
+  for every source Unit and the preserved RootUnit. The reset verifies every
+  such roster count; those Players are excluded from Event-specific assignment.
+  The ten verified public Roblox profiles remain excluded from fabricated
+  membership and gameplay history. Event, Audit, and result counts remain
+  unchanged from the prior fixture verification above.
+- `npm test`: **218/218 passed** (167 server/domain, 51 presentation).
+  `npm run lint`, `npm run type-check`, `npm run build`, focused demo seed tests,
+  and `git diff --check` passed. No schema or migration files changed.
+- After the user's explicit confirmation, the main local database was refreshed
+  with the expanded fixture. It has the same 1 RootUnit, 179 Units, 679 Players,
+  7 Users, and 673 UnitMemberships verified on QA.
+- Focused browser verification against the refreshed main app passed **3/3**:
+  Units directory/detail routes and Unit management, across 390px, 768px,
+  1024px, 1440px, and 1920px. A newly added U.S. Cavalry Detachment roster
+  displayed three active synthetic Players with synthetic-ID labels; the
+  management roster count reflected the added synthetic member. At that point,
+  the full browser suite was not rerun; its two failures were resolved in the
+  follow-up below.
+- The disposable QA Compose project was stopped and removed. The pre-existing
+  development server was left untouched.
+
+## Award and demo browser-verification follow-up (2026-11-04)
+
+- Against the isolated PostgreSQL QA database, the full Playwright suite passed
+  **22 tests with 2 production-only skips and 0 failures**. Award catalog
+  alignment and Ticket 45 drag/drop restoration passed at their required
+  viewports.
+- Focused baseline and medal checks passed **5 tests with 2 production-only
+  skips**. The baseline profile assertion now checks the cached username and
+  avatar shown by the current UI. The medal test creates a temporary second
+  Player Award grant for adjacent-medal interaction and removes it afterward.
+- `npm run lint`, `npm run type-check`, and `git diff --check` passed. The
+  existing `npm test` result remains **218/218 passed**; QA migration, reset,
+  and seed assertions are recorded above.
+- The temporary app copy and isolated `morale-ticket50` QA database were
+  removed after verification. The existing development server on port 3000
+  remained running and untouched.

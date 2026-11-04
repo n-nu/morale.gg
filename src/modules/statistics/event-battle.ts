@@ -9,13 +9,18 @@ import {
 } from "@/modules/audits/server/command-groups";
 import { getEffectiveFinalizedAuditObservations } from "@/modules/audits/server/statistics-source";
 import type { EffectiveFinalizedAuditObservation } from "@/modules/audits/server/statistics-source";
+import {
+  getPlayerIdentityPresentationBatch,
+} from "@/modules/players/server/queries";
+import { playerIdentityLabel, type PlayerIdentityPresentation } from "@/modules/players/identity";
 
 import { deriveRatio, type RatioMetric } from "./ratios";
 
 export type EventBattlePlayerResult = {
   position: number;
   playerId: string;
-  displayName: string;
+  robloxUsername: string | null;
+  robloxAvatarUrl: string | null;
   role: "COMMANDER" | "FLAG_BEARER" | null;
   kills: number;
   deaths: number;
@@ -53,12 +58,15 @@ export type EventBattleAtomicUnit = CommandTreeAtomicUnit & {
   representedUnitName: string;
   auditUnitType: AuditUnitType | null;
   resultState: "FINALIZED" | "PENDING";
+  commanderPlayerId: string | null;
+  commanderIdentity: PlayerIdentityPresentation | null;
   commander: string | null;
   summary: EventBattleUnitStatistics | null;
   players: EventBattlePlayerResult[];
 };
 
 export type EventBattleGroup = Omit<PublicEventCommandGroup, "atomicUnits" | "children"> & {
+  commanderIdentity: PlayerIdentityPresentation;
   atomicUnits: EventBattleAtomicUnit[];
   children: EventBattleGroup[];
 };
@@ -70,13 +78,10 @@ export type EventBattleStatistics = {
   ungroupedAtomicUnits: EventBattleAtomicUnit[];
 };
 
-function publicPlayerName(publicName: string | null, gamePlayerId: string): string {
-  return publicName?.trim() || gamePlayerId;
-}
-
 function buildAtomicUnit(
   unit: CommandTreeAtomicUnit,
   observation: EffectiveFinalizedAuditObservation | undefined,
+  identityFor: (playerId: string) => PlayerIdentityPresentation,
 ): EventBattleAtomicUnit {
   if (observation === undefined) {
     return {
@@ -85,6 +90,8 @@ function buildAtomicUnit(
       representedUnitName: unit.persistentUnitName,
       auditUnitType: unit.auditUnitType,
       resultState: "PENDING",
+      commanderPlayerId: null,
+      commanderIdentity: null,
       commander: null,
       summary: null,
       players: [],
@@ -108,8 +115,12 @@ function buildAtomicUnit(
     representedUnitName: observation.representedUnitName,
     auditUnitType: observation.unitType,
     resultState: "FINALIZED",
+    commanderPlayerId: observation.commanderGamePlayerId,
+    commanderIdentity: observation.commanderGamePlayerId
+      ? identityFor(observation.commanderGamePlayerId)
+      : null,
     commander: observation.commanderGamePlayerId
-      ? publicPlayerName(observation.playerResults.find(({ gamePlayerId }) => gamePlayerId === observation.commanderGamePlayerId)?.publicName ?? null, observation.commanderGamePlayerId)
+      ? playerIdentityLabel(identityFor(observation.commanderGamePlayerId))
       : null,
     summary: {
       ...totals,
@@ -127,16 +138,20 @@ function buildAtomicUnit(
       flagLosses: observation.unitResults.flagLosses,
       stars: observation.unitResults.stars,
     },
-    players: observation.playerResults.map((player, index) => ({
-      position: index + 1,
-      playerId: player.gamePlayerId,
-      displayName: publicPlayerName(player.publicName, player.gamePlayerId),
-      role: roles.get(player.gamePlayerId) ?? null,
-      kills: player.kills,
-      deaths: player.deaths,
-      assists: player.assists,
-      kdr: deriveRatio(player.kills, player.deaths, "K"),
-    })),
+    players: observation.playerResults.map((player, index) => {
+      const identity = identityFor(player.gamePlayerId);
+      return {
+        position: index + 1,
+        playerId: player.gamePlayerId,
+        robloxUsername: identity.robloxUsername,
+        robloxAvatarUrl: identity.robloxAvatarUrl,
+        role: roles.get(player.gamePlayerId) ?? null,
+        kills: player.kills,
+        deaths: player.deaths,
+        assists: player.assists,
+        kdr: deriveRatio(player.kills, player.deaths, "K"),
+      };
+    }),
   };
 }
 
@@ -188,15 +203,37 @@ export async function getEventBattleStatistics(eventId: string): Promise<EventBa
   if (structure === null) return null;
 
   const observations = new Map(source.observations.map((observation) => [observation.atomicEventUnitId, observation]));
+  const commandGroupPlayerIds = (groups: PublicEventCommandGroup[]): string[] =>
+    groups.flatMap((group) => [
+      group.commanderPlayerId,
+      ...commandGroupPlayerIds(group.children),
+    ]);
+  const playerIds = [
+    ...source.observations.flatMap((observation) => [
+      ...observation.playerResults.map(({ gamePlayerId }) => gamePlayerId),
+      ...(observation.commanderGamePlayerId ? [observation.commanderGamePlayerId] : []),
+    ]),
+    ...commandGroupPlayerIds(structure.groups),
+  ];
+  const identities = await getPlayerIdentityPresentationBatch(playerIds);
+  const identityById = new Map(identities.map((identity) => [identity.playerId, identity]));
+  const identityFor = (playerId: string): PlayerIdentityPresentation => {
+    const identity = identityById.get(playerId);
+    if (!identity) throw new Error(`Missing Player identity presentation for ${playerId}`);
+    return identity;
+  };
   const mapGroup = (group: PublicEventCommandGroup): EventBattleGroup => ({
     ...group,
-    atomicUnits: group.atomicUnits.map((unit) => buildAtomicUnit(unit, observations.get(unit.id))),
+    commanderIdentity: identityFor(group.commanderPlayerId),
+    atomicUnits: group.atomicUnits.map((unit) =>
+      buildAtomicUnit(unit, observations.get(unit.id), identityFor),
+    ),
     children: group.children.map(mapGroup),
   });
 
   const groups = structure.groups.map(mapGroup);
   const ungroupedAtomicUnits = structure.ungroupedAtomicUnits.map((unit) =>
-    buildAtomicUnit(unit, observations.get(unit.id)),
+    buildAtomicUnit(unit, observations.get(unit.id), identityFor),
   );
   const allUnits = [...ungroupedAtomicUnits, ...atomicUnitsInGroups(groups)];
 

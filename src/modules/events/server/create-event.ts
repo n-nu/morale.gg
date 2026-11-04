@@ -1,17 +1,27 @@
 import "server-only";
 
-import type { Event } from "@prisma/client";
+import type { Event, EventInvitePolicy } from "@prisma/client";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { prisma } from "@/lib/prisma";
 import { canCreateEvent } from "@/modules/units/server/authorization";
 
+import {
+  normalizeEventSideName,
+  validateEventInvitePolicy,
+  validateEventSchedule,
+} from "./validation";
+
 export interface CreateEventInput {
   name: string;
   scheduledAt: Date;
   eventType: string;
+  rallyMinutesBeforeStart?: number;
+  durationMinutes: number;
+  attackerName?: string;
+  defenderName?: string;
+  invitePolicy?: EventInvitePolicy;
   description?: string;
-  opponent?: string;
   map?: string;
 }
 
@@ -38,18 +48,29 @@ export async function createEventForAuthenticatedUser(
     throw new Error("An event needs a non-empty event type.");
   }
 
+  const rallyMinutesBeforeStart = input.rallyMinutesBeforeStart ?? 0;
+  validateEventSchedule(
+    input.scheduledAt,
+    rallyMinutesBeforeStart,
+    input.durationMinutes,
+  );
   if (input.scheduledAt.getTime() < Date.now()) {
     throw new Error("An event cannot be created with a scheduled date in the past.");
   }
+  const invitePolicy = validateEventInvitePolicy(input.invitePolicy ?? "OPEN");
 
   return prisma.event.create({
     data: {
       name,
       scheduledAt: input.scheduledAt,
+      rallyMinutesBeforeStart,
+      durationMinutes: input.durationMinutes,
       eventType,
       ownerUserId: authenticatedUserId,
       description: input.description?.trim() || undefined,
-      opponent: input.opponent?.trim() || undefined,
+      attackerName: normalizeEventSideName(input.attackerName),
+      defenderName: normalizeEventSideName(input.defenderName),
+      invitePolicy,
       map: input.map?.trim() || undefined,
     },
   });

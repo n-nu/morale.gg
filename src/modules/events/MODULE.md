@@ -2,9 +2,9 @@
 module_id: events
 path: src/modules/events
 status: active
-version: 0.3
-last_reviewed: 2026-11-02
-updated_by_ticket: TKT-20261102-000049-001
+version: 0.5
+last_reviewed: 2026-11-03
+updated_by_ticket: TKT-20261103-000053-001
 ---
 
 # Events
@@ -22,7 +22,9 @@ Audit work builds on approved Event participation through the
 - Event name;
 - scheduled date/time;
 - basic Event metadata (simple string event type, optional description,
-  opponent, and map);
+  legacy opponent, Event-side display names, and map);
+- planned rally offset, planned Event duration, and participation invite
+  policy;
 - Event read/query behavior;
 - authenticated Event creation and its Event Time Rule (no creation in the
   past);
@@ -62,6 +64,9 @@ Audit work builds on approved Event participation through the
   null-side manager configuration nodes are not returned to public readers.
   Unit leaderboard and side summaries consume the Statistics-owned Event
   Battle DTO; Event result styling uses only the effective Event result.
+  Player and commander references use cached Roblox username/headshot metadata
+  supplied by Statistics; they do not query Roblox or use manually managed
+  Player names.
 - Route `/events/calendar`: public, unauthenticated month-calendar view of
   the same Event data.
 - Route `/events/manage`: authenticated list of Events the User owns or
@@ -74,6 +79,10 @@ Audit work builds on approved Event participation through the
   redirect and is not a separate advertised feature.
 - Public Event detail exposes APPROVED participating Units only; pending and
   denied participation stays management-only.
+- `getPublicEventPresentationBatch` returns public Event name, type, scheduled
+  time, map, legacy opponent, attacker/defender display names, rally offset,
+  planned duration, and invite policy for multiple IDs in request order,
+  without manager data or per-Event reads.
 - `getCanonicalEventTimes` provides Statistics with Events-owned canonical
   occurrence timestamps without selecting a Statistics window.
 - Events consumes the server-only
@@ -109,6 +118,14 @@ Audit work builds on approved Event participation through the
 - All Prisma access happens in server-only code (`src/modules/events/server/`).
 - Every Event has exactly one real User owner; no Unit ownership or authority
   anchor is stored.
+- Event-side names are optional display labels and never Unit identifiers or
+  foreign keys. Existing opponent values are preserved as legacy data and are
+  not inferred into either side.
+- Rally time is derived from the scheduled start and a non-negative minute
+  offset. Planned end time is derived from the scheduled start and nullable
+  planned duration; legacy duration remains unknown.
+- Closed Invite blocks new participation requests in the Events server
+  service. Existing participation decisions and rows remain unchanged.
 - Explicit Event authorization is unique by Event/User, excludes the owner,
   and records the adding User.
 - The domain creation path rejects Events scheduled in the past.
@@ -139,6 +156,8 @@ Event.
 ## Internal Structure
 
 - `server/queries.ts` — server-only read/query functions.
+- `getPublicEventPresentationBatch` is the batched public Event presentation
+  read used by profile rows; it does not calculate Statistics.
 - `server/statistics-source.ts` — canonical Event identity and normalized
   occurrence-time read for Statistics.
 - `server/create-event.ts` — server-only domain creation path (verification
@@ -173,9 +192,11 @@ Event.
 
 ## Limitations
 
-- Event type is a plain string with presentation-level styling for the
-  well-known values (internal, external, mixed, grand battle); no persisted
-  taxonomy.
+- Event type is a plain string with presentation-level styling for Internal,
+  External, Mixed, Grand Battle, Ceremony, and Other; no persisted taxonomy.
+- Legacy Events have no known planned duration. The participation request
+  service exists, but no user-facing request action or invitation lifecycle is
+  currently available.
 - Times render in the visitor's local time zone on the client; the server
   render (and no-JS view) shows UTC.
 - No pagination; acceptable at MVP data volumes.
@@ -188,6 +209,8 @@ Event.
 - `events-audits-event-battlefield-management` (stable).
 - `audits-events-public-battlefield-structure` (stable consumer-facing read).
 - `statistics-events-event-battle-reader` (stable consumer-facing read).
+- `events-public-presentation-batch` (stable public profile presentation read,
+  additively extended by BCR-20261103-013).
 
 ## Related ADRs
 

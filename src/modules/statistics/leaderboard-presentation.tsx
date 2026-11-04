@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { PlayerIdentity } from "@/modules/players/components/player-identity";
+
 import {
   LEADERBOARD_BOARDS,
   LEADERBOARD_BOARD_DEFINITIONS,
@@ -92,14 +94,20 @@ function SubjectCell({ subject }: { subject: LeaderboardSubject }) {
     );
   }
   return (
-    <>
-      <Link href={`/players/${encodeURIComponent(subject.gamePlayerId)}`} className="font-semibold text-white hover:text-gold sm:whitespace-nowrap">
-        {subject.displayName}
-      </Link>
-      {subject.displayName !== subject.gamePlayerId ? (
-        <span className="block break-all font-mono text-[11px] text-faint">{subject.gamePlayerId}</span>
-      ) : null}
-    </>
+    <Link
+      href={`/players/${encodeURIComponent(subject.gamePlayerId)}`}
+      className="font-semibold text-white hover:text-gold"
+    >
+      <PlayerIdentity
+        identity={{
+          playerId: subject.gamePlayerId,
+          robloxUsername: subject.robloxUsername,
+          robloxAvatarUrl: subject.robloxAvatarUrl,
+        }}
+        size={24}
+        showPlayerId
+      />
+    </Link>
   );
 }
 

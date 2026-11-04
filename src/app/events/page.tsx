@@ -4,7 +4,12 @@ import Link from "next/link";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { bannerArtFor } from "@/modules/events/map-art";
-import { eventTypeStyle, isPastEvent } from "@/modules/events/presentation";
+import {
+  eventTypeStyle,
+  formatEventScheduleSummary,
+  isPastEvent,
+  matchesEventTypeFilter,
+} from "@/modules/events/presentation";
 import { countManageableEvents } from "@/modules/events/server/management";
 import { listEvents, type Event } from "@/modules/events/server/queries";
 
@@ -23,6 +28,8 @@ const TYPE_FILTERS = [
   { key: "external", label: "External" },
   { key: "mixed", label: "Mixed" },
   { key: "grand", label: "Grand Battle" },
+  { key: "ceremony", label: "Ceremony" },
+  { key: "other", label: "Other" },
 ];
 
 function MapPin() {
@@ -37,6 +44,9 @@ function MapPin() {
 function EventCard({ event }: { event: Event }) {
   const type = eventTypeStyle(event.eventType);
   const art = bannerArtFor(event.map, event.name);
+  const sideLabels = [event.attackerName, event.defenderName].filter(
+    (label): label is string => label !== null,
+  );
   return (
     <Link
       href={`/events/${event.id}`}
@@ -74,7 +84,7 @@ function EventCard({ event }: { event: Event }) {
             {event.description}
           </p>
         ) : null}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[13px] text-muted">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-muted">
           <span className="inline-flex items-center gap-1.5">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
               <rect x="3" y="5" width="18" height="16" rx="2" />
@@ -82,15 +92,23 @@ function EventCard({ event }: { event: Event }) {
             </svg>
             <LocalDateTime iso={event.scheduledAt.toISOString()} />
           </span>
-          {event.opponent ? (
-            <span className="inline-flex items-center gap-1.5">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                <path d="M4 4l10 10M20 4L10 14" />
-                <path d="M14 14l3 3M10 14l-3 3" />
-              </svg>
-              vs {event.opponent}
+          <span>{formatEventScheduleSummary(event.rallyMinutesBeforeStart, event.durationMinutes)}</span>
+          {sideLabels.length > 0 ? (
+            <span className="min-w-0 break-words">
+              {sideLabels.length === 2
+                ? `${sideLabels[0]} vs ${sideLabels[1]}`
+                : sideLabels[0]}
             </span>
           ) : null}
+          <span
+            className={`rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] ${
+              event.invitePolicy === "OPEN"
+                ? "border-type-green text-green-bright"
+                : "border-gold text-gold"
+            }`}
+          >
+            {event.invitePolicy === "OPEN" ? "Open Invite" : "Closed Invite"}
+          </span>
         </div>
       </div>
     </Link>
@@ -111,7 +129,7 @@ export default async function EventsPage({
   const manageableCount =
     viewerUserId === null ? 0 : await countManageableEvents(viewerUserId);
   const events = activeType
-    ? allEvents.filter((e) => eventTypeStyle(e.eventType).key === activeType)
+    ? allEvents.filter((e) => matchesEventTypeFilter(e.eventType, activeType))
     : allEvents;
   const now = new Date();
   const upcoming = events.filter((e) => !isPastEvent(e.scheduledAt, now));

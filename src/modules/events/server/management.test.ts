@@ -21,6 +21,11 @@ type EventRecord = {
   name: string;
   scheduledAt: Date;
   eventType: string;
+  rallyMinutesBeforeStart: number;
+  durationMinutes: number | null;
+  attackerName: string | null;
+  defenderName: string | null;
+  invitePolicy: "OPEN" | "CLOSED";
   description: string | null;
   opponent: string | null;
   map: string | null;
@@ -36,6 +41,11 @@ function seedEvent(overrides: Partial<EventRecord> = {}) {
     name: "Battle of the Rhine Crossing",
     scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     eventType: "External",
+    rallyMinutesBeforeStart: 0,
+    durationMinutes: 35,
+    attackerName: null,
+    defenderName: null,
+    invitePolicy: "OPEN",
     description: null,
     opponent: null,
     map: null,
@@ -123,8 +133,8 @@ test.after(() => {
 });
 
 test("updates ordinary Event information for an authorized manager", async () => {
-  seedEvent();
   const nextSchedule = new Date(Date.now() + 48 * 60 * 60 * 1000);
+  seedEvent({ opponent: "Legacy opponent" });
 
   const updated = await updateEventDetails(
     ownerId,
@@ -133,8 +143,12 @@ test("updates ordinary Event information for an authorized manager", async () =>
       name: "  Battle of the Rhine Crossing II  ",
       scheduledAt: nextSchedule,
       eventType: " External ",
+      rallyMinutesBeforeStart: 30,
+      durationMinutes: 50,
+      attackerName: " French Empire ",
+      defenderName: " United Kingdom & Prussia ",
+      invitePolicy: "CLOSED",
       description: "  Bring full kit.  ",
-      opponent: "",
       map: "Rhine Crossing",
     },
     allowOwnerOnly,
@@ -142,8 +156,13 @@ test("updates ordinary Event information for an authorized manager", async () =>
 
   assert.equal(updated.name, "Battle of the Rhine Crossing II");
   assert.equal(updated.eventType, "External");
+  assert.equal(updated.rallyMinutesBeforeStart, 30);
+  assert.equal(updated.durationMinutes, 50);
+  assert.equal(updated.attackerName, "French Empire");
+  assert.equal(updated.defenderName, "United Kingdom & Prussia");
+  assert.equal(updated.invitePolicy, "CLOSED");
   assert.equal(updated.description, "Bring full kit.");
-  assert.equal(updated.opponent, null);
+  assert.equal(updated.opponent, "Legacy opponent");
   assert.equal(updated.map, "Rhine Crossing");
   assert.equal(updated.scheduledAt.getTime(), nextSchedule.getTime());
 });
@@ -155,6 +174,9 @@ test("rejects unauthorized updates and invalid Event information", async () => {
     name: "Renamed",
     scheduledAt: future,
     eventType: "External",
+    rallyMinutesBeforeStart: 0,
+    durationMinutes: 35,
+    invitePolicy: "OPEN" as const,
   };
 
   await assert.rejects(
@@ -175,6 +197,26 @@ test("rejects unauthorized updates and invalid Event information", async () => {
       updateEventDetails(ownerId, eventId, { ...valid, eventType: "" }, allowOwnerOnly),
     /non-empty event type/i,
   );
+  await assert.rejects(
+    () =>
+    updateEventDetails(
+      ownerId,
+      eventId,
+      { ...valid, rallyMinutesBeforeStart: -1 },
+      allowOwnerOnly,
+    ),
+    /Rally time must be/i,
+  );
+  await assert.rejects(
+    () =>
+    updateEventDetails(
+      ownerId,
+      eventId,
+      { ...valid, durationMinutes: 0 },
+      allowOwnerOnly,
+    ),
+    /Event duration must be/i,
+  );
 });
 
 test("preserves the Event Time Rule while keeping past events editable", async () => {
@@ -190,6 +232,9 @@ test("preserves the Event Time Rule while keeping past events editable", async (
           name: "Renamed",
           scheduledAt: new Date(Date.now() - 60 * 60 * 1000),
           eventType: "External",
+          rallyMinutesBeforeStart: 0,
+          durationMinutes: 35,
+          invitePolicy: "OPEN",
         },
         allowOwnerOnly,
       ),
@@ -204,6 +249,9 @@ test("preserves the Event Time Rule while keeping past events editable", async (
       name: "Renamed after the battle",
       scheduledAt: new Date(pastTime.getTime()),
       eventType: "External",
+      rallyMinutesBeforeStart: 0,
+      durationMinutes: 35,
+      invitePolicy: "OPEN",
       description: "Results pending audit.",
     },
     allowOwnerOnly,

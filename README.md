@@ -34,7 +34,7 @@ cp .env.example .env        # PowerShell: Copy-Item .env.example .env
 docker compose up -d
 npm run db:generate
 npm run db:migrate:deploy
-npm run demo:reset
+npm run demo:reset -- --confirm-demo-reset
 npm run dev
 ```
 
@@ -43,12 +43,12 @@ Open [http://localhost:3000/dev/sign-in](http://localhost:3000/dev/sign-in) (or 
 | Identity | Seeded authority |
 |---|---|
 | Demo Root Commander (`demo-user-root-commander`) | Commander of the root Unit: full Unit, roster, Event, and Audit authority; owns every demo Event. Start here. |
-| French / Coalition Branch Manager | Commander of one branch subtree only. |
-| French / Coalition Audit Submitter | `SUBMIT_AUDITS` for that branch only. |
-| Limited Roster Manager | `MANAGE_ROSTER` on one regiment only. |
+| Prussian / British Army Manager | Commander of one source-based Unit subtree only. |
+| Prussian / British Army Audit Submitter | `SUBMIT_AUDITS` for that branch only. |
+| Limited Aragón Roster Manager | `MANAGE_ROSTER` on one formation only. |
 | Event-only Manager | Manager of one Event; no Unit authority. |
 
-Use **Sign out** and pick another identity to compare permission scopes. On an empty database, `npm run demo:reset` creates the root Unit and its Commander automatically; no User ID lookup, `db:seed`, or `WEBSITE_ADMIN_USER_IDS` configuration is required.
+Use **Sign out** and pick another identity to compare permission scopes. On an empty database, the confirmed reset creates the root Unit and its Commander automatically; no User ID lookup, `db:seed`, or `WEBSITE_ADMIN_USER_IDS` configuration is required. Public organization and selected Roblox profile facts are source-dated; all seeded game memberships, Events, Audits, results, and statistics are synthetic. See [Demo data sources](docs/DEMO_DATA_SOURCES.md).
 
 **Development sign-in is local-only.** It works only when the server runs under `npm run dev` (`NODE_ENV=development`) **and** `.env` sets `DEV_SIGN_IN_ENABLED="true"` (the `.env.example` default). Under `npm run build` / `npm start` the page returns 404 and its server action refuses to create sessions. It accepts only the fixed seeded demo identities and grants no permissions beyond their seeded authority; Google OAuth remains the only production sign-in. See [ADR-20260930-009](docs/decisions/ADR-20260930-009.md).
 
@@ -99,7 +99,7 @@ npm run db:generate
 npm run db:migrate:deploy
 ```
 
-For the demo, run `npm run demo:reset` (below); it bootstraps the root Unit on an empty database.
+For the demo, run the explicitly confirmed reset command below; it bootstraps the root Unit on an empty database.
 
 Optional, to make your own Google account the root Commander instead: start the app with `npm run dev`, sign in once with Google to create an Auth.js User, and stop the dev server. Run `npm exec -- dotenv -e .env -- prisma studio`, copy that User row's `id` into `ROOT_UNIT_COMMANDER_USER_ID` in `.env`, then initialize the root Unit:
 
@@ -112,10 +112,10 @@ The seed requires an existing User and creates or updates the stable root Unit `
 ### Reset and reseed demo data
 
 ```bash
-npm run demo:reset
+npm run demo:reset -- --confirm-demo-reset
 ```
 
-**Destructive to development data:** this removes application data other than the canonical RootUnit and designated Unit identity, its Commander User and linked Auth.js Accounts, the active Commander membership, and that User's existing login sessions. Other Users (and their accounts/sessions) are deleted. It recreates the demo organization, roster history, Events, participation, battlefield structure, Audits, and results; it leaves Prisma migration history unchanged. The command refuses production, non-loopback/non-Compose targets, or a database with more than one RootUnit. On a database with no RootUnit it first creates `root-morale-gg` commanded by the fixture User `demo-user-root-commander`.
+**Destructive to development data:** the `--confirm-demo-reset` flag is required for every run. The reset removes application data other than the canonical RootUnit and designated Unit identity, its Commander User and linked Auth.js Accounts, the active Commander membership, and that User's existing login sessions. Other Users (and their accounts/sessions) are deleted. It recreates source-based Roblox organization/profile records plus synthetic roster history, Events, participation, battlefield structure, Audits, and results; it leaves Prisma migration history unchanged. The command refuses production, unsupported `NODE_ENV` values, unconfirmed, hosted, non-loopback/non-Compose targets, or a database with more than one RootUnit. On a database with no RootUnit it first creates `root-morale-gg` commanded by the fixture User `demo-user-root-commander`.
 
 Seeded manager identities have no passwords or Google Accounts. Locally they are reachable only through the development sign-in described above; there is no password login, and production has no impersonation flow.
 

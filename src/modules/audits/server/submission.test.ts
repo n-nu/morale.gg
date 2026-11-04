@@ -155,7 +155,7 @@ test("submitAudit validates required final fields and auto-finalizes", async () 
     userId: "user-1",
     auditId: "audit-1",
     submission,
-    resolvePlayerByGameId: async (value: string) => ({ id: `player-${value}`, playerId: value }),
+    resolvePlayersByGameIds: async (values: string[]) => values.map((value) => ({ id: `player-${value}`, playerId: value })),
     canSubmitAudit: async () => true,
     transaction: async (callback) => callback({
       audit: {
@@ -187,7 +187,7 @@ test("submitAudit validates required final fields and auto-finalizes", async () 
       userId: "user-1",
       auditId: "audit-1",
       submission,
-      resolvePlayerByGameId: async (value: string) => ({ id: `player-${value}`, playerId: value }),
+      resolvePlayersByGameIds: async (values: string[]) => values.map((value) => ({ id: `player-${value}`, playerId: value })),
       canSubmitAudit: async () => true,
       transaction: async (callback) => callback({
         audit: {
@@ -242,7 +242,8 @@ test("submitAudit accepts every historical Unit type with its required roles", a
           ],
         },
         canSubmitAudit: async () => true,
-        resolvePlayerByGameId: async (playerId) => ({ id: `resolved-${playerId}`, playerId }),
+        resolvePlayersByGameIds: async (playerIds: string[]) =>
+          playerIds.map((playerId) => ({ id: `resolved-${playerId}`, playerId })),
         transaction: async (callback) => callback({
           audit: {
             findUnique: async () => ({ id: auditId, lifecycle: "DRAFT" }),

@@ -7,6 +7,8 @@ import type {
   EventBattleSide,
   EventBattleSideSummary,
 } from "@/modules/statistics/event-battle";
+import { PlayerIdentity } from "@/modules/players/components/player-identity";
+import type { PlayerIdentityPresentation } from "@/modules/players/identity";
 import type { RatioMetric } from "@/modules/statistics/ratios";
 
 type IconName =
@@ -112,20 +114,20 @@ function UnitReference({
 }
 
 function PlayerReference({
-  id,
-  name,
+  identity,
   className,
+  size = 20,
 }: {
-  id: string;
-  name: string;
+  identity: PlayerIdentityPresentation;
   className?: string;
+  size?: number;
 }) {
   return (
     <Link
-      href={`/players/${encodeURIComponent(id)}`}
-      className={className ?? "break-words text-body-soft underline decoration-edge-strong underline-offset-2 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"}
+      href={`/players/${encodeURIComponent(identity.playerId)}`}
+      className={className ?? "min-w-0 break-words text-body-soft underline decoration-edge-strong underline-offset-2 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"}
     >
-      {name}
+      <PlayerIdentity identity={identity} size={size} />
     </Link>
   );
 }
@@ -305,7 +307,14 @@ function PlayerResults({ unit }: { unit: EventBattleAtomicUnit }) {
           className="grid min-w-0 grid-cols-[minmax(0,1fr)_repeat(4,auto)] items-center gap-x-2 border-t border-edge/70 py-1.5 text-xs"
         >
           <span className="flex min-w-0 flex-col">
-            <PlayerReference id={player.playerId} name={player.displayName} className="min-w-0 break-words font-medium text-body-soft underline decoration-edge-strong underline-offset-2 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold" />
+            <PlayerReference
+              identity={{
+                playerId: player.playerId,
+                robloxUsername: player.robloxUsername,
+                robloxAvatarUrl: player.robloxAvatarUrl,
+              }}
+              className="min-w-0 break-words font-medium text-body-soft underline decoration-edge-strong underline-offset-2 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+            />
             {player.role ? (
               <span className="text-[10px] text-muted">
                 {player.role === "COMMANDER" ? "Commander" : "Flag Bearer"}
@@ -366,7 +375,11 @@ function PublicCompany({
               <span className="inline-flex min-w-0 items-center gap-1">
                 <Icon name="commander" className="h-3.5 w-3.5 shrink-0 text-muted" />
                 <span className="text-muted">Commander</span>
-                <PlayerReference id={commander.playerId} name={unit.commander ?? commander.displayName} />
+                <PlayerReference identity={{
+                  playerId: commander.playerId,
+                  robloxUsername: commander.robloxUsername,
+                  robloxAvatarUrl: commander.robloxAvatarUrl,
+                }} />
               </span>
             ) : (
               <span className="inline-flex min-w-0 items-center gap-1 text-muted">
@@ -441,7 +454,7 @@ function PublicGroup({
         <span className="inline-flex min-w-0 items-center gap-1">
           <Icon name="commander" className="h-3.5 w-3.5 shrink-0 text-muted" />
           <span className="text-muted">Group commander</span>
-          <PlayerReference id={group.commanderPlayerId} name={group.commanderPlayerId} />
+          <PlayerReference identity={group.commanderIdentity} />
         </span>
       </div>
       {childrenExist ? (

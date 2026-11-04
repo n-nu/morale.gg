@@ -96,10 +96,24 @@ test("Player roster and Event participation integrate through their real authori
       db: prisma,
       getUserId: async () => unit.commanderUserId,
       authorize: canManageRoster,
+      resolvePlayers: async (playerIds) => Promise.all(playerIds.map(async (value) => {
+        const playerId = String(value).trim();
+        return prisma.player.upsert({
+          where: { playerId },
+          create: {
+            playerId,
+            name: null,
+            robloxUsername: null,
+            robloxAvatarUrl: null,
+            robloxSyncedAt: null,
+          },
+          update: {},
+          select: { id: true, playerId: true },
+        });
+      })),
     });
     const player = await authorizedPlayerWorkflows.registerPlayer({
       playerId: `integration-${suffix}`,
-      name: "Integration Player",
     });
     createdPlayerId = player.id;
 
@@ -163,6 +177,9 @@ test("Player roster and Event participation integrate through their real authori
       name: `Manager updated ${suffix}`,
       scheduledAt: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
       eventType: "internal",
+      rallyMinutesBeforeStart: 30,
+      durationMinutes: 35,
+      invitePolicy: "OPEN",
     });
     assert.equal(updatedEvent.name, `Manager updated ${suffix}`);
 

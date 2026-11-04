@@ -3,17 +3,36 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 type PlayerMembershipDatabase = Pick<Prisma.TransactionClient, "unitMembership">;
+type PlayerIdentityDatabase = Pick<Prisma.TransactionClient, "player">;
 
 export function listPlayers(search = "", db = prisma) {
   const query = search.trim().slice(0, 128);
   return db.player.findMany({
     where: query ? { OR: [
       { playerId: { contains: query, mode: "insensitive" } },
-      { name: { contains: query, mode: "insensitive" } },
+      { robloxUsername: { contains: query, mode: "insensitive" } },
     ] } : undefined,
-    select: { playerId: true, name: true },
-    orderBy: [{ name: "asc" }, { playerId: "asc" }],
+    select: { playerId: true, robloxUsername: true, robloxAvatarUrl: true },
+    orderBy: [{ robloxUsername: "asc" }, { playerId: "asc" }],
     take: 50,
+  });
+}
+
+export async function getPlayerIdentityPresentationBatch(
+  playerIds: string[],
+  db: PlayerIdentityDatabase = prisma,
+) {
+  const uniqueIds = [...new Set(playerIds.map((playerId) => playerId.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const players = await db.player.findMany({
+    where: { playerId: { in: uniqueIds } },
+    select: { playerId: true, robloxUsername: true, robloxAvatarUrl: true },
+  });
+  const playerById = new Map(players.map((player) => [player.playerId, player]));
+  return uniqueIds.flatMap((playerId) => {
+    const player = playerById.get(playerId);
+    return player ? [player] : [];
   });
 }
 
@@ -54,9 +73,9 @@ export function getCurrentRoster(unitId: string, db = prisma) {
     select: {
       id: true,
       startedAt: true,
-      player: { select: { playerId: true, name: true } },
+      player: { select: { playerId: true, robloxUsername: true, robloxAvatarUrl: true } },
     },
-    orderBy: [{ player: { name: "asc" } }, { id: "asc" }],
+    orderBy: [{ player: { robloxUsername: "asc" } }, { id: "asc" }],
   }).then((memberships) => memberships.map(({ id, ...membership }) => ({
     membershipId: id,
     ...membership,

@@ -4,7 +4,10 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { canSubmitAudit as checkCanSubmitAudit } from "@/modules/units/server/authorization";
-import { resolveOrCreatePlayerByGameId } from "@/modules/players/server/audit-resolution";
+import {
+  AuditPlayerResolutionError,
+  resolveOrCreatePlayersForAudit,
+} from "@/modules/players/server/audit-resolution";
 
 export class AuditSubmissionError extends Error {}
 
@@ -48,7 +51,7 @@ export type AuditFinalizationInput = {
   auditId: string;
   submission: AuditSubmissionInput;
   canSubmitAudit?: (userId: string, unitId: string) => Promise<boolean>;
-  resolvePlayerByGameId?: (playerId: string) => Promise<{ id: string; playerId: string }>;
+  resolvePlayersByGameIds?: (playerIds: string[]) => Promise<Array<{ id: string; playerId: string }>>;
   transaction?: <T>(callback: (tx: AuditTransaction) => Promise<T>) => Promise<T>;
 };
 
@@ -283,15 +286,16 @@ export async function submitAudit(
     throw new AuditSubmissionError("Audit Unit type must match the Event battlefield configuration.");
   }
 
-  const resolvePlayerByGameId = input.resolvePlayerByGameId ?? resolveOrCreatePlayerByGameId;
-  const resolvedPlayers = await Promise.all(
-    rows.map(async (row) => ({
-      row,
-      player: await resolvePlayerByGameId(row.playerId),
-    })),
-  );
-
-  const playerMap = new Map(resolvedPlayers.map(({ row, player }) => [row.playerId, player]));
+  const playerIds = [...new Set(rows.map((row) => row.playerId))];
+  const resolvePlayersByGameIds = input.resolvePlayersByGameIds ?? resolveOrCreatePlayersForAudit;
+  let resolvedPlayers: Array<{ id: string; playerId: string }>;
+  try {
+    resolvedPlayers = await resolvePlayersByGameIds(playerIds);
+  } catch (error) {
+    if (error instanceof AuditPlayerResolutionError) throw new AuditSubmissionError(error.message);
+    throw error;
+  }
+  const playerMap = new Map(resolvedPlayers.map((player) => [player.playerId, player]));
   for (const role of roleAssignments) {
     if (!playerMap.has(role.playerId)) {
       throw new AuditSubmissionError("Roles must reference Players present in the Audit.");

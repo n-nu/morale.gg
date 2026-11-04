@@ -2,7 +2,10 @@ import "server-only";
 
 import type { AuditUnitType } from "@prisma/client";
 
-import { getEffectiveFinalizedAuditObservations } from "@/modules/audits/server/statistics-source";
+import {
+  getEffectiveFinalizedAuditObservations,
+  type EffectiveFinalizedAuditRankerAggregate,
+} from "@/modules/audits/server/statistics-source";
 import { getCanonicalEventTimes } from "@/modules/events/server/statistics-source";
 
 import { deriveRatio, type RatioMetric } from "./ratios";
@@ -33,19 +36,11 @@ export type RankerStatistics = {
   players: RankerPlayerStatistics[];
 };
 
-export async function getRankerStatistics(
-  window: StatisticsWindow = DEFAULT_STATISTICS_WINDOW,
-  now: Date = new Date(),
-): Promise<RankerStatistics> {
-  const range = getStatisticsWindowRange(window, now);
-  const eventTimes = await getCanonicalEventTimes();
-  const selectedEventIds = eventTimes
-    .filter(({ occurredAt }) => isEventTimeInStatisticsWindow(occurredAt, range))
-    .map(({ eventId }) => eventId);
-  const source = await getEffectiveFinalizedAuditObservations(selectedEventIds);
-
+export function buildRankerPlayerStatistics(
+  aggregates: readonly EffectiveFinalizedAuditRankerAggregate[],
+): RankerPlayerStatistics[] {
   const players = new Map<string, { distinctEvents: number; unitTypes: RankerUnitTypeStatistics[] }>();
-  for (const aggregate of source.rankerAggregates) {
+  for (const aggregate of aggregates) {
     const appearances = aggregate.auditAppearances;
     const unitStatistics: RankerUnitTypeStatistics = {
       unitType: aggregate.unitType,
@@ -71,14 +66,28 @@ export async function getRankerStatistics(
     players.set(aggregate.gamePlayerId, playerStatistics);
   }
 
+  return [...players.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([gamePlayerId, playerStatistics]) => ({
+      gamePlayerId,
+      distinctEvents: playerStatistics.distinctEvents,
+      unitTypes: playerStatistics.unitTypes.sort((left, right) => left.unitType.localeCompare(right.unitType)),
+    }));
+}
+
+export async function getRankerStatistics(
+  window: StatisticsWindow = DEFAULT_STATISTICS_WINDOW,
+  now: Date = new Date(),
+): Promise<RankerStatistics> {
+  const range = getStatisticsWindowRange(window, now);
+  const eventTimes = await getCanonicalEventTimes();
+  const selectedEventIds = eventTimes
+    .filter(({ occurredAt }) => isEventTimeInStatisticsWindow(occurredAt, range))
+    .map(({ eventId }) => eventId);
+  const source = await getEffectiveFinalizedAuditObservations(selectedEventIds);
+
   return {
     window,
-    players: [...players.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([gamePlayerId, playerStatistics]) => ({
-        gamePlayerId,
-        distinctEvents: playerStatistics.distinctEvents,
-        unitTypes: playerStatistics.unitTypes.sort((left, right) => left.unitType.localeCompare(right.unitType)),
-      })),
+    players: buildRankerPlayerStatistics(source.rankerAggregates),
   };
 }
