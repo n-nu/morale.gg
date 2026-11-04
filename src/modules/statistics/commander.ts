@@ -2,7 +2,10 @@ import "server-only";
 
 import type { AuditUnitType } from "@prisma/client";
 
-import { getEffectiveFinalizedAuditObservations } from "@/modules/audits/server/statistics-source";
+import {
+  getEffectiveFinalizedAuditObservations,
+  type EffectiveFinalizedAuditObservation,
+} from "@/modules/audits/server/statistics-source";
 import { getCanonicalEventTimes } from "@/modules/events/server/statistics-source";
 
 import { deriveRatio, type RatioMetric } from "./ratios";
@@ -61,17 +64,12 @@ function addObservationTotals(totals: RawTotals, observation: {
   totals.playerCount += observation.playerResults.length;
 }
 
-export async function getCommanderStatistics(
-  window: StatisticsWindow = DEFAULT_STATISTICS_WINDOW,
-  now: Date = new Date(),
-): Promise<CommanderStatistics> {
-  const range = getStatisticsWindowRange(window, now);
-  const eventTimes = await getCanonicalEventTimes();
-  const eventIds = eventTimes.filter(({ occurredAt }) => isEventTimeInStatisticsWindow(occurredAt, range)).map(({ eventId }) => eventId);
-  const source = await getEffectiveFinalizedAuditObservations(eventIds);
+export function buildCommanderPlayerStatistics(
+  observations: readonly EffectiveFinalizedAuditObservation[],
+): CommanderPlayerStatistics[] {
   const aggregates = new Map<string, Map<AuditUnitType, { battles: number; totals: RawTotals }>>();
 
-  for (const observation of source.observations) {
+  for (const observation of observations) {
     if (observation.commanderGamePlayerId === null || observation.unitType === null) continue;
     const byType = aggregates.get(observation.commanderGamePlayerId) ?? new Map();
     const aggregate = byType.get(observation.unitType) ?? { battles: 0, totals: emptyTotals() };
@@ -81,32 +79,43 @@ export async function getCommanderStatistics(
     aggregates.set(observation.commanderGamePlayerId, byType);
   }
 
+  return [...aggregates.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([gamePlayerId, byType]) => ({
+    gamePlayerId,
+    unitTypes: [...byType.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([unitType, aggregate]) => {
+      const totals = {
+        kills: aggregate.totals.kills,
+        deaths: aggregate.totals.deaths,
+        assists: aggregate.totals.assists,
+        tickets: aggregate.totals.tickets,
+        flagCaptures: aggregate.totals.flagCaptures,
+        flagLosses: aggregate.totals.flagLosses,
+        stars: aggregate.totals.stars,
+      };
+      const averagesPerBattle = Object.fromEntries(
+        Object.entries(aggregate.totals).map(([key, value]) => [key, value / aggregate.battles]),
+      ) as RawTotals;
+      return {
+        unitType,
+        battlesCommanded: aggregate.battles,
+        totals,
+        killDeathRatio: deriveRatio(totals.kills, totals.deaths, "K"),
+        averagesPerBattle,
+        averageKillDeathRatio: deriveRatio(totals.kills, totals.deaths, "K"),
+      };
+    }),
+  }));
+}
+
+export async function getCommanderStatistics(
+  window: StatisticsWindow = DEFAULT_STATISTICS_WINDOW,
+  now: Date = new Date(),
+): Promise<CommanderStatistics> {
+  const range = getStatisticsWindowRange(window, now);
+  const eventTimes = await getCanonicalEventTimes();
+  const eventIds = eventTimes.filter(({ occurredAt }) => isEventTimeInStatisticsWindow(occurredAt, range)).map(({ eventId }) => eventId);
+  const source = await getEffectiveFinalizedAuditObservations(eventIds);
   return {
     window,
-    players: [...aggregates.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([gamePlayerId, byType]) => ({
-      gamePlayerId,
-      unitTypes: [...byType.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([unitType, aggregate]) => {
-        const totals = {
-          kills: aggregate.totals.kills,
-          deaths: aggregate.totals.deaths,
-          assists: aggregate.totals.assists,
-          tickets: aggregate.totals.tickets,
-          flagCaptures: aggregate.totals.flagCaptures,
-          flagLosses: aggregate.totals.flagLosses,
-          stars: aggregate.totals.stars,
-        };
-        const averagesPerBattle = Object.fromEntries(
-          Object.entries(aggregate.totals).map(([key, value]) => [key, value / aggregate.battles]),
-        ) as RawTotals;
-        return {
-          unitType,
-          battlesCommanded: aggregate.battles,
-          totals,
-          killDeathRatio: deriveRatio(totals.kills, totals.deaths, "K"),
-          averagesPerBattle,
-          averageKillDeathRatio: deriveRatio(totals.kills, totals.deaths, "K"),
-        };
-      }),
-    })),
+    players: buildCommanderPlayerStatistics(source.observations),
   };
 }

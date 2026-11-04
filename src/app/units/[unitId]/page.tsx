@@ -16,7 +16,7 @@ import {
   canManageUnit,
 } from "@/modules/units/server/authorization";
 import { isUnitsDemoMode } from "@/modules/units/server/demo";
-import { getUnit, listPublicUnitDirectory } from "@/modules/units/server/queries";
+import { getPublicUnitHierarchy } from "@/modules/units/server/queries";
 import {
   getAverageUnitPerformance,
   getDirectUnitPerformance,
@@ -41,14 +41,15 @@ export default async function UnitPage({
   searchParams: Promise<{ window?: string | string[] }>;
 }) {
   const [{ unitId }, { window }] = await Promise.all([params, searchParams]);
-  const unit = await getUnit(unitId);
-  if (!unit) notFound();
-
-  const [directory, userId, unitAwards] = await Promise.all([
-    listPublicUnitDirectory(),
+  const [hierarchy, userId, unitAwards] = await Promise.all([
+    getPublicUnitHierarchy(unitId),
     getAuthenticatedUserId(),
     isUnitsDemoMode() ? Promise.resolve([]) : getUnitAwards(unitId),
   ]);
+  if (!hierarchy) notFound();
+  const unit = hierarchy.find((entry) => entry.id === unitId);
+  if (!unit) notFound();
+
   const selectedWindow = resolveStatisticsWindow(window);
   type DirectPerformance = Awaited<ReturnType<typeof getDirectUnitPerformance>>;
   let statistics: {
@@ -76,9 +77,8 @@ export default async function UnitPage({
   } catch {
     statisticsError = true;
   }
-  const directoryUnits = directory;
-  const selectedUnit = directoryUnits.find((entry) => entry.id === unitId);
-  if (!selectedUnit) notFound();
+  const directoryUnits = hierarchy;
+  const selectedUnit = unit;
 
   const canManage = userId !== null && !isUnitsDemoMode()
     ? (await Promise.all([
@@ -179,6 +179,7 @@ export default async function UnitPage({
       ) : null}
 
       <UnitOrganizationTree
+        key={selectedUnit.id}
         selected={selectedUnit}
         units={directoryUnits}
       />

@@ -1,5 +1,35 @@
 # Changelog: Units
 
+## 2026-11-03 — TKT-20261102-000050-001
+
+- Refined public Player Award presentation into a compact medal gallery:
+  images show by default, while hover, keyboard focus, or click reveals the
+  title and description with a gentle lift animation. Medals are square,
+  transparent, closely overlapped at rest, and smoothly grow/space apart over
+  500ms while active; missing images retain a bordered placeholder.
+- Kept medal slots fixed while enlarged images and details float above the
+  page; nearby medals move horizontally without pushing content down.
+  Increased resting overlap to 8px and removed the divider above Player Awards.
+- Removed the remaining Player-header divider and metadata line below the
+  medals; hover titles and descriptions now have no background panel or shadow.
+- Preserved Unit Award presentation and scoped Player Award management
+  actions; added motion-reduction and accessible interaction support.
+
+## 2026-11-03 — TKT-20261103-000053-001
+
+- Added a public batch Unit identity/image read for Player history rows.
+- The read exposes no Unit authority, website Commander identity, or
+  membership data and avoids per-row database queries.
+
+## 2026-11-03 — scalable public Unit hierarchy
+
+- Restricted `/units` to top-level visual Unit cards instead of rendering an
+  expandable organization-wide directory.
+- Focused detail trees on the selected Unit, with clickable ancestor
+  breadcrumbs, informative collapsed branches, and wrapped sibling groups.
+- Bounded detail hierarchy reads to the selected subtree and its ancestors;
+  no Unit schema, hierarchy, membership, or authorization behavior changed.
+
 ## 2026-11-03 — TKT-20261103-000051-001
 
 - Updated Player roster presentation to use cached Roblox username/headshot

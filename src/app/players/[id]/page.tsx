@@ -1,33 +1,43 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { AuditUnitType } from "@prisma/client";
 
-import { Breadcrumbs, PageHeader, SectionHeading } from "@/app/presentation";
+import { Breadcrumbs } from "@/app/presentation";
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { PlayerAwardsSection } from "@/modules/units/components/awards";
 import { getPlayerAwardManagementData } from "@/modules/units/server/awards";
+import { getPublicUnitPresentationBatch } from "@/modules/units/server/public-presentation";
 import { findPlayerByGameId, getPlayerMemberships } from "@/modules/players/server/queries";
-import {
-  getAttendanceSummaryForPlayerUnit,
-  getCommanderStatistics,
-  getGeneralStatistics,
-  getRankerStatistics,
-} from "@/modules/statistics";
-import {
-  AttendanceSummaryPanel,
-  StatisticsDisclosure,
-  StatisticsEmptyState,
-  StatisticsErrorState,
-  resolveStatisticsWindow,
-} from "@/modules/statistics/presentation";
-import { PlayerStatisticsSections } from "@/modules/statistics/player-presentation";
-import { StatisticsWindowSelector } from "@/modules/statistics/window-selector";
 import { PlayerIdentity } from "@/modules/players/components/player-identity";
-import { playerIdentityLabel, robloxProfileUrl } from "@/modules/players/identity";
+import { playerIdentityLabel } from "@/modules/players/identity";
+import { getPublicEventPresentationBatch } from "@/modules/events/server/queries";
+import { getPlayerProfileStatistics } from "@/modules/statistics";
+import { StatisticsDisclosure, resolveStatisticsWindow } from "@/modules/statistics/presentation";
+import { PlayerStatisticsSections } from "@/modules/statistics/player-presentation";
+import { PlayerProfileFilters, type PlayerProfileTab } from "@/modules/statistics/player-profile-filters";
 
 export const dynamic = "force-dynamic";
 
-function queryValue(value: string | string[] | undefined) {
+const UNIT_TYPES = ["REGULAR", "RIFLES", "CAVALRY", "ARTILLERY"] as const satisfies readonly AuditUnitType[];
+const PROFILE_TABS = ["ranker", "commander", "general"] as const satisfies readonly PlayerProfileTab[];
+
+function queryValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function profileUnitType(value?: string | string[]): AuditUnitType | null {
+  const normalized = queryValue(value)?.trim().toUpperCase();
+  return UNIT_TYPES.find((unitType) => unitType === normalized) ?? null;
+}
+
+function profilePage(value?: string | string[]): number {
+  const parsed = Number.parseInt(queryValue(value) ?? "", 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function profileTab(value?: string | string[]): PlayerProfileTab {
+  const normalized = queryValue(value)?.trim().toLowerCase();
+  return PROFILE_TABS.find((tab) => tab === normalized) ?? "ranker";
 }
 
 export default async function PlayerPage({
@@ -35,52 +45,62 @@ export default async function PlayerPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ window?: string | string[]; notice?: string | string[]; error?: string | string[] }>;
+  searchParams: Promise<{
+    tab?: string | string[];
+    window?: string | string[];
+    type?: string | string[];
+    playerPage?: string | string[];
+    commanderPage?: string | string[];
+    generalPage?: string | string[];
+    notice?: string | string[];
+    error?: string | string[];
+  }>;
 }) {
   const { id: playerId } = await params;
-  const { window, notice, error } = await searchParams;
+  const query = await searchParams;
   const player = await findPlayerByGameId(playerId);
   if (!player) notFound();
+
   const identity = {
     playerId: player.playerId,
     robloxUsername: player.robloxUsername,
     robloxAvatarUrl: player.robloxAvatarUrl,
   };
-  const profileUrl = robloxProfileUrl(player.playerId);
-
-  const selectedWindow = resolveStatisticsWindow(window);
-  const [memberships, ranker, commander, general, userId] = await Promise.all([
+  const selectedTab = profileTab(query.tab);
+  const selectedWindow = resolveStatisticsWindow(query.window);
+  const selectedUnitType = profileUnitType(query.type);
+  const [
+    memberships,
+    statistics,
+    userId,
+  ] = await Promise.all([
     getPlayerMemberships(player.id),
-    getRankerStatistics(selectedWindow),
-    getCommanderStatistics(selectedWindow),
-    getGeneralStatistics(selectedWindow),
+    getPlayerProfileStatistics({
+      gamePlayerId: player.playerId,
+      window: selectedWindow,
+      unitType: selectedUnitType,
+      playerPage: profilePage(query.playerPage),
+      commanderPage: profilePage(query.commanderPage),
+      generalPage: profilePage(query.generalPage),
+    }),
     getAuthenticatedUserId(),
   ]);
   const awardData = await getPlayerAwardManagementData(userId, player.playerId);
 
-  let attendanceSummaries: Array<{
-    membership: (typeof memberships)[number];
-    summary: Awaited<ReturnType<typeof getAttendanceSummaryForPlayerUnit>>;
-  }> = [];
-  let attendanceError = false;
-  try {
-    attendanceSummaries = await Promise.all(
-      memberships.map(async (membership) => ({
-        membership,
-        summary: await getAttendanceSummaryForPlayerUnit({
-          gamePlayerId: player.playerId,
-          unitId: membership.unitId,
-          window: selectedWindow,
-        }),
-      })),
-    );
-  } catch {
-    attendanceError = true;
-  }
-
-  const rankerEntry = ranker.players.find((entry) => entry.gamePlayerId === player.playerId);
-  const commanderEntry = commander.players.find((entry) => entry.gamePlayerId === player.playerId);
-  const generalEntry = general.players.find((entry) => entry.gamePlayerId === player.playerId);
+  const allEventIds = [
+    ...statistics.playerHistory.rows.map(({ eventId }) => eventId),
+    ...statistics.commanderHistory.rows.map(({ eventId }) => eventId),
+    ...statistics.generalHistory.rows.map(({ eventId }) => eventId),
+  ];
+  const allUnitIds = [
+    ...statistics.playerHistory.rows.map(({ unitId }) => unitId),
+    ...statistics.commanderHistory.rows.map(({ unitId }) => unitId),
+    ...statistics.generalHistory.rows.map(({ unitId }) => unitId),
+  ];
+  const [events, units] = await Promise.all([
+    getPublicEventPresentationBatch(allEventIds),
+    getPublicUnitPresentationBatch(allUnitIds),
+  ]);
 
   return (
     <>
@@ -89,67 +109,39 @@ export default async function PlayerPage({
         { label: "Players", href: "/players" },
         { label: playerIdentityLabel(identity) },
       ]} />
-      <PageHeader
-        category="Player record"
-        title={playerIdentityLabel(identity)}
-        description={<>{/^\d+$/u.test(player.playerId) ? "Roblox ID" : "Synthetic demo ID"}: <span className="break-all font-mono text-xs">{player.playerId}</span></>}
-        actions={<StatisticsWindowSelector value={selectedWindow} />}
-      />
-      <div className="mt-4 flex flex-wrap items-center gap-4 border-b border-edge pb-5">
-        <PlayerIdentity identity={identity} size={96} showPlayerId />
-        {profileUrl ? (
-          <a
-            href={profileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-semibold text-gold underline decoration-edge-strong underline-offset-4 hover:text-gold-bright"
-          >
-            View Roblox Profile ↗
-          </a>
-        ) : null}
-      </div>
 
-      <PlayerStatisticsSections
-        ranker={rankerEntry}
-        commander={commanderEntry}
-        general={generalEntry}
-        window={selectedWindow}
-      />
+      <header className="mt-5 pb-6 text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">Player record</p>
+        <h1 className="sr-only">{playerIdentityLabel(identity)}</h1>
+        <div className="mt-4 flex justify-center">
+          <PlayerIdentity identity={identity} size={152} layout="stacked" />
+        </div>
+      </header>
 
       <PlayerAwardsSection
         playerId={player.playerId}
         awards={awardData.awards}
         available={awardData.available}
         manageableAwardIds={awardData.manageableAwardIds}
-        notice={queryValue(notice)}
-        error={queryValue(error)}
+        notice={queryValue(query.notice)}
+        error={queryValue(query.error)}
       />
 
-      <section className="mt-8" aria-labelledby="attendance-heading">
-        <SectionHeading id="attendance-heading" title="Attendance by Unit" detail={selectedWindow} />
-        {attendanceError ? (
-          <div className="mt-3"><StatisticsErrorState message="Attendance could not be loaded for this Player." /></div>
-        ) : attendanceSummaries.length === 0 ? (
-          <div className="mt-3"><StatisticsEmptyState title="No Unit attendance scope" description="This Player has no Unit membership history to use for attendance." /></div>
-        ) : (
-          <div className="divide-y divide-edge border-b border-edge">
-            {attendanceSummaries.map(({ membership, summary }) => (
-              <article key={membership.id} className="py-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-2">
-                  <Link href={`/units/${membership.unitId}`} className="text-sm font-bold text-foreground underline decoration-edge-strong underline-offset-4 hover:text-gold">
-                    {membership.unit.name}
-                  </Link>
-                  <details>
-                    <summary className="cursor-pointer list-none text-xs font-semibold text-gold outline-none hover:text-gold-bright focus-visible:ring-2 focus-visible:ring-gold [&::-webkit-details-marker]:hidden">
-                      {summary.obligations === 0 ? "No requirement" : summary.noResolvedData ? "Pending" : `${summary.percentage}% resolved`}
-                    </summary>
-                    <div className="pt-2"><AttendanceSummaryPanel summary={summary} /></div>
-                  </details>
-                </div>
-              </article>
-            ))}
+      <section className="mt-7" aria-labelledby="statistics-heading">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">Statistical dossier</p>
+            <h2 id="statistics-heading" className="mt-1 text-2xl font-extrabold tracking-tight text-white">
+              Performance
+            </h2>
           </div>
-        )}
+        </div>
+        <PlayerProfileFilters
+          tab={selectedTab}
+          window={selectedWindow}
+          unitType={selectedUnitType?.toLowerCase() ?? null}
+        />
+        <PlayerStatisticsSections tab={selectedTab} statistics={statistics} events={events} units={units} />
       </section>
 
       <section className="mt-8" aria-labelledby="membership-history-heading">

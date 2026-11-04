@@ -4,6 +4,11 @@ export { getRankerStatistics } from "./ranker";
 export { getCommanderStatistics } from "./commander";
 export { getGeneralStatistics } from "./general";
 export {
+  getPlayerProfileStatistics,
+  PLAYER_PROFILE_HISTORY_PAGE_SIZE,
+  type PlayerProfileStatistics,
+} from "./player-profile";
+export {
 	getAverageUnitPerformance,
 	getDirectUnitPerformance,
 	getDirectUnitPerformanceForAllUnits,

@@ -2,9 +2,9 @@
 module_id: players
 path: src/modules/players
 status: active
-version: 0.3
+version: 0.4
 last_reviewed: 2026-11-03
-updated_by_ticket: TKT-20261103-000051-001
+updated_by_ticket: TKT-20261103-000054-001
 ---
 
 # Players
@@ -78,7 +78,9 @@ all membership reads derive current membership from `endedAt = NULL`.
 `server/statistics-source.ts` accepts the stable game Player ID, resolves its
 internal Player key inside Players, and evaluates the matching UnitMembership
 period at canonical Event time without exposing the internal key to Statistics.
-`components/` contains roster presentation and forms. `validation.ts` contains
+`components/` contains roster presentation and forms. Stacked public-profile
+identity keeps the avatar primary and displays the cached username as subdued
+secondary text; inline identity remains unchanged. `validation.ts` contains
 input rules.
 
 ## Extension Points

@@ -14,17 +14,22 @@ export function PlayerIdentity({
   identity,
   size = 32,
   showPlayerId = false,
+  layout = "inline",
 }: {
   identity: PlayerIdentityPresentation;
   size?: number;
   showPlayerId?: boolean;
+  layout?: "inline" | "stacked";
 }) {
   const avatarUrl = safeRobloxAvatarUrl(identity.robloxAvatarUrl);
   const username = identity.robloxUsername?.trim() || null;
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
   return (
-    <span className="inline-flex min-w-0 items-center gap-2">
+    <span className={layout === "stacked"
+      ? "inline-flex min-w-0 flex-col items-center gap-3 text-center"
+      : "inline-flex min-w-0 items-center gap-2"}
+    >
       <span
         className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-edge-strong bg-surface-2 text-muted"
         style={{ width: size, height: size }}
@@ -56,10 +61,17 @@ export function PlayerIdentity({
           </svg>
         )}
       </span>
-      <span className="min-w-0">
-        <span className="block truncate">{playerIdentityLabel(identity)}</span>
+      <span className={layout === "stacked" ? "min-w-0 max-w-full" : "min-w-0"}>
+        <span className={layout === "stacked" ? "block break-words text-sm font-medium text-muted" : "block truncate"}>
+          {playerIdentityLabel(identity)}
+        </span>
         {showPlayerId && username ? (
-          <span className="block break-all font-mono text-[11px] text-muted">{playerIdDescription(identity.playerId)}</span>
+          <span className={layout === "stacked"
+            ? "mt-1 block break-all font-mono text-xs text-muted"
+            : "block break-all font-mono text-[11px] text-muted"}
+          >
+            {playerIdDescription(identity.playerId)}
+          </span>
         ) : null}
       </span>
     </span>

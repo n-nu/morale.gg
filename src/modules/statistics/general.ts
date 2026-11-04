@@ -2,7 +2,11 @@ import "server-only";
 
 import type { AuditUnitType } from "@prisma/client";
 
-import { getEffectiveFinalizedAuditObservations, type EffectiveFinalizedAuditObservation } from "@/modules/audits/server/statistics-source";
+import {
+  getEffectiveFinalizedAuditObservations,
+  type EffectiveFinalizedAuditObservation,
+  type EffectiveFinalizedAuditSource,
+} from "@/modules/audits/server/statistics-source";
 import { getCanonicalEventTimes } from "@/modules/events/server/statistics-source";
 
 import { deriveRatio, type RatioMetric } from "./ratios";
@@ -65,19 +69,15 @@ function addAudit(totals: CombatTotals, observation: EffectiveFinalizedAuditObse
   totals.playerCount += observation.playerResults.length;
 }
 
-export async function getGeneralStatistics(
-  window: StatisticsWindow = DEFAULT_STATISTICS_WINDOW,
-  now: Date = new Date(),
-): Promise<GeneralStatistics> {
-  const range = getStatisticsWindowRange(window, now);
-  const eventTimes = await getCanonicalEventTimes();
-  const selectedEvents = new Set(eventTimes.filter(({ occurredAt }) => isEventTimeInStatisticsWindow(occurredAt, range)).map(({ eventId }) => eventId));
-  const source = await getEffectiveFinalizedAuditObservations([...selectedEvents]);
+export function buildGeneralPlayerStatistics(
+  source: EffectiveFinalizedAuditSource,
+  selectedEvents?: ReadonlySet<string>,
+): GeneralPlayerStatistics[] {
   const observationsByAtomicId = new Map(source.observations.map((observation) => [observation.atomicEventUnitId, observation]));
   const players = new Map<string, { groups: number; events: Set<string>; atomicUnits: number; byType: Record<AuditUnitType, number>; combat: Map<AuditUnitType, { units: number; totals: CombatTotals }> }>();
 
   for (const group of source.commandGroupDescendants) {
-    if (!selectedEvents.has(group.eventId) || !group.commanderGamePlayerId || group.descendantAtomicEventUnitIds.length < 2) continue;
+    if ((selectedEvents && !selectedEvents.has(group.eventId)) || !group.commanderGamePlayerId || group.descendantAtomicEventUnitIds.length < 2) continue;
     const player = players.get(group.commanderGamePlayerId) ?? {
       groups: 0,
       events: new Set<string>(),
@@ -100,33 +100,44 @@ export async function getGeneralStatistics(
     players.set(group.commanderGamePlayerId, player);
   }
 
+  return [...players.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([gamePlayerId, player]) => ({
+    gamePlayerId,
+    qualifyingGroupsCommanded: player.groups,
+    distinctEventsCommanded: player.events.size,
+    totalAtomicUnitsCommanded: player.atomicUnits,
+    atomicUnitsByType: player.byType,
+    combatByType: UNIT_TYPES.filter((unitType) => player.combat.has(unitType)).map((unitType) => {
+      const combat = player.combat.get(unitType)!;
+      const totals = {
+        kills: combat.totals.kills,
+        deaths: combat.totals.deaths,
+        assists: combat.totals.assists,
+        tickets: combat.totals.tickets,
+        flagCaptures: combat.totals.flagCaptures,
+        flagLosses: combat.totals.flagLosses,
+        stars: combat.totals.stars,
+      };
+      return {
+        unitType,
+        atomicUnits: combat.units,
+        totals,
+        killDeathRatio: deriveRatio(totals.kills, totals.deaths, "K"),
+        averagesPerAtomicUnit: Object.fromEntries(Object.entries(combat.totals).map(([key, value]) => [key, value / combat.units])) as CombatTotals,
+      };
+    }),
+  }));
+}
+
+export async function getGeneralStatistics(
+  window: StatisticsWindow = DEFAULT_STATISTICS_WINDOW,
+  now: Date = new Date(),
+): Promise<GeneralStatistics> {
+  const range = getStatisticsWindowRange(window, now);
+  const eventTimes = await getCanonicalEventTimes();
+  const selectedEvents = new Set(eventTimes.filter(({ occurredAt }) => isEventTimeInStatisticsWindow(occurredAt, range)).map(({ eventId }) => eventId));
+  const source = await getEffectiveFinalizedAuditObservations([...selectedEvents]);
   return {
     window,
-    players: [...players.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([gamePlayerId, player]) => ({
-      gamePlayerId,
-      qualifyingGroupsCommanded: player.groups,
-      distinctEventsCommanded: player.events.size,
-      totalAtomicUnitsCommanded: player.atomicUnits,
-      atomicUnitsByType: player.byType,
-      combatByType: UNIT_TYPES.filter((unitType) => player.combat.has(unitType)).map((unitType) => {
-        const combat = player.combat.get(unitType)!;
-        const totals = {
-          kills: combat.totals.kills,
-          deaths: combat.totals.deaths,
-          assists: combat.totals.assists,
-          tickets: combat.totals.tickets,
-          flagCaptures: combat.totals.flagCaptures,
-          flagLosses: combat.totals.flagLosses,
-          stars: combat.totals.stars,
-        };
-        return {
-          unitType,
-          atomicUnits: combat.units,
-          totals,
-          killDeathRatio: deriveRatio(totals.kills, totals.deaths, "K"),
-          averagesPerAtomicUnit: Object.fromEntries(Object.entries(combat.totals).map(([key, value]) => [key, value / combat.units])) as CombatTotals,
-        };
-      }),
-    })),
+    players: buildGeneralPlayerStatistics(source, selectedEvents),
   };
 }

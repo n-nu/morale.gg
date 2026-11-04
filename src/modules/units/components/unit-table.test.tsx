@@ -4,9 +4,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   getUnitDescendantCounts,
+  getTopLevelUnitDirectoryEntries,
   type UnitDirectoryRow,
 } from "../public-presentation";
-import { buildHierarchy, getVisibleRows, UnitTable, type UnitRow } from "./unit-table";
+import { UnitTable } from "./unit-table";
 import { UnitOrganizationTree } from "./unit-organization-tree";
 
 const units: UnitDirectoryRow[] = [
@@ -81,83 +82,117 @@ test("Unit descendant counts include every nested Unit, not only direct children
   assert.equal(counts.get("other"), 0);
 });
 
-test("Unit hierarchy defaults to roots and expands descendants by depth", () => {
-  const hierarchyRows: UnitRow[] = units.map(({ id, name, imageRef, parent }) => ({
-    id,
-    name,
-    imageRef,
-    parent,
-  }));
-  const { roots, children } = buildHierarchy(hierarchyRows);
-  const collapsed = getVisibleRows(roots, children, new Set());
-  const rootExpanded = getVisibleRows(roots, children, new Set(["root"]));
-  const allExpanded = getVisibleRows(roots, children, new Set(children.keys()));
+test("top-level directory entries skip a single-child wrapper to the first branching level", () => {
+  const entries = getTopLevelUnitDirectoryEntries(units);
 
-  assert.deepEqual(collapsed.map(({ unit }) => unit.id), ["root", "other"]);
-  assert.deepEqual(rootExpanded.map(({ unit }) => unit.id), ["root", "child", "sibling", "other"]);
-  assert.deepEqual(allExpanded.map(({ unit }) => unit.id), ["root", "child", "leaf", "sibling", "other"]);
-  assert.deepEqual(allExpanded.map(({ depth }) => depth), [0, 1, 2, 1, 0]);
+  assert.deepEqual(entries.map(({ id }) => id), ["child", "sibling", "other"]);
 });
 
-test("Unit directory cards keep identity minimal and reveal roster details without audit metrics", () => {
+test("Units directory renders visual cards for roots without descendant trees", () => {
   const html = renderToStaticMarkup(<UnitTable units={units} />);
 
-  assert.match(html, /aria-label="Expand all units"/);
-  assert.match(html, /aria-label="Collapse all units"/);
-  assert.match(html, /Commander One/);
+  assert.match(html, /aria-label="Top-level Unit directory"/);
+  assert.match(html, /href="\/units\/child"/);
+  assert.match(html, /href="\/units\/sibling"/);
+  assert.match(html, /href="\/units\/other"/);
+  assert.doesNotMatch(html, /href="\/units\/root"/);
+  assert.doesNotMatch(html, /href="\/units\/leaf"/);
   assert.match(html, /unit-directory-reveal/);
   assert.match(html, /Members/);
+  assert.match(html, /Subunits/);
   assert.match(html, /Descendants/);
-  assert.match(html, />3</);
+  assert.doesNotMatch(html, /Expand all units|Collapse all units/);
   assert.doesNotMatch(html, /audits|K\/D|Tickets|Flag captures/i);
-  assert.match(html, /A public root organization\./);
-  assert.match(html, /href="\/units\/root"/);
-  assert.match(html, /Showing 2 of 5 units/);
 });
 
 test("Unit cards render graceful missing-image, commander, and roster states", () => {
-  const html = renderToStaticMarkup(<UnitTable units={units} />);
-
-  assert.match(html, /unit-directory-mark/);
-  assert.doesNotMatch(html, /No image/);
-
   const leafHtml = renderToStaticMarkup(<UnitTable units={[units[4]]} />);
+
+  assert.match(leafHtml, /unit-directory-mark/);
+  assert.doesNotMatch(leafHtml, /No image/);
   assert.match(leafHtml, /Unassigned/);
   assert.match(leafHtml, /Members/);
   assert.match(leafHtml, /—/);
   assert.match(leafHtml, /Descendants/);
 });
 
-test("Unit detail tree renders current identity and linked descendants with visible branches", () => {
+test("Unit detail tree roots at the selected Unit and expands only its direct children", () => {
   const html = renderToStaticMarkup(
     <UnitOrganizationTree selected={units[0]} units={units} />,
   );
 
-  assert.match(html, /Organization/);
+  assert.match(html, /aria-label="Organization family tree"/);
   assert.match(html, /aria-current="page"/);
+  assert.match(html, /data-root="true"/);
+  assert.match(html, /Current Unit/);
   assert.match(html, /href="\/units\/root"/);
   assert.match(html, /href="\/units\/child"/);
   assert.match(html, /href="\/units\/sibling"/);
-  assert.match(html, /href="\/units\/leaf"/);
-  assert.match(html, /unit-org-tree-canvas/);
-  assert.match(html, /unit-org-connectors/);
+  assert.doesNotMatch(html, /href="\/units\/other"/);
+  assert.doesNotMatch(html, /href="\/units\/leaf"/);
+  assert.match(html, /aria-expanded="true"/);
+  assert.match(html, /aria-expanded="false"/);
+  assert.match(html, /unit-org-children/);
   assert.match(html, /Commander Two/);
-  assert.match(html, /unit-org-reveal/);
-  assert.match(html, /42/);
-  assert.match(html, /Descendants/);
-  assert.doesNotMatch(html, /audits|K\/D/i);
+  assert.match(html, /42 members/);
+  assert.match(html, /3 descendants/);
+  assert.doesNotMatch(html, /unit-org-tree-canvas|unit-org-connectors|audits|K\/D/i);
 });
 
-test("organization tree starts at the hierarchy root and highlights a selected descendant", () => {
+test("focusing a descendant removes its ancestors and unrelated branches from the tree", () => {
   const html = renderToStaticMarkup(
     <UnitOrganizationTree selected={units[1]} units={units} />,
   );
 
-  assert.match(html, /aria-label="Organization family tree"/);
-  assert.match(html, /role="tree"/);
-  assert.match(html, /aria-current="page"/);
-  assert.match(html, /href="\/units\/root"/);
-  assert.match(html, /href="\/units\/sibling"/);
+  assert.match(html, /aria-label="Child hierarchy"/);
+  assert.match(html, /href="\/units\/child"/);
   assert.match(html, /href="\/units\/leaf"/);
+  assert.doesNotMatch(html, /href="\/units\/root"/);
+  assert.doesNotMatch(html, /href="\/units\/sibling"/);
   assert.doesNotMatch(html, /href="\/units\/other"/);
+});
+
+test("wide sibling groups render as a wrapped group instead of an oversized canvas", () => {
+  const wideRoot = { ...units[0], descendantCount: 10 };
+  const siblings = Array.from({ length: 10 }, (_, index): UnitDirectoryRow => ({
+    ...units[1],
+    id: `child-${index}`,
+    name: `Child ${index}`,
+    parent: { id: wideRoot.id, name: wideRoot.name },
+    descendantCount: 0,
+  }));
+  const html = renderToStaticMarkup(
+    <UnitOrganizationTree selected={wideRoot} units={[wideRoot, ...siblings]} />,
+  );
+
+  assert.equal((html.match(/class="unit-org-node-link"/g) ?? []).length, 11);
+  assert.match(html, /unit-org-children/);
+  assert.doesNotMatch(html, /width:26646|unit-org-tree-canvas/);
+});
+
+test("very large direct sibling groups start collapsed but remain expandable", () => {
+  const wideRoot = { ...units[0], descendantCount: 13 };
+  const siblings = Array.from({ length: 13 }, (_, index): UnitDirectoryRow => ({
+    ...units[1],
+    id: `child-${index}`,
+    name: `Child ${index}`,
+    parent: { id: wideRoot.id, name: wideRoot.name },
+    descendantCount: 0,
+  }));
+  const html = renderToStaticMarkup(
+    <UnitOrganizationTree selected={wideRoot} units={[wideRoot, ...siblings]} />,
+  );
+
+  assert.equal((html.match(/class="unit-org-node-link"/g) ?? []).length, 1);
+  assert.match(html, /aria-expanded="false"/);
+  assert.match(html, /Show 13 subunits/);
+});
+
+test("leaf Units have no meaningless expansion control", () => {
+  const html = renderToStaticMarkup(
+    <UnitOrganizationTree selected={units[3]} units={[units[3]]} />,
+  );
+
+  assert.match(html, /Leaf/);
+  assert.doesNotMatch(html, /unit-org-expand/);
 });

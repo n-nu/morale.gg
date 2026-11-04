@@ -2,9 +2,9 @@
 module_id: events
 path: src/modules/events
 status: active
-version: 0.4
+version: 0.5
 last_reviewed: 2026-11-03
-updated_by_ticket: TKT-20261103-000051-001
+updated_by_ticket: TKT-20261103-000053-001
 ---
 
 # Events
@@ -77,6 +77,9 @@ Audit work builds on approved Event participation through the
   redirect and is not a separate advertised feature.
 - Public Event detail exposes APPROVED participating Units only; pending and
   denied participation stays management-only.
+- `getPublicEventPresentationBatch` returns public Event name, type, scheduled
+  time, map, and opponent for multiple IDs in request order, without manager
+  data or per-Event reads.
 - `getCanonicalEventTimes` provides Statistics with Events-owned canonical
   occurrence timestamps without selecting a Statistics window.
 - Events consumes the server-only
@@ -142,6 +145,8 @@ Event.
 ## Internal Structure
 
 - `server/queries.ts` — server-only read/query functions.
+- `getPublicEventPresentationBatch` is the batched public Event presentation
+  read used by profile rows; it does not calculate Statistics.
 - `server/statistics-source.ts` — canonical Event identity and normalized
   occurrence-time read for Statistics.
 - `server/create-event.ts` — server-only domain creation path (verification
@@ -191,6 +196,7 @@ Event.
 - `events-audits-event-battlefield-management` (stable).
 - `audits-events-public-battlefield-structure` (stable consumer-facing read).
 - `statistics-events-event-battle-reader` (stable consumer-facing read).
+- `events-public-presentation-batch` (stable public profile presentation read).
 
 ## Related ADRs
 

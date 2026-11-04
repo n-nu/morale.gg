@@ -1,5 +1,11 @@
 # Events — Changelog
 
+## 0.7 — 2026-11-03 — TKT-20261103-000053-001
+
+- Added a public batch presentation read for Event name, type, time, map, and
+  opponent; missing IDs are omitted and no manager data is exposed.
+- Player history rows can present Event identity without per-row queries.
+
 ## 0.6 — 2026-11-03 — TKT-20261103-000051-001
 
 - Event Battle Player and commander references now render cached Roblox

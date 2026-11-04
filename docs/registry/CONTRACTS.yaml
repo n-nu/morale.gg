@@ -105,3 +105,24 @@ contracts:
     status: stable
     version: 0.3
     updated_by_ticket: TKT-20261103-000051-001
+  - contract_id: statistics-player-profile-performance
+    path: docs/contracts/statistics-player-profile-performance.md
+    producer: statistics
+    consumer: public Player profile
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20261103-000053-001
+  - contract_id: events-public-presentation-batch
+    path: docs/contracts/events-public-presentation-batch.md
+    producer: events
+    consumer: public Player profile
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20261103-000053-001
+  - contract_id: units-public-presentation-batch
+    path: docs/contracts/units-public-presentation-batch.md
+    producer: units
+    consumer: public Player profile
+    status: stable
+    version: 0.1
+    updated_by_ticket: TKT-20261103-000053-001

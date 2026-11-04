@@ -22,6 +22,49 @@ export async function getEventById(eventId: string): Promise<Event | null> {
   });
 }
 
+export type PublicEventPresentation = {
+  eventId: string;
+  name: string;
+  eventType: string;
+  scheduledAt: Date;
+  map: string | null;
+  opponent: string | null;
+};
+
+export async function getPublicEventPresentationBatch(
+  eventIds: readonly string[],
+): Promise<PublicEventPresentation[]> {
+  const selectedIds = [...new Set(eventIds.map((eventId) => eventId.trim()).filter(Boolean))];
+  if (selectedIds.length === 0) return [];
+
+  const events = await prisma.event.findMany({
+    where: { id: { in: selectedIds } },
+    select: {
+      id: true,
+      name: true,
+      eventType: true,
+      scheduledAt: true,
+      map: true,
+      opponent: true,
+    },
+  });
+  const eventsById = new Map(events.map((event) => [event.id, event]));
+
+  return selectedIds.flatMap((eventId) => {
+    const event = eventsById.get(eventId);
+    return event
+      ? [{
+          eventId: event.id,
+          name: event.name,
+          eventType: event.eventType,
+          scheduledAt: new Date(event.scheduledAt.getTime()),
+          map: event.map,
+          opponent: event.opponent,
+        }]
+      : [];
+  });
+}
+
 export type ApprovedEventUnit = {
   unitId: string;
   unitName: string;

@@ -2,9 +2,9 @@
 module_id: statistics
 path: src/modules/statistics
 status: active
-version: 0.3
+version: 0.5
 last_reviewed: 2026-11-03
-updated_by_ticket: TKT-20261103-000051-001
+updated_by_ticket: TKT-20261103-000054-001
 ---
 
 # Statistics
@@ -42,6 +42,11 @@ metadata, and never include historical Rank-at-Event.
 Event Battle also returns finalized side summaries and per-Company average
 Kills/Deaths/Assists per finalized Player appearance, as defined by its public
 read contract.
+`getPlayerProfileStatistics` returns one Player's timeframe-filtered,
+type-partitioned Player/Commander summaries and paginated Player/Commander/
+General histories from one selected Event source read. Summaries cover the full
+selected window regardless of the requested detail page; General preserves the
+full Unit-type distribution.
 
 ## Inputs
 Read-only source contracts from Audits, Events, Players, and Units; a requested
@@ -58,6 +63,8 @@ obligation/status summaries. Auth.js submitter identity is not an output.
 - `events-statistics-event-time`
 - `players-statistics-membership-history`
 - `units-statistics-hierarchy-read`
+- `events-public-presentation-batch` (profile consumer presentation)
+- `units-public-presentation-batch` (profile consumer presentation)
 - `statistics-events-event-battle-reader`
 - server-side PostgreSQL aggregation through approved application boundaries
 
@@ -91,6 +98,11 @@ shared two-decimal ratio display that keeps the zero-denominator form.
 `event-battle.ts` aggregates finalized Company values into side summaries and
 derives per-Company K/D/A averages using finalized Player appearance counts;
 side K/D remains pooled Kills divided by pooled Deaths.
+`player-profile.ts` reuses shared Ranker, Commander, and General aggregators
+for one profile response, derives deterministic newest-first detail rows, and
+keeps full-window summaries independent of the per-role 50-row page.
+The public Player presentation selects one Ranker, Commander, or General view
+at a time; each view contains its applicable timeframe and Unit-type filters.
 
 ## Extension Points
 Future Audit supersession remains Audits-owned and may change the producer's
@@ -112,7 +124,14 @@ Organizational or Average Unit performance.
 - `players-statistics-membership-history`
 - `units-statistics-hierarchy-read`
 - `statistics-events-event-battle-reader`
+- `statistics-player-profile-performance`
+- `events-public-presentation-batch`
+- `units-public-presentation-batch`
 - `players-player-identity-presentation`
+
+## Related BCRs
+
+- BCR-20261103-012 (approved; public Player profile read and batched presentation reads).
 
 ## Related ADRs
 - ADR-20260927-007 (accepted)

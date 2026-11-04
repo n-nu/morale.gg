@@ -3,6 +3,24 @@
 ## 2026-11-03
 
 - Date: 2026-11-03
+- Ticket ID: TKT-20261103-000054-001
+- Change: Reorganized public Player profiles around selectable Ranker, Commander, and General tabs with per-view filters. Moved Player Awards beneath identity, reduced prominence of secondary identity metadata, removed Current Unit and Attendance by Unit, and retained membership history.
+- Reason: Let visitors focus on one performance role at a time and prioritize the Player's awards and identity.
+- Affected contracts/modules: Statistics profile presentation, Players stacked identity presentation, and public Player route. No contract or schema change.
+- Commit reference: N/A
+
+## 2026-11-03
+
+- Date: 2026-11-03
+- Ticket ID: TKT-20261103-000053-001
+- Change: Reworked public Player profiles into statistical records anchored by cached Roblox identity. Added Statistics-owned timeframe/type-filtered Player, Commander, and General summaries with paginated newest-first Event histories, plus batched public Event and Unit presentation reads.
+- Reason: Make the Player record easier to scan while preserving canonical Statistics ownership, identity boundaries, and source semantics.
+- Affected contracts/modules: Statistics Player profile, Events/Units batch presentation, Players profile presentation. No schema or migration change.
+- Commit reference: N/A
+
+## 2026-11-03
+
+- Date: 2026-11-03
 - Ticket ID: TKT-20261103-000052-001
 - Change: Replaced the demo's placeholder organization with 42 source-dated Roblox Units and 10 verified public Roblox profiles. Kept all memberships, Events, participation, Audits, results, and statistics synthetic and labeled Event activity accordingly. Added a per-run `--confirm-demo-reset` requirement while retaining the local database and RootUnit safeguards; updated the demo guides and source ledger.
 - Follow-up: Expanded the source fixture to 178 distinct Units after reviewing affiliate and subgroup descriptions, and added three synthetic roster-only Players to every source Unit and the preserved RootUnit. Roster-only Players are excluded from Event-specific assignments; verified public profiles remain excluded from fabricated activity.
