@@ -180,6 +180,12 @@ test("public Award sections render empty states, accessible descriptions, and sc
   assert.match(playerHtml, /aria-expanded="false"/);
   assert.match(playerHtml, /aria-hidden="true"/);
   assert.match(playerHtml, /src="\/awards\/valor.png"/);
+  assert.match(playerHtml, /class="player-award-medal__depth/);
+  assert.equal((playerHtml.match(/player-award-medal__depth player-award-medal__depth--/g) ?? []).length, 4);
+  assert.match(playerHtml, /class="player-award-medal__face/);
+  assert.match(playerHtml, /data-dimensional="false"/);
+  assert.match(playerHtml, /data-hovered="false"/);
+  assert.match(playerHtml, /data-focused="false"/);
   assert.match(playerHtml, /h-14 w-10 shrink-0/);
   assert.match(playerHtml, /data-\[open=true\]:scale-200/);
   assert.match(playerHtml, /absolute left-1\/2 top-18/);

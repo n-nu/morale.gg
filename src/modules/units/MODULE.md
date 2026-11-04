@@ -103,7 +103,24 @@ Player Awards appear as compact, square, transparent image-only medals at rest,
 slightly overlapped to keep the gallery tight. Hover, focus, or activation
 smoothly enlarges and spaces the active medal while revealing the Award title
 and description; the transitions last 500ms and reduced-motion preferences are
-respected. Missing images use a bordered placeholder.
+respected. Fine-pointer hover and keyboard focus progressively reveal a shallow
+alpha-preserving image extrusion, restrained perspective, and subtle shadow;
+image-backed medals slowly angle side to side only while hovered. Mouse clicks
+do not pin the disclosure open, and mouse focus does not count as hover.
+Keyboard focus and touch activation still expose details without ambient motion.
+Pointer movement does
+not steer the medal unless the primary mouse or pen is held down: dragging
+tilts it up to 15 degrees horizontally and 12 degrees vertically, then release
+or cancellation eases it to center before idle motion resumes. Dragging does not
+toggle details or start the click animation; touch keeps normal scrolling and
+tap behavior. Activation while hovered plays a brief tilt that
+returns to center, then ambient motion resumes. Away from the
+pointer the medal is still and centered, except during an active held drag.
+The animation stops while the
+control is pressed and is disabled for reduced-motion preferences. The front
+artwork remains an unfiltered, full-opacity layer; four darkened silhouette
+layers provide shallow depth behind it. Missing images use a bordered
+placeholder.
 Medal slots keep a fixed size; enlargement and details overlay the page while
 neighbors move horizontally, avoiding vertical layout shifts. Player Awards
 have no divider above the gallery.

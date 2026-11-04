@@ -64,3 +64,143 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+.player-award-medal__art {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.player-award-medal__button[data-hovered="true"] .player-award-medal__art {
+  animation: player-award-medal-drift 8s ease-in-out infinite alternate;
+}
+
+.player-award-medal__button[data-pressed="true"] .player-award-medal__art {
+  animation-play-state: paused;
+}
+
+.player-award-medal__button[data-clicking="true"] .player-award-medal__art {
+  animation: player-award-medal-click 900ms ease-in-out both;
+}
+
+.player-award-medal__button[data-dragging="true"] .player-award-medal__art {
+  animation: none;
+  transform: rotateX(var(--medal-drag-x)) rotateY(var(--medal-drag-y));
+}
+
+.player-award-medal__button[data-settling="true"] .player-award-medal__art {
+  animation: player-award-medal-return 400ms ease-out both;
+}
+
+.player-award-medal__button[data-hovered="false"]:not([data-dragging="true"])
+  .player-award-medal__art {
+  animation: none;
+  transform: none;
+}
+
+@keyframes player-award-medal-return {
+  from {
+    transform: rotateX(var(--medal-drag-x)) rotateY(var(--medal-drag-y));
+  }
+
+  to {
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+}
+
+@keyframes player-award-medal-drift {
+  0% {
+    transform: rotateY(0deg);
+  }
+
+  50% {
+    transform: rotateY(-5deg);
+  }
+
+  100% {
+    transform: rotateY(5deg);
+  }
+}
+
+@keyframes player-award-medal-click {
+  0%,
+  100% {
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+
+  35% {
+    transform: rotateX(-9deg) rotateY(15deg);
+  }
+
+  65% {
+    transform: rotateX(5deg) rotateY(-8deg);
+  }
+}
+
+.player-award-medal__depth {
+  z-index: 1;
+  opacity: 0;
+  backface-visibility: hidden;
+  transition: opacity 500ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.player-award-medal__depth--1 {
+  filter: brightness(0.72);
+  transform: translateZ(-1.5px);
+}
+
+.player-award-medal__depth--2 {
+  filter: brightness(0.61);
+  transform: translateZ(-3px);
+}
+
+.player-award-medal__depth--3 {
+  filter: brightness(0.5);
+  transform: translateZ(-4.5px);
+}
+
+.player-award-medal__depth--4 {
+  filter: brightness(0.38) drop-shadow(0px 1px 2px rgb(0 0 0 / 38%));
+  transform: translateZ(-6px);
+}
+
+.player-award-medal__face {
+  z-index: 5;
+  opacity: 1;
+  filter: none;
+  backface-visibility: hidden;
+}
+
+@supports (transform-style: preserve-3d) {
+  .player-award-medal__button {
+    perspective: 560px;
+    transform-style: preserve-3d;
+  }
+
+  .player-award-medal__button[data-dimensional="true"] .player-award-medal__depth {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-award-medal__button .player-award-medal__art {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .player-award-medal__button .player-award-medal__depth,
+  .player-award-medal__button {
+    transition: none;
+  }
+
+  .player-award-medal__button[data-dimensional="true"]
+    .player-award-medal__depth {
+    opacity: 0;
+  }
+
+  .player-award-medal__button[data-focused="true"] .player-award-medal__art {
+    transform: none;
+  }
+}
