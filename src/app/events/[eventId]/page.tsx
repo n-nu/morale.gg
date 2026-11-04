@@ -5,7 +5,11 @@ import { notFound } from "next/navigation";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { bannerArtFor } from "@/modules/events/map-art";
-import { eventTypeStyle } from "@/modules/events/presentation";
+import {
+  deriveEventSchedule,
+  eventTypeStyle,
+  isBattleEventType,
+} from "@/modules/events/presentation";
 import { canManageEvent } from "@/modules/events/server/authorization";
 import { getEventResultState } from "@/modules/events/server/results";
 import { getEventBattleStatistics } from "@/modules/statistics/event-battle";
@@ -59,10 +63,15 @@ export default async function EventDetailPage({
     notFound();
   }
 
+  const isBattleEvent = isBattleEventType(event.eventType);
   const [approvedUnits, battleStatistics, resultState, viewerUserId] = await Promise.all([
     listApprovedEventUnits(event.id),
-    getEventBattleStatistics(event.id),
-    getEventResultState(event.id),
+    isBattleEvent
+      ? getEventBattleStatistics(event.id)
+      : Promise.resolve(null),
+    isBattleEvent
+      ? getEventResultState(event.id)
+      : Promise.resolve(null),
     getAuthenticatedUserId(),
   ]);
   const unitImageRefs = Object.fromEntries(
@@ -73,6 +82,11 @@ export default async function EventDetailPage({
 
   const type = eventTypeStyle(event.eventType);
   const art = bannerArtFor(event.map, event.name);
+  const { rallyAt, expectedEndAt } = deriveEventSchedule(
+    event.scheduledAt,
+    event.rallyMinutesBeforeStart,
+    event.durationMinutes,
+  );
 
   return (
     <div className="page-shell flex-1 pb-16">
@@ -120,12 +134,87 @@ export default async function EventDetailPage({
       <div className="mt-7 flex flex-col gap-7 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-            <MetaCard label="Date & time" sub={<TimezoneNote />}>
-              <LocalDateTime iso={event.scheduledAt.toISOString()} mode="full" />
-            </MetaCard>
-            {event.opponent ? (
-              <MetaCard label="Opponent">{event.opponent}</MetaCard>
+            <section
+              aria-label="Event schedule"
+              className="flex flex-col gap-4 rounded-[10px] border border-edge bg-surface px-4 py-3.5 sm:col-span-2 lg:col-span-3"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-[11px] font-bold uppercase tracking-[0.06em] text-faint">
+                    Event schedule
+                  </h2>
+                  <div className="mt-1">
+                    <TimezoneNote />
+                  </div>
+                </div>
+                <div className="flex min-w-36 flex-col gap-1 border-t border-edge pt-3 sm:min-w-40 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-faint">
+                    Planned duration
+                  </div>
+                  <div className="text-base font-bold text-white">
+                    {event.durationMinutes === null
+                      ? "Not set"
+                      : `${event.durationMinutes} minutes`}
+                  </div>
+                  <div className="text-xs text-muted">Expected event length</div>
+                </div>
+              </div>
+              <ol className="grid gap-3 sm:grid-cols-3">
+                <li className="min-w-0 border-l-2 border-gold pl-3 sm:border-l-0 sm:border-t-2 sm:pl-0 sm:pt-3">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-faint">
+                    Rally
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted">
+                    {event.rallyMinutesBeforeStart === 0
+                      ? "At event start"
+                      : `${event.rallyMinutesBeforeStart} minutes before start`}
+                  </div>
+                  <div className="mt-1 text-sm font-bold text-white">
+                    <LocalDateTime iso={rallyAt.toISOString()} mode="full" />
+                  </div>
+                </li>
+                <li className="min-w-0 border-l-2 border-edge-strong pl-3 sm:border-l-0 sm:border-t-2 sm:pl-0 sm:pt-3">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-faint">
+                    Event starts
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted">Scheduled start</div>
+                  <div className="mt-1 text-sm font-bold text-white">
+                    <LocalDateTime iso={event.scheduledAt.toISOString()} mode="full" />
+                  </div>
+                </li>
+                <li className="min-w-0 border-l-2 border-edge-strong pl-3 sm:border-l-0 sm:border-t-2 sm:pl-0 sm:pt-3">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-faint">
+                    Expected end
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted">
+                    {expectedEndAt ? "Planned finish" : "Duration not set"}
+                  </div>
+                  <div className="mt-1 text-sm font-bold text-white">
+                    {expectedEndAt ? (
+                      <LocalDateTime iso={expectedEndAt.toISOString()} mode="full" />
+                    ) : (
+                      "Not set"
+                    )}
+                  </div>
+                </li>
+              </ol>
+            </section>
+            {event.attackerName ? (
+              <MetaCard label="Attackers">{event.attackerName}</MetaCard>
             ) : null}
+            {event.defenderName ? (
+              <MetaCard label="Defenders">{event.defenderName}</MetaCard>
+            ) : null}
+            <MetaCard
+              label="Participation"
+              sub={
+                event.invitePolicy === "OPEN"
+                  ? "Eligible Units may request participation."
+                  : "Invitation required; new requests are blocked."
+              }
+            >
+              {event.invitePolicy === "OPEN" ? "Open Invite" : "Closed Invite"}
+            </MetaCard>
             {event.map ? <MetaCard label="Map">{event.map}</MetaCard> : null}
           </div>
 
@@ -140,19 +229,23 @@ export default async function EventDetailPage({
             </section>
           ) : null}
 
-          <PublicEventStatistics
-            sideSummaries={battleStatistics?.sideSummaries ?? { ATTACKER: null, DEFENDER: null }}
-            groups={battleStatistics?.groups ?? []}
-            ungroupedAtomicUnits={battleStatistics?.ungroupedAtomicUnits ?? []}
-          />
-          <PublicBattleStructure
-            result={resultState.effective?.value ?? null}
-            defenderFlagRef={event.defenderFlagRef}
-            attackerFlagRef={event.attackerFlagRef}
-            groups={battleStatistics?.groups ?? []}
-            ungroupedAtomicUnits={battleStatistics?.ungroupedAtomicUnits ?? []}
-            unitImageRefs={unitImageRefs}
-          />
+          {isBattleEvent ? (
+            <>
+              <PublicEventStatistics
+                sideSummaries={battleStatistics?.sideSummaries ?? { ATTACKER: null, DEFENDER: null }}
+                groups={battleStatistics?.groups ?? []}
+                ungroupedAtomicUnits={battleStatistics?.ungroupedAtomicUnits ?? []}
+              />
+              <PublicBattleStructure
+                result={resultState?.effective?.value ?? null}
+                defenderFlagRef={event.defenderFlagRef}
+                attackerFlagRef={event.attackerFlagRef}
+                groups={battleStatistics?.groups ?? []}
+                ungroupedAtomicUnits={battleStatistics?.ungroupedAtomicUnits ?? []}
+                unitImageRefs={unitImageRefs}
+              />
+            </>
+          ) : null}
         </div>
 
         <aside className="flex w-full flex-col gap-4 lg:w-[330px] lg:flex-shrink-0">
@@ -162,8 +255,9 @@ export default async function EventDetailPage({
             </div>
             {approvedUnits.length === 0 ? (
               <div className="rounded-lg border border-dashed border-[#3e434b] bg-background px-4 py-4 text-[13px] leading-relaxed text-muted">
-                No units are confirmed yet. Unit managers can request
-                participation, and the event organizers approve each request.
+                {event.invitePolicy === "OPEN"
+                  ? "No units are confirmed yet. Eligible Unit managers may request participation for Event manager review."
+                  : "No units are confirmed yet. Invitation is required; new participation requests are blocked."}
               </div>
             ) : (
               <ul className="flex flex-col gap-2">
@@ -183,7 +277,9 @@ export default async function EventDetailPage({
               </ul>
             )}
             <p className="text-xs leading-relaxed text-faint">
-              Participation requests are reviewed by the event organizers.
+              {event.invitePolicy === "OPEN"
+                ? "Participation requests are reviewed by the Event organizers."
+                : "Only Event management may add participating Units."}
             </p>
           </div>
           {viewerCanManage ? (

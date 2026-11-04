@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { getAuthenticatedUserId } from "@/lib/website-admin";
 import { canCreateEvent } from "@/modules/units/server/authorization";
-import { eventTypeStyle } from "@/modules/events/presentation";
+import {
+  eventTypeStyle,
+  formatEventScheduleSummary,
+} from "@/modules/events/presentation";
 import { listManageableEvents } from "@/modules/events/server/management";
 
 import { LocalDateTime, TimezoneNote } from "../local-time";
@@ -104,6 +107,12 @@ export default async function ManageEventsPage() {
                     <div className="text-[13px] text-muted">
                       <LocalDateTime iso={event.scheduledAt.toISOString()} />
                     </div>
+                    <div className="text-xs text-faint">
+                      {formatEventScheduleSummary(
+                        event.rallyMinutesBeforeStart,
+                        event.durationMinutes,
+                      )}
+                    </div>
                   </div>
                   <span
                     className={`rounded border px-2 py-1 text-[11px] font-bold uppercase tracking-[0.06em] ${type.badgeClass}`}
@@ -112,6 +121,15 @@ export default async function ManageEventsPage() {
                   </span>
                   <span className="rounded border border-edge-strong px-2 py-1 text-[11px] font-bold text-muted">
                     {isOwner ? "Owner" : "Manager"}
+                  </span>
+                  <span
+                    className={`rounded border px-2 py-1 text-[11px] font-bold uppercase tracking-[0.05em] ${
+                      event.invitePolicy === "OPEN"
+                        ? "border-type-green text-green-bright"
+                        : "border-gold text-gold"
+                    }`}
+                  >
+                    {event.invitePolicy === "OPEN" ? "Open Invite" : "Closed Invite"}
                   </span>
                   {pendingRequestCount > 0 ? (
                     <span className="rounded border border-gold bg-[#1a1810] px-2 py-1 text-[11px] font-bold text-gold">

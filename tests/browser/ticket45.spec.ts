@@ -128,9 +128,21 @@ test.describe("Ticket 45 Event battle-structure manager presentation", () => {
         const atomicParentDropTarget = structure.locator(`[data-destination="group:${atomicParentGroupId}"]`);
         const atomicParentGroup = structure.locator(`[data-node-type="group"][data-node-id="${atomicParentGroupId}"]`);
 
-        await atomicNode.dragTo(attackersRoot);
+        await atomicNode.dragTo(attackersRoot, { sourcePosition: { x: 80, y: 18 } });
         await expect(attackers.locator(`[data-node-id="${atomicId}"]`)).toHaveCount(1);
-        await structure.locator(`[data-node-type="atomic"][data-node-id="${atomicId}"]`).dragTo(atomicParentDropTarget, { targetPosition: { x: 80, y: 18 } });
+        const relocatedAtomic = attackers.locator(`[data-node-type="atomic"][data-node-id="${atomicId}"]`);
+        await expect(relocatedAtomic).toHaveCount(1);
+        await page.evaluate(({ sourceId, targetId }) => {
+          const source = document.querySelector<HTMLElement>(`[data-node-id="${sourceId}"]`)!;
+          const target = document.querySelector<HTMLElement>(`[data-destination="group:${targetId}"]`)!;
+          const sourceTop = source.getBoundingClientRect().top + window.scrollY;
+          const targetTop = target.getBoundingClientRect().top + window.scrollY;
+          const scrollTop = Math.max(0, (sourceTop + targetTop) / 2 - window.innerHeight / 2);
+          window.scrollTo(0, scrollTop);
+        }, { sourceId: atomicId, targetId: atomicParentGroupId });
+        await expect(relocatedAtomic).toBeInViewport();
+        await expect(atomicParentDropTarget).toBeInViewport();
+        await relocatedAtomic.dragTo(atomicParentDropTarget, { sourcePosition: { x: 80, y: 18 }, targetPosition: { x: 80, y: 18 } });
         await expect(atomicParentGroup.locator(`[data-node-id="${atomicId}"]`)).toHaveCount(1);
 
         await groupNode.dragTo(attackersRoot, { sourcePosition: { x: 80, y: 18 } });

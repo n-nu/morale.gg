@@ -19,19 +19,24 @@ const originalDelegates = {
   grantFindMany: prisma.permissionGrant.findMany,
 };
 
+let participationCreateCalls = 0;
+
 function installUniquePermissionScenario({
   granted,
   eventId,
   unitId,
   eventInFuture = true,
+  invitePolicy = "OPEN",
   existingParticipation = null,
 }: {
   granted: boolean;
   eventId: string;
   unitId: string;
   eventInFuture?: boolean;
+  invitePolicy?: "OPEN" | "CLOSED";
   existingParticipation?: null | { id: string; eventId: string; unitId: string; status: "REQUESTED" | "APPROVED" | "DENIED" };
 }) {
+  participationCreateCalls = 0;
   const rootId = "root-1";
   const userId = "user-1";
 
@@ -39,7 +44,11 @@ function installUniquePermissionScenario({
     configurable: true,
     value: async ({ where }: { where: { id: string } }) =>
       where.id === eventId
-        ? { id: eventId, scheduledAt: new Date(eventInFuture ? Date.now() + 60_000 : Date.now() - 60_000) }
+        ? {
+            id: eventId,
+            scheduledAt: new Date(eventInFuture ? Date.now() + 60_000 : Date.now() - 60_000),
+            invitePolicy,
+          }
         : null,
   });
   Object.defineProperty(prisma.unit, "findUnique", {
@@ -53,12 +62,15 @@ function installUniquePermissionScenario({
   });
   Object.defineProperty(prisma.eventParticipation, "create", {
     configurable: true,
-    value: async ({ data }: { data: { eventId: string; unitId: string; status: "REQUESTED" } }) => ({
-      id: "participation-1",
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }),
+    value: async ({ data }: { data: { eventId: string; unitId: string; status: "REQUESTED" } }) => {
+      participationCreateCalls += 1;
+      return {
+        id: "participation-1",
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    },
   });
   Object.defineProperty(prisma.user, "findUnique", {
     configurable: true,
@@ -146,6 +158,23 @@ test("creates a REQUESTED participation for a valid event and unit", async () =>
   assert.equal(result.status, "REQUESTED");
   assert.equal(result.eventId, eventId);
   assert.equal(result.unitId, unitId);
+});
+
+test("rejects new participation requests for Closed Invite Events server-side", async () => {
+  const eventId = "evt-closed";
+  const unitId = "unit-closed";
+  installUniquePermissionScenario({
+    granted: true,
+    eventId,
+    unitId,
+    invitePolicy: "CLOSED",
+  });
+
+  await assert.rejects(
+    () => requestEventParticipation({ userId: "user-1", eventId, unitId }),
+    /closed to participation requests.*invitation required/i,
+  );
+  assert.equal(participationCreateCalls, 0);
 });
 
 test("rejects missing event", async () => {

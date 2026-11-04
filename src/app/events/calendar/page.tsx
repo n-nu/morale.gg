@@ -15,7 +15,14 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const LEGEND = ["Internal", "External", "Mixed", "Grand Battle"];
+const LEGEND = [
+  "Internal",
+  "External",
+  "Mixed",
+  "Grand Battle",
+  "Ceremony",
+  "Other",
+];
 
 function monthKeyOf(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -54,7 +61,10 @@ export default async function EventCalendarPage({
     name: event.name,
     iso: event.scheduledAt.toISOString(),
     eventType: event.eventType,
-    opponent: event.opponent,
+    attackerName: event.attackerName,
+    defenderName: event.defenderName,
+    rallyMinutesBeforeStart: event.rallyMinutesBeforeStart,
+    durationMinutes: event.durationMinutes,
     map: event.map,
   }));
 

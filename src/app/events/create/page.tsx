@@ -9,7 +9,7 @@ import { canCreateEvent } from "@/modules/units/server/authorization";
 import { SelectField } from "../select-field";
 import { SuggestInput } from "../suggest-input";
 import { TimezoneNote } from "../local-time";
-import { ScheduleInput } from "../[eventId]/manage/schedule-input";
+import { EventScheduleFields } from "../schedule-fields";
 import { createEventAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -97,9 +97,7 @@ export default async function CreateEventPage({
 
       <section className="mt-6 max-w-3xl rounded-[10px] border border-edge bg-surface px-6 py-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[17px] font-extrabold text-white">
-            Event details
-          </h2>
+          <h2 className="text-[17px] font-extrabold text-white">Event</h2>
           <TimezoneNote />
         </div>
         <form action={createEventAction} autoComplete="off" className="mt-4 flex flex-col gap-4">
@@ -122,14 +120,6 @@ export default async function CreateEventPage({
                 ariaLabel="Event type"
               />
             </label>
-            <label className={labelClass} htmlFor="event-scheduled-at">
-              Scheduled date &amp; time
-              <ScheduleInput initialIso="" />
-            </label>
-            <label className={labelClass}>
-              Opponent (optional)
-              <input name="opponent" className={inputClass} />
-            </label>
             <label className={labelClass}>
               Map (optional)
               <SuggestInput name="map" options={KNOWN_MAP_NAMES} ariaLabel="Map" />
@@ -139,6 +129,77 @@ export default async function CreateEventPage({
               </span>
             </label>
           </div>
+          <section aria-labelledby="create-event-schedule">
+            <h3 id="create-event-schedule" className="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-muted">
+              Schedule
+            </h3>
+            <EventScheduleFields initialIso="" initialDurationMinutes={null} />
+          </section>
+          <section aria-labelledby="create-event-sides">
+            <h3 id="create-event-sides" className="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-muted">
+              Sides
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className={labelClass}>
+                Attackers (optional)
+                <input
+                  name="attackerName"
+                  maxLength={120}
+                  aria-describedby="attacker-name-help"
+                  className={inputClass}
+                />
+                <span id="attacker-name-help" className="text-[11px] font-medium normal-case tracking-normal text-faint">
+                  Name the attacking side; this may represent multiple Units or an alliance.
+                </span>
+              </label>
+              <label className={labelClass}>
+                Defenders (optional)
+                <input
+                  name="defenderName"
+                  maxLength={120}
+                  aria-describedby="defender-name-help"
+                  className={inputClass}
+                />
+                <span id="defender-name-help" className="text-[11px] font-medium normal-case tracking-normal text-faint">
+                  Name the defending side; this may represent multiple Units or an alliance.
+                </span>
+              </label>
+            </div>
+          </section>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-[11px] font-bold uppercase tracking-[0.05em] text-faint">
+              Participation
+            </legend>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-edge-strong bg-background px-3.5 py-3 text-sm">
+              <input
+                type="radio"
+                name="invitePolicy"
+                value="OPEN"
+                defaultChecked
+                className="mt-1 accent-gold"
+              />
+              <span>
+                <span className="block font-semibold text-foreground">Open Invite</span>
+                <span className="block text-xs text-muted">
+                  Other eligible Units may request to participate; managers review requests.
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-edge-strong bg-background px-3.5 py-3 text-sm">
+              <input
+                type="radio"
+                name="invitePolicy"
+                value="CLOSED"
+                className="mt-1 accent-gold"
+              />
+              <span>
+                <span className="block font-semibold text-foreground">Closed Invite</span>
+                <span className="block text-xs text-muted">
+                  Units may participate only through Event management.
+                </span>
+              </span>
+            </label>
+          </fieldset>
           <label className={labelClass}>
             Description (optional)
             <textarea

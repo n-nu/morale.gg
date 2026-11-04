@@ -13,6 +13,7 @@ import {
   authorizeEventUserByEmail,
   updateEventDetails,
 } from "@/modules/events/server/management";
+import { validateEventInvitePolicy } from "@/modules/events/server/validation";
 import {
   proposeEventResultCorrection,
   reviewEventResultCorrection,
@@ -69,11 +70,19 @@ export async function updateEventDetailsAction(
       name: String(formData.get("name") ?? ""),
       scheduledAt: new Date(scheduledAtIso),
       eventType: String(formData.get("eventType") ?? ""),
+      rallyMinutesBeforeStart: Number(formData.get("rallyMinutesBeforeStart") ?? 0),
+      durationMinutes: Number(formData.get("durationMinutes")),
+      attackerName: String(formData.get("attackerName") ?? ""),
+      defenderName: String(formData.get("defenderName") ?? ""),
+      invitePolicy: validateEventInvitePolicy(formData.get("invitePolicy") ?? ""),
       description: String(formData.get("description") ?? ""),
-      opponent: String(formData.get("opponent") ?? ""),
       map: String(formData.get("map") ?? ""),
-      defenderFlagRef: String(formData.get("defenderFlagRef") ?? ""),
-      attackerFlagRef: String(formData.get("attackerFlagRef") ?? ""),
+      ...(formData.has("defenderFlagRef")
+        ? { defenderFlagRef: String(formData.get("defenderFlagRef") ?? "") }
+        : {}),
+      ...(formData.has("attackerFlagRef")
+        ? { attackerFlagRef: String(formData.get("attackerFlagRef") ?? "") }
+        : {}),
     });
   });
 }

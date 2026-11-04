@@ -3,6 +3,7 @@ import {
   PrismaClient,
   type AuditUnitType,
   type BattlefieldSide,
+  type EventInvitePolicy,
   type EventParticipationStatus,
   type Permission,
   type PermissionScope,
@@ -172,7 +173,12 @@ type EventSeed = {
   scheduledOffsetDays: number;
   eventType: string;
   description: string;
-  opponent: string;
+  opponent: string | null;
+  attackerName?: string;
+  defenderName?: string;
+  rallyMinutesBeforeStart?: number;
+  durationMinutes?: number;
+  invitePolicy?: EventInvitePolicy;
   map: string;
   defenderFlagRef: string | null;
   attackerFlagRef: string | null;
@@ -297,6 +303,11 @@ const eventSeeds: EventSeed[] = [
     eventType: "Grand Battle",
     description: "Main visual-review fixture with a layered battlefield, finalized results, and pending placeholders.",
     opponent: "Coalition Army",
+    attackerName: "French Empire",
+    defenderName: "Coalition Forces",
+    rallyMinutesBeforeStart: 30,
+    durationMinutes: 35,
+    invitePolicy: "OPEN",
     map: "Austerlitz",
     defenderFlagRef: "/maps/borodino.jpg",
     attackerFlagRef: "/maps/barraux.png",
@@ -336,6 +347,11 @@ const eventSeeds: EventSeed[] = [
     eventType: "Grand Battle",
     description: "Recent past Event with a defender image and a distinct corps-and-reserve structure.",
     opponent: "Imperial Guard",
+    attackerName: "French Imperial Army",
+    defenderName: "United Kingdom & Prussia",
+    rallyMinutesBeforeStart: 45,
+    durationMinutes: 60,
+    invitePolicy: "CLOSED",
     map: "Waterloo",
     defenderFlagRef: "/maps/austerlitz.jpg",
     attackerFlagRef: null,
@@ -370,6 +386,10 @@ const eventSeeds: EventSeed[] = [
     eventType: "Grand Battle",
     description: "Historical fixture without custom side images; both sides use the existing fallback presentation.",
     opponent: "French Imperial Army",
+    attackerName: "French Empire",
+    defenderName: "Russian Empire",
+    rallyMinutesBeforeStart: 20,
+    durationMinutes: 35,
     map: "Borodino",
     defenderFlagRef: null,
     attackerFlagRef: null,
@@ -547,10 +567,49 @@ const eventSeeds: EventSeed[] = [
     eventType: "Internal",
     description: "Future planning fixture with outstanding participation requests.",
     opponent: "Allied Staff",
+    attackerName: "Coalition Forces",
+    defenderName: "Empire Français",
+    rallyMinutesBeforeStart: 15,
+    durationMinutes: 55,
+    invitePolicy: "CLOSED",
     map: "Austerlitz",
     defenderFlagRef: null,
     attackerFlagRef: null,
     participations: [participation(UNIT.austrianLandwehr), participation(UNIT.frenchOldGuard, "REQUESTED"), participation(UNIT.portugueseLancers)],
+    atomics: [],
+    groups: [],
+  },
+  {
+    id: "demo-event-ceremony",
+    name: "Armistice Commemoration",
+    scheduledOffsetDays: 8,
+    eventType: "Ceremony",
+    description: "Ceremony fixture without battle sides or battlefield structure.",
+    opponent: null,
+    map: "St. Cloud",
+    defenderFlagRef: null,
+    attackerFlagRef: null,
+    rallyMinutesBeforeStart: 15,
+    durationMinutes: 60,
+    invitePolicy: "CLOSED",
+    participations: [],
+    atomics: [],
+    groups: [],
+  },
+  {
+    id: "demo-event-other",
+    name: "Community Briefing",
+    scheduledOffsetDays: 12,
+    eventType: "Other",
+    description: "Open community fixture with no battle-side requirements.",
+    opponent: null,
+    map: "",
+    defenderFlagRef: null,
+    attackerFlagRef: null,
+    rallyMinutesBeforeStart: 0,
+    durationMinutes: 35,
+    invitePolicy: "OPEN",
+    participations: [],
     atomics: [],
     groups: [],
   },
@@ -904,9 +963,14 @@ async function seedEvents(tx: TxClient, rootCommanderUserId: string): Promise<Ma
         id: event.id,
         name: event.name,
         scheduledAt,
+        rallyMinutesBeforeStart: event.rallyMinutesBeforeStart ?? 0,
+        durationMinutes: event.durationMinutes ?? 35,
         eventType: event.eventType,
         description: `SYNTHETIC DEMO ACTIVITY — not a claim that real Roblox members participated.\n\n${event.description}`,
         opponent: event.opponent,
+        attackerName: event.attackerName ?? null,
+        defenderName: event.defenderName ?? null,
+        invitePolicy: event.invitePolicy ?? "OPEN",
         map: event.map,
         defenderFlagRef: event.defenderFlagRef,
         attackerFlagRef: event.attackerFlagRef,
@@ -1137,7 +1201,16 @@ async function verifySeededData(tx: TxClient, rootUnitId: string): Promise<void>
   const auditRoleLinks = await tx.auditRoleAssignment.findMany({
     select: { playerId: true, player: { select: { id: true, playerId: true } } },
   });
-  const events = await tx.event.findMany({ select: { eventType: true, description: true } });
+  const events = await tx.event.findMany({
+    select: {
+      id: true,
+      eventType: true,
+      description: true,
+      rallyMinutesBeforeStart: true,
+      durationMinutes: true,
+      invitePolicy: true,
+    },
+  });
   const participations = await tx.eventParticipation.findMany({ select: { id: true, status: true } });
   const atomics = await tx.atomicEventUnit.findMany({
     include: {
@@ -1238,9 +1311,15 @@ async function verifySeededData(tx: TxClient, rootUnitId: string): Promise<void>
   assert.ok(auditPlayerLinks.some(({ playerId }) => playerId === identityFixture.id));
   assert.ok(auditRoleLinks.some(({ playerId }) => playerId === identityFixture.id));
   assert.ok(users.filter((user) => user.id !== root.designatedUnit.commanderUserId).length >= 6);
-  assert.equal(events.length, 10);
+  assert.equal(events.length, 12);
   assert.ok(events.every(({ description }) => description?.startsWith("SYNTHETIC DEMO ACTIVITY —")), "Every seeded Event must identify its activity as synthetic.");
-  assert.ok(events.every(({ eventType }) => ["Internal", "External", "Mixed", "Grand Battle"].includes(eventType)), "Unexpected Event type suggestion.");
+  assert.ok(events.every(({ eventType }) => ["Internal", "External", "Mixed", "Grand Battle", "Ceremony", "Other"].includes(eventType)), "Unexpected Event type suggestion.");
+  assert.ok(events.some(({ eventType }) => eventType === "Ceremony"));
+  assert.ok(events.some(({ eventType }) => eventType === "Other"));
+  assert.ok(events.some(({ invitePolicy }) => invitePolicy === "OPEN"));
+  assert.ok(events.some(({ invitePolicy }) => invitePolicy === "CLOSED"));
+  assert.ok(events.every(({ rallyMinutesBeforeStart }) => Number.isInteger(rallyMinutesBeforeStart) && rallyMinutesBeforeStart >= 0));
+  assert.ok(events.every(({ durationMinutes }) => durationMinutes !== null && Number.isInteger(durationMinutes) && durationMinutes >= 1));
   assert.ok(memberships >= 120);
   assert.ok(participations.some(({ status }) => status === "APPROVED"));
   assert.ok(participations.some(({ status }) => status === "REQUESTED"));

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createEvent } from "@/modules/events/server/create-event";
+import { validateEventInvitePolicy } from "@/modules/events/server/validation";
 
 /**
  * Creates an Event through the existing authenticated creation path, which
@@ -22,8 +23,12 @@ export async function createEventAction(formData: FormData): Promise<void> {
       name: String(formData.get("name") ?? ""),
       scheduledAt: new Date(scheduledAtIso),
       eventType: String(formData.get("eventType") ?? ""),
+      rallyMinutesBeforeStart: Number(formData.get("rallyMinutesBeforeStart") ?? 0),
+      durationMinutes: Number(formData.get("durationMinutes")),
+      attackerName: String(formData.get("attackerName") ?? ""),
+      defenderName: String(formData.get("defenderName") ?? ""),
+      invitePolicy: validateEventInvitePolicy(formData.get("invitePolicy") ?? "OPEN"),
       description: String(formData.get("description") ?? "") || undefined,
-      opponent: String(formData.get("opponent") ?? "") || undefined,
       map: String(formData.get("map") ?? "") || undefined,
     });
     createdEventId = event.id;

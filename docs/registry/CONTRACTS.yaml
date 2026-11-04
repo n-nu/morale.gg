@@ -117,8 +117,8 @@ contracts:
     producer: events
     consumer: public Player profile
     status: stable
-    version: 0.1
-    updated_by_ticket: TKT-20261103-000053-001
+    version: 0.2
+    updated_by_ticket: TKT-20261103-000060-001
   - contract_id: units-public-presentation-batch
     path: docs/contracts/units-public-presentation-batch.md
     producer: units

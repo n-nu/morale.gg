@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Event } from "@prisma/client";
+import type { EventInvitePolicy } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -29,6 +30,11 @@ export type PublicEventPresentation = {
   scheduledAt: Date;
   map: string | null;
   opponent: string | null;
+  attackerName: string | null;
+  defenderName: string | null;
+  rallyMinutesBeforeStart: number;
+  durationMinutes: number | null;
+  invitePolicy: EventInvitePolicy;
 };
 
 export async function getPublicEventPresentationBatch(
@@ -46,6 +52,11 @@ export async function getPublicEventPresentationBatch(
       scheduledAt: true,
       map: true,
       opponent: true,
+      attackerName: true,
+      defenderName: true,
+      rallyMinutesBeforeStart: true,
+      durationMinutes: true,
+      invitePolicy: true,
     },
   });
   const eventsById = new Map(events.map((event) => [event.id, event]));
@@ -60,6 +71,11 @@ export async function getPublicEventPresentationBatch(
           scheduledAt: new Date(event.scheduledAt.getTime()),
           map: event.map,
           opponent: event.opponent,
+          attackerName: event.attackerName,
+          defenderName: event.defenderName,
+          rallyMinutesBeforeStart: event.rallyMinutesBeforeStart,
+          durationMinutes: event.durationMinutes,
+          invitePolicy: event.invitePolicy,
         }]
       : [];
   });

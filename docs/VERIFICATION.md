@@ -359,8 +359,25 @@ docker compose -p morale-qa -f tests/compose.qa.yaml down
   Units directory/detail routes and Unit management, across 390px, 768px,
   1024px, 1440px, and 1920px. A newly added U.S. Cavalry Detachment roster
   displayed three active synthetic Players with synthetic-ID labels; the
-  management roster count reflected the added synthetic member. The full
-  browser suite was not rerun; its previously recorded two failures remain
-  unconfirmed as related to this fixture change.
+  management roster count reflected the added synthetic member. At that point,
+  the full browser suite was not rerun; its two failures were resolved in the
+  follow-up below.
 - The disposable QA Compose project was stopped and removed. The pre-existing
   development server was left untouched.
+
+## Award and demo browser-verification follow-up (2026-11-04)
+
+- Against the isolated PostgreSQL QA database, the full Playwright suite passed
+  **22 tests with 2 production-only skips and 0 failures**. Award catalog
+  alignment and Ticket 45 drag/drop restoration passed at their required
+  viewports.
+- Focused baseline and medal checks passed **5 tests with 2 production-only
+  skips**. The baseline profile assertion now checks the cached username and
+  avatar shown by the current UI. The medal test creates a temporary second
+  Player Award grant for adjacent-medal interaction and removes it afterward.
+- `npm run lint`, `npm run type-check`, and `git diff --check` passed. The
+  existing `npm test` result remains **218/218 passed**; QA migration, reset,
+  and seed assertions are recorded above.
+- The temporary app copy and isolated `morale-ticket50` QA database were
+  removed after verification. The existing development server on port 3000
+  remained running and untouched.

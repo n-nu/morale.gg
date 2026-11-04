@@ -71,7 +71,10 @@ async function requestEventParticipationInternal(
   }
 
   const [event, unit] = await Promise.all([
-    prisma.event.findUnique({ where: { id: eventId } }),
+    prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, scheduledAt: true, invitePolicy: true },
+    }),
     prisma.unit.findUnique({ where: { id: unitId } }),
   ]);
 
@@ -86,6 +89,10 @@ async function requestEventParticipationInternal(
   const allowed = await authorize(userId, unitId);
   if (!allowed) {
     throw new Error("Unauthorized: user cannot request participation for this unit.");
+  }
+
+  if (event.invitePolicy === "CLOSED") {
+    throw new Error("This Event is closed to participation requests. Invitation required.");
   }
 
   const existing = await prisma.eventParticipation.findUnique({

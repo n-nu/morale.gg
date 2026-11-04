@@ -30,8 +30,8 @@ test.describe("M1 development baseline", () => {
           await expect(page.locator("h1").first()).toBeVisible();
           if (route === "/players/4213669967") {
             await expect(page.getByRole("heading", { name: "@NapoleonicWar_s" })).toBeVisible();
-            await expect(page.getByRole("link", { name: "View Roblox Profile" }))
-              .toHaveAttribute("href", "https://www.roblox.com/users/4213669967/profile");
+            await expect(page.getByRole("img", { name: "Roblox avatar for @NapoleonicWar_s" }))
+              .toBeVisible();
           }
           const dimensions = await page.evaluate(() => ({
             viewport: window.innerWidth,

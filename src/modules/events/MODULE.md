@@ -22,7 +22,9 @@ Audit work builds on approved Event participation through the
 - Event name;
 - scheduled date/time;
 - basic Event metadata (simple string event type, optional description,
-  opponent, and map);
+  legacy opponent, Event-side display names, and map);
+- planned rally offset, planned Event duration, and participation invite
+  policy;
 - Event read/query behavior;
 - authenticated Event creation and its Event Time Rule (no creation in the
   past);
@@ -78,8 +80,9 @@ Audit work builds on approved Event participation through the
 - Public Event detail exposes APPROVED participating Units only; pending and
   denied participation stays management-only.
 - `getPublicEventPresentationBatch` returns public Event name, type, scheduled
-  time, map, and opponent for multiple IDs in request order, without manager
-  data or per-Event reads.
+  time, map, legacy opponent, attacker/defender display names, rally offset,
+  planned duration, and invite policy for multiple IDs in request order,
+  without manager data or per-Event reads.
 - `getCanonicalEventTimes` provides Statistics with Events-owned canonical
   occurrence timestamps without selecting a Statistics window.
 - Events consumes the server-only
@@ -115,6 +118,14 @@ Audit work builds on approved Event participation through the
 - All Prisma access happens in server-only code (`src/modules/events/server/`).
 - Every Event has exactly one real User owner; no Unit ownership or authority
   anchor is stored.
+- Event-side names are optional display labels and never Unit identifiers or
+  foreign keys. Existing opponent values are preserved as legacy data and are
+  not inferred into either side.
+- Rally time is derived from the scheduled start and a non-negative minute
+  offset. Planned end time is derived from the scheduled start and nullable
+  planned duration; legacy duration remains unknown.
+- Closed Invite blocks new participation requests in the Events server
+  service. Existing participation decisions and rows remain unchanged.
 - Explicit Event authorization is unique by Event/User, excludes the owner,
   and records the adding User.
 - The domain creation path rejects Events scheduled in the past.
@@ -181,9 +192,11 @@ Event.
 
 ## Limitations
 
-- Event type is a plain string with presentation-level styling for the
-  well-known values (internal, external, mixed, grand battle); no persisted
-  taxonomy.
+- Event type is a plain string with presentation-level styling for Internal,
+  External, Mixed, Grand Battle, Ceremony, and Other; no persisted taxonomy.
+- Legacy Events have no known planned duration. The participation request
+  service exists, but no user-facing request action or invitation lifecycle is
+  currently available.
 - Times render in the visitor's local time zone on the client; the server
   render (and no-JS view) shows UTC.
 - No pagination; acceptable at MVP data volumes.
@@ -196,7 +209,8 @@ Event.
 - `events-audits-event-battlefield-management` (stable).
 - `audits-events-public-battlefield-structure` (stable consumer-facing read).
 - `statistics-events-event-battle-reader` (stable consumer-facing read).
-- `events-public-presentation-batch` (stable public profile presentation read).
+- `events-public-presentation-batch` (stable public profile presentation read,
+  additively extended by BCR-20261103-013).
 
 ## Related ADRs
 

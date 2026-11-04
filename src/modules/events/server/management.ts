@@ -1,10 +1,15 @@
 import "server-only";
 
-import type { Event, EventParticipationStatus } from "@prisma/client";
+import type { Event, EventInvitePolicy, EventParticipationStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import { canManageEvent } from "./authorization";
+import {
+  normalizeEventSideName,
+  validateEventInvitePolicy,
+  validateEventSchedule,
+} from "./validation";
 
 /**
  * Server-only Event-management reads and writes for the manager workflow.
@@ -192,8 +197,12 @@ export interface UpdateEventDetailsInput {
   name: string;
   scheduledAt: Date;
   eventType: string;
+  rallyMinutesBeforeStart: number;
+  durationMinutes: number;
+  attackerName?: string;
+  defenderName?: string;
+  invitePolicy: EventInvitePolicy;
   description?: string;
-  opponent?: string;
   map?: string;
   defenderFlagRef?: string;
   attackerFlagRef?: string;
@@ -256,9 +265,12 @@ export async function updateEventDetails(
     throw new Error("An event needs a non-empty event type.");
   }
 
-  if (Number.isNaN(input.scheduledAt.getTime())) {
-    throw new Error("An event needs a valid scheduled date and time.");
-  }
+  validateEventSchedule(
+    input.scheduledAt,
+    input.rallyMinutesBeforeStart,
+    input.durationMinutes,
+  );
+  const invitePolicy = validateEventInvitePolicy(input.invitePolicy);
 
   const rescheduled =
     input.scheduledAt.getTime() !== event.scheduledAt.getTime();
@@ -271,12 +283,20 @@ export async function updateEventDetails(
     data: {
       name,
       scheduledAt: input.scheduledAt,
+      rallyMinutesBeforeStart: input.rallyMinutesBeforeStart,
+      durationMinutes: input.durationMinutes,
       eventType,
       description: input.description?.trim() || null,
-      opponent: input.opponent?.trim() || null,
+      attackerName: normalizeEventSideName(input.attackerName),
+      defenderName: normalizeEventSideName(input.defenderName),
+      invitePolicy,
       map: input.map?.trim() || null,
-      defenderFlagRef: validateImageReference(input.defenderFlagRef),
-      attackerFlagRef: validateImageReference(input.attackerFlagRef),
+      ...(input.defenderFlagRef === undefined
+        ? {}
+        : { defenderFlagRef: validateImageReference(input.defenderFlagRef) }),
+      ...(input.attackerFlagRef === undefined
+        ? {}
+        : { attackerFlagRef: validateImageReference(input.attackerFlagRef) }),
     },
   });
 }

@@ -1,7 +1,61 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+
+const playerId = process.env.AWARD_BROWSER_PLAYER_ID ?? "demo-player-001";
+let fixtureAwardId: string | null = null;
+
+test.beforeEach(async () => {
+  if (process.env.QA_PRODUCTION === "true") return;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) throw new Error("DATABASE_URL must target the browser server's local test database.");
+
+  const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  try {
+    const existingGrant = await db.playerAwardGrant.findFirst({
+      where: { playerId },
+      select: { award: { select: { rootUnitId: true } } },
+    });
+    if (!existingGrant) {
+      throw new Error(`Player ${playerId} needs one existing Player Award grant for this browser check.`);
+    }
+
+    fixtureAwardId = `award-medal-browser-${randomUUID()}`;
+    await db.awardDefinition.create({
+      data: {
+        id: fixtureAwardId,
+        rootUnitId: existingGrant.award.rootUnitId,
+        category: "PLAYER",
+        name: `Browser Medal Fixture ${fixtureAwardId}`,
+        description: "Temporary award used to verify medal spacing.",
+        imageRef: "/file.svg",
+        sortOrder: 1_000_000,
+      },
+    });
+    await db.playerAwardGrant.create({ data: { awardId: fixtureAwardId, playerId } });
+  } finally {
+    await db.$disconnect();
+  }
+});
+
+test.afterEach(async () => {
+  if (!fixtureAwardId) return;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) throw new Error("DATABASE_URL must target the browser server's local test database.");
+
+  const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  try {
+    await db.playerAwardGrant.deleteMany({ where: { awardId: fixtureAwardId } });
+    await db.awardDefinition.delete({ where: { id: fixtureAwardId } });
+  } finally {
+    await db.$disconnect();
+    fixtureAwardId = null;
+  }
+});
 
 test("Player medals gain restrained depth without changing the gallery interaction", async ({ page, browser }) => {
-  const playerId = process.env.AWARD_BROWSER_PLAYER_ID ?? "demo-player-001";
+  test.skip(process.env.QA_PRODUCTION === "true", "Uses a temporary Player Award fixture in the isolated QA database.");
   await page.goto(`/players/${encodeURIComponent(playerId)}`);
 
   const medals = page.getByRole("button", { name: /medal details/ });

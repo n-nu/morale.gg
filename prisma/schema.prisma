@@ -63,9 +63,14 @@ model Event {
   id          String                @id @default(cuid())
   name        String
   scheduledAt DateTime
+  rallyMinutesBeforeStart Int       @default(0)
+  durationMinutes Int?
   eventType   String
   description String?
   opponent    String?
+  attackerName String?
+  defenderName String?
+  invitePolicy EventInvitePolicy    @default(OPEN)
   map         String?
   defenderFlagRef String?
   attackerFlagRef String?
@@ -79,6 +84,11 @@ model Event {
   resultRecords EventResult[]
 
   @@index([ownerUserId])
+}
+
+enum EventInvitePolicy {
+  OPEN
+  CLOSED
 }
 
 model EventAuthorizedUser {

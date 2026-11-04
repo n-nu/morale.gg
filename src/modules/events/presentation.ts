@@ -3,6 +3,8 @@
  * server-side behavior lives under `src/modules/events/server/`.
  */
 
+export { deriveEventSchedule } from "./schedule";
+
 /**
  * Well-known event types get the team palette's accent treatment (colors
  * from the approved Events mockup); anything else falls back to a neutral
@@ -11,7 +13,7 @@
  */
 export interface EventTypeStyle {
   label: string;
-  /** Normalized filter key ("internal" | "external" | "mixed" | "grand" | "other"). */
+  /** Normalized filter key for known and custom event types. */
   key: string;
   /** Tailwind classes for legend/filter dots. */
   dotClass: string;
@@ -27,6 +29,8 @@ export const EVENT_TYPE_NAMES: string[] = [
   "External",
   "Mixed",
   "Grand Battle",
+  "Ceremony",
+  "Other",
 ];
 
 export function eventTypeStyle(eventType: string): EventTypeStyle {
@@ -47,6 +51,14 @@ export function eventTypeStyle(eventType: string): EventTypeStyle {
     };
   }
   switch (normalized) {
+    case "ceremony":
+      return {
+        label,
+        key: "ceremony",
+        dotClass: "bg-[#c0c0c0]",
+        badgeClass: "bg-[#c0c0c0] border-[#e0e0e0] text-[#202226]",
+        barClass: "border-l-[#c0c0c0]",
+      };
     case "internal":
       return {
         label,
@@ -71,6 +83,14 @@ export function eventTypeStyle(eventType: string): EventTypeStyle {
         badgeClass: "bg-[#090e12] border-type-blue text-type-blue",
         barClass: "border-l-type-blue",
       };
+    case "other":
+      return {
+        label,
+        key: "other",
+        dotClass: "bg-[#4b4f56]",
+        badgeClass: "bg-[#292c31] border-[#4b4f56] text-[#b8bcc3]",
+        barClass: "border-l-[#4b4f56]",
+      };
     default:
       return {
         label,
@@ -80,6 +100,28 @@ export function eventTypeStyle(eventType: string): EventTypeStyle {
         barClass: "border-l-edge-strong",
       };
   }
+}
+
+export function matchesEventTypeFilter(eventType: string, key: string): boolean {
+  return eventTypeStyle(eventType).key === key;
+}
+
+export function isBattleEventType(eventType: string): boolean {
+  const normalized = eventType.trim().toLowerCase();
+  return normalized !== "ceremony" && normalized !== "other";
+}
+
+export function formatEventScheduleSummary(
+  rallyMinutesBeforeStart: number,
+  durationMinutes: number | null,
+): string {
+  const rally =
+    rallyMinutesBeforeStart === 0
+      ? "Rally at start"
+      : `Rally ${rallyMinutesBeforeStart}m before`;
+  const duration =
+    durationMinutes === null ? "duration not set" : `${durationMinutes} min`;
+  return `${rally} · ${duration}`;
 }
 
 const utcDateFormatter = new Intl.DateTimeFormat("en-US", {

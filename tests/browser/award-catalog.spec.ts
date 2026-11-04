@@ -75,8 +75,9 @@ test("Award catalogs and public Player/Unit Awards fit supported viewports", asy
     }]);
 
     await page.goto(`/units/${rootUnitId}/manage#structure`);
-    const playerCatalog = page.getByRole("region", { name: "Player Awards", exact: true });
-    const unitCatalog = page.getByRole("region", { name: "Unit Awards", exact: true });
+    const structureCatalogs = page.locator("#structure");
+    const playerCatalog = structureCatalogs.getByRole("region", { name: "Player Awards", exact: true });
+    const unitCatalog = structureCatalogs.getByRole("region", { name: "Unit Awards", exact: true });
     const playerRow = playerCatalog.locator(".units-award-row").filter({
       has: page.locator(`input[name="awardId"][value="${playerAwardId}"]`),
     });

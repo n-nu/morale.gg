@@ -1196,6 +1196,8 @@
 }
 
 .units-award-row > summary {
+  display: grid;
+  gap: 12px;
   min-height: 56px;
   padding: 10px;
   color: var(--foreground);
